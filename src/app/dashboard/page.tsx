@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { Logo } from "@/components/Logo";
 import { PlanBadge } from "@/components/PlanBadge";
 import { SignOutButton } from "@/components/UserMenu";
@@ -75,6 +76,7 @@ export default async function DashboardPage({
 
   return (
     <main className="min-h-screen">
+      <BillingStateRefresh enabled={searchParams?.upgraded === "1"} />
       <header className="container-page flex flex-wrap items-center justify-between gap-4 py-6">
         <Link href="/">
           <Logo />
@@ -106,7 +108,7 @@ export default async function DashboardPage({
             <div>
               <p className="text-sm font-medium text-text">Your subscription is active.</p>
               <p className="text-xs text-text-muted">
-                Accessly refreshed your billing state. If plan badges look stale, a quick sign-out/sign-in will force an immediate refresh.
+                Accessly refreshed your billing state so your latest plan and entitlements are available now.
               </p>
             </div>
             <Link href="/pricing" className="text-sm text-accent hover:underline">
