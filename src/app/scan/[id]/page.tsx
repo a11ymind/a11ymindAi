@@ -32,7 +32,15 @@ export default async function ScanResultPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams?: { limit?: string; plan?: string; pdf?: string };
+  searchParams?: {
+    limit?: string;
+    plan?: string;
+    pdf?: string;
+    aiEnabled?: string;
+    requiresLoginForAI?: string;
+    requiresUpgradeForAI?: string;
+    aiLimitReached?: string;
+  };
 }) {
   const [scan, session] = await Promise.all([
     prisma.scan.findUnique({
@@ -83,6 +91,29 @@ export default async function ScanResultPage({
   const canSeeAiFixes = !savedScanRequiresAiUpgrade;
   const canExportPdf = ownedByMe && viewerEntitlements?.pdfExport === true;
   const limitPlan = parsePlan(searchParams?.plan);
+  const apiAiFlags = parseAiFlags(searchParams);
+  const coverageTease = singlePageCoverageTease({
+    host: hostOf(scan.url),
+    loggedIn: !!userId,
+    plan: effectiveOwnerPlan,
+    claimable,
+  });
+  const riskCount = scan.violations.length;
+  const visibleIssues = scan.violations.slice(0, 6);
+  const visibleFixes = scan.violations
+    .filter((violation) =>
+      Boolean(violation.legalRationale || violation.plainEnglishFix || violation.codeExample),
+    )
+    .slice(0, 3);
+  const fixesPanel = recommendedFixesState({
+    scanId: scan.id,
+    userId,
+    userPlan: effectiveOwnerPlan,
+    claimable,
+    canSeeAiFixes,
+    hasPersistedAi: visibleFixes.length > 0,
+    apiAiFlags,
+  });
 
   return (
     <PageShell loggedIn={!!userId}>
@@ -113,55 +144,109 @@ export default async function ScanResultPage({
           body="Try again in a moment. If this keeps happening, re-run the scan and export the newest report."
         />
       )}
+      <InlineBanner
+        tone="upgrade"
+        title="This scan covered 1 page only"
+        body={coverageTease.body}
+        ctaHref={coverageTease.ctaHref}
+        ctaLabel={coverageTease.ctaLabel}
+      />
 
-      <section className="container-page mt-6">
-        <div className="card flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-text-subtle">Scanned URL</p>
-            <p className="mt-1 break-all font-mono text-sm text-text">{scan.url}</p>
-            <p className="mt-3 text-xs text-text-subtle">
-              {new Date(scan.createdAt).toLocaleString()} · {scan.violations.length} violation
-              {scan.violations.length === 1 ? "" : "s"} found
-            </p>
-            {ownedByMe && (
-              <div className="mt-4">
-                {canExportPdf ? (
-                  <a
-                    href={`/api/scan/${scan.id}/pdf`}
-                    className="btn-ghost text-sm"
-                  >
-                    Download PDF report
-                  </a>
-                ) : (
-                  <Link
-                    href="/pricing"
-                    className="text-xs text-text-subtle hover:text-text"
-                  >
-                    PDF report is a Pro feature →
-                  </Link>
+      <section className="container-page mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="space-y-6">
+          <div className="card p-8">
+            <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-text-subtle">Scanned URL</p>
+                <p className="mt-1 break-all font-mono text-sm text-text">{scan.url}</p>
+                <p className="mt-3 text-xs text-text-subtle">
+                  {new Date(scan.createdAt).toLocaleString()} · {riskCount} risk
+                  {riskCount === 1 ? "" : "s"} found
+                </p>
+                {ownedByMe && (
+                  <div className="mt-4">
+                    {canExportPdf ? (
+                      <a
+                        href={`/api/scan/${scan.id}/pdf`}
+                        className="btn-ghost text-sm"
+                      >
+                        Download PDF report
+                      </a>
+                    ) : (
+                      <Link
+                        href="/pricing"
+                        className="text-xs text-text-subtle hover:text-text"
+                      >
+                        PDF report is a Pro feature →
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
+              <ScoreDial score={scan.score} band={band} />
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <ResultMetric
+                label="Compliance score"
+                value={`${scan.score}/100`}
+                detail={band.label}
+              />
+              <ResultMetric
+                label="Risks found"
+                value={`${riskCount}`}
+                detail={
+                  riskCount === 0
+                    ? "No risks detected on this page"
+                    : `${riskCount} accessibility risk${riskCount === 1 ? "" : "s"} detected on this page`
+                }
+              />
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-text-subtle">Detected risks</p>
+                <h2 className="mt-2 text-xl font-semibold text-text">
+                  {riskCount === 0 ? "No risks detected" : `${riskCount} risk${riskCount === 1 ? "" : "s"} on this page`}
+                </h2>
+              </div>
+              <span className="rounded-full border border-border px-3 py-1 text-xs text-text-subtle">
+                1 page scanned
+              </span>
+            </div>
+
+            {riskCount > 0 ? (
+              <div className="mt-5 space-y-3">
+                {visibleIssues.map((violation) => (
+                  <RiskListItem key={violation.id} violation={violation} />
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-text-muted">
+                axe-core didn&apos;t flag any automated risks on this page. Manual testing is still recommended.
+              </p>
             )}
           </div>
-          <ScoreDial score={scan.score} band={band} />
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {IMPACT_ORDER.map((impact) => (
+              <SeverityPill
+                key={impact}
+                impact={impact}
+                count={grouped.get(impact)?.length ?? 0}
+              />
+            ))}
+          </div>
         </div>
-      </section>
 
-      <section className="container-page mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {IMPACT_ORDER.map((impact) => (
-          <SeverityPill
-            key={impact}
-            impact={impact}
-            count={grouped.get(impact)?.length ?? 0}
-          />
-        ))}
+        <RecommendedFixesPanel
+          state={fixesPanel}
+          fixes={visibleFixes}
+          fallbackViolations={visibleIssues.slice(0, 3)}
+        />
       </section>
-
-      {savedScanRequiresAiUpgrade && scan.violations.length > 0 && (
-        <section className="container-page mt-10">
-          <LockedAiFixUpsell plan={savedScanOwnerPlan} />
-        </section>
-      )}
 
       <section className="container-page mt-12 space-y-10 pb-24">
         {IMPACT_ORDER.map((impact) => {
@@ -184,7 +269,7 @@ export default async function ScanResultPage({
               </div>
               <div className="space-y-4">
                 {items.map((v) => (
-                  <ViolationCard key={v.id} violation={v} showAiFixes={canSeeAiFixes} />
+                  <ViolationCard key={v.id} violation={v} />
                 ))}
               </div>
             </div>
@@ -366,9 +451,51 @@ function SeverityPill({ impact, count }: { impact: Impact; count: number }) {
   );
 }
 
+function ResultMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-bg-muted/50 p-4">
+      <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-text">{value}</p>
+      <p className="mt-1 text-xs text-text-muted">{detail}</p>
+    </div>
+  );
+}
+
+function RiskListItem({
+  violation,
+}: {
+  violation: {
+    id: string;
+    help: string;
+    impact: string;
+    description: string;
+  };
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-text">{violation.help}</p>
+          <p className="mt-1 text-sm text-text-muted">{violation.description}</p>
+        </div>
+        <span className="rounded-full border border-border px-2.5 py-1 text-[11px] uppercase tracking-wider text-text-subtle">
+          {violation.impact || "minor"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ViolationCard({
   violation,
-  showAiFixes,
 }: {
   violation: {
     id: string;
@@ -383,9 +510,7 @@ function ViolationCard({
     plainEnglishFix: string | null;
     codeExample: string | null;
   };
-  showAiFixes: boolean;
 }) {
-  const hasAnyAi = !!(violation.legalRationale || violation.plainEnglishFix || violation.codeExample);
   return (
     <article className="card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -415,87 +540,117 @@ function ViolationCard({
           </pre>
         )}
       </Section>
-
-      {showAiFixes && violation.legalRationale && (
-        <Section label="Why it matters legally">
-          <p className="text-sm text-text">{violation.legalRationale}</p>
-        </Section>
-      )}
-
-      {showAiFixes && violation.plainEnglishFix && (
-        <Section label="How to fix it">
-          <p className="text-sm text-text">{violation.plainEnglishFix}</p>
-        </Section>
-      )}
-
-      {showAiFixes && violation.codeExample && (
-        <Section label="Code example">
-          <pre className="overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text">
-            {stripFences(violation.codeExample)}
-          </pre>
-        </Section>
-      )}
-
-      {showAiFixes && !hasAnyAi && (
-        <p className="mt-4 text-xs text-text-subtle">
-          AI fix suggestions were not generated for this scan.
-        </p>
-      )}
-
-      {!showAiFixes && (
-        <LockedAiPreview />
-      )}
     </article>
   );
 }
 
-function LockedAiFixUpsell({ plan }: { plan: string | null }) {
-  const planName = plan === "PRO" ? "Pro" : plan === "STARTER" ? "Starter" : "Free";
+function RecommendedFixesPanel({
+  state,
+  fixes,
+  fallbackViolations,
+}: {
+  state: ReturnType<typeof recommendedFixesState>;
+  fixes: {
+    id: string;
+    help: string;
+    legalRationale: string | null;
+    plainEnglishFix: string | null;
+    codeExample: string | null;
+  }[];
+  fallbackViolations: {
+    id: string;
+    help: string;
+    impact: string;
+  }[];
+}) {
   return (
-    <div className="card border-accent-muted bg-accent-muted/10 p-5">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <p className="text-sm font-semibold text-text">
-            <LockIcon /> AI fix suggestions are locked on your {planName} plan
-          </p>
-          <p className="mt-1 text-sm text-text-muted">
-            Upgrade to Starter or Pro for per-violation legal rationale, plain-English fix instructions, and
-            ready-to-copy code examples.
-          </p>
-        </div>
-        <Link href="/pricing" className="btn-primary whitespace-nowrap">
-          View plans
-        </Link>
+    <aside className="card h-fit p-6 lg:sticky lg:top-6">
+      <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
+      <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
+      <div className="mt-4 space-y-2 text-sm text-text-muted">
+        <p>New accessibility risks can appear anytime.</p>
+        <p>You scanned 1 page — more pages may have issues.</p>
       </div>
+
+      {state.mode === "visible" ? (
+        <div className="mt-6 space-y-4">
+          {fixes.length > 0 ? (
+            fixes.map((fix) => <VisibleFixCard key={fix.id} fix={fix} />)
+          ) : (
+            <p className="rounded-xl border border-border bg-bg-muted/40 p-4 text-sm text-text-muted">
+              AI fixes were not generated for this scan.
+            </p>
+          )}
+        </div>
+      ) : (
+        <LockedAiPreview state={state} fallbackViolations={fallbackViolations} />
+      )}
+    </aside>
+  );
+}
+
+function VisibleFixCard({
+  fix,
+}: {
+  fix: {
+    id: string;
+    help: string;
+    legalRationale: string | null;
+    plainEnglishFix: string | null;
+    codeExample: string | null;
+  };
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
+      <p className="text-sm font-semibold text-text">{fix.help}</p>
+      {fix.plainEnglishFix && (
+        <p className="mt-2 text-sm text-text">{fix.plainEnglishFix}</p>
+      )}
+      {fix.legalRationale && (
+        <p className="mt-2 text-xs text-text-muted">{fix.legalRationale}</p>
+      )}
     </div>
   );
 }
 
-function LockedAiPreview() {
+function LockedAiPreview({
+  state,
+  fallbackViolations,
+}: {
+  state: ReturnType<typeof recommendedFixesState>;
+  fallbackViolations: { id: string; help: string; impact: string }[];
+}) {
   return (
     <div className="relative mt-5 overflow-hidden rounded-xl border border-accent-muted/40 bg-bg-muted/70">
       <div className="space-y-4 p-4 blur-sm">
-        <LockedLine className="w-28" />
-        <LockedBlock />
-        <LockedLine className="w-24" />
-        <LockedBlock />
-        <LockedLine className="w-32" />
-        <div className="space-y-2 rounded-md border border-border bg-bg p-3">
-          <LockedLine className="w-full" />
-          <LockedLine className="w-11/12" />
-          <LockedLine className="w-4/5" />
-        </div>
+        {fallbackViolations.map((violation) => (
+          <div key={violation.id} className="rounded-xl border border-border bg-bg p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-semibold text-text">{violation.help}</p>
+              <span className="rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-wider text-text-subtle">
+                {violation.impact || "minor"}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              <LockedLine className="w-full" />
+              <LockedLine className="w-11/12" />
+              <LockedLine className="w-4/5" />
+            </div>
+          </div>
+        ))}
       </div>
       <div className="absolute inset-0 flex flex-col items-start justify-center bg-bg/55 p-5">
         <p className="text-sm font-semibold text-text">
           <LockIcon /> AI fix suggestions are locked
         </p>
         <p className="mt-1 max-w-md text-sm text-text-muted">
-          Unlock legal rationale, plain-English remediation steps, and copy-ready code examples on a paid plan.
+          {state.body}
         </p>
-        <Link href="/pricing" className="btn-primary mt-4 text-sm">
-          View plans
-        </Link>
+        {state.ctaHref && state.ctaLabel ? (
+          <Link href={state.ctaHref} className="btn-primary mt-4 text-sm">
+            {state.ctaLabel}
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -547,10 +702,135 @@ function severityColor(impact: Impact): string {
   }[impact];
 }
 
-function stripFences(s: string): string {
-  return s.replace(/^```[a-zA-Z0-9]*\n?/, "").replace(/```\s*$/, "").trim();
-}
-
 function parsePlan(value: string | undefined): "FREE" | "STARTER" | "PRO" | null {
   return value === "FREE" || value === "STARTER" || value === "PRO" ? value : null;
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "this site";
+  }
+}
+
+function singlePageCoverageTease({
+  host,
+  loggedIn,
+  plan,
+  claimable,
+}: {
+  host: string;
+  loggedIn: boolean;
+  plan: "FREE" | "STARTER" | "PRO" | null;
+  claimable: boolean;
+}) {
+  const scope = `We only scanned the page you entered. Other pages on ${host} may still contain accessibility issues, broken flows, or regressions this report didn't catch.`;
+
+  if (plan === "PRO") {
+    return {
+      body: `${scope} Save tracked sites in your dashboard to keep monitoring them over time.`,
+      ctaHref: claimable ? "/dashboard" : "/dashboard",
+      ctaLabel: "Open dashboard",
+    };
+  }
+
+  if (plan === "STARTER") {
+    return {
+      body: `${scope} Upgrade to Pro for broader multi-site monitoring and weekly automated coverage.`,
+      ctaHref: "/pricing",
+      ctaLabel: "Upgrade to Pro",
+    };
+  }
+
+  if (loggedIn) {
+    return {
+      body: `${scope} Upgrade to Starter or Pro to turn one-off checks into ongoing site monitoring.`,
+      ctaHref: "/pricing",
+      ctaLabel: "View plans",
+    };
+  }
+
+  return {
+    body: `${scope} Create an account and upgrade when you're ready for broader coverage and ongoing monitoring.`,
+    ctaHref: "/pricing",
+    ctaLabel: "View plans",
+  };
+}
+
+function parseAiFlags(
+  searchParams:
+    | {
+        aiEnabled?: string;
+        requiresLoginForAI?: string;
+        requiresUpgradeForAI?: string;
+        aiLimitReached?: string;
+      }
+    | undefined,
+) {
+  return {
+    aiEnabled: searchParams?.aiEnabled === "1",
+    requiresLoginForAI: searchParams?.requiresLoginForAI === "1",
+    requiresUpgradeForAI: searchParams?.requiresUpgradeForAI === "1",
+    aiLimitReached: searchParams?.aiLimitReached === "1",
+  };
+}
+
+function recommendedFixesState({
+  scanId,
+  userId,
+  userPlan,
+  claimable,
+  canSeeAiFixes,
+  hasPersistedAi,
+  apiAiFlags,
+}: {
+  scanId: string;
+  userId: string | undefined;
+  userPlan: "FREE" | "STARTER" | "PRO" | null;
+  claimable: boolean;
+  canSeeAiFixes: boolean;
+  hasPersistedAi: boolean;
+  apiAiFlags: ReturnType<typeof parseAiFlags>;
+}) {
+  if (hasPersistedAi && canSeeAiFixes) {
+    return { mode: "visible" as const };
+  }
+
+  if (apiAiFlags.requiresLoginForAI || (!userId && claimable)) {
+    return {
+      mode: "locked" as const,
+      body: "Log in to see recommended fixes, save your scan, and keep tracking new accessibility regressions over time.",
+      ctaHref: `/login?scanId=${encodeURIComponent(scanId)}`,
+      ctaLabel: "Log in to see recommended fixes",
+    };
+  }
+
+  if (apiAiFlags.requiresUpgradeForAI || userPlan === "FREE") {
+    return {
+      mode: "locked" as const,
+      body: "Upgrade to generate recommended fixes with legal rationale, plain-English steps, and copy-ready remediation guidance.",
+      ctaHref: "/pricing",
+      ctaLabel: "Upgrade to generate fixes",
+    };
+  }
+
+  if (apiAiFlags.aiLimitReached) {
+    return {
+      mode: "locked" as const,
+      body:
+        userPlan === "STARTER"
+          ? "You reached your monthly AI fix limit on Starter. Upgrade to Pro for higher coverage."
+          : "You reached your monthly AI fix limit for now. New AI fixes will become available again next month.",
+      ctaHref: userPlan === "STARTER" ? "/pricing" : undefined,
+      ctaLabel: userPlan === "STARTER" ? "Upgrade to Pro" : undefined,
+    };
+  }
+
+  return {
+    mode: "locked" as const,
+    body: "Recommended fixes are not available for this scan yet. Save it and re-scan from your dashboard to keep monitoring changes over time.",
+    ctaHref: claimable ? `/login?scanId=${encodeURIComponent(scanId)}` : "/dashboard",
+    ctaLabel: claimable ? "Save this scan" : "Open dashboard",
+  };
 }

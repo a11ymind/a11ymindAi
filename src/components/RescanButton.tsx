@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildScanResultHref } from "@/lib/scan-result-url";
 
 export function RescanButton({ url, compact = false }: { url: string; compact?: boolean }) {
   const router = useRouter();
@@ -20,7 +21,14 @@ export function RescanButton({ url, compact = false }: { url: string; compact?: 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scan failed");
-      router.push(`/scan/${data.scanId}`);
+      router.push(
+        buildScanResultHref(data.scanId, {
+          aiEnabled: data.aiEnabled,
+          requiresLoginForAI: data.requiresLoginForAI,
+          requiresUpgradeForAI: data.requiresUpgradeForAI,
+          aiLimitReached: data.aiLimitReached,
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Scan failed");
       setLoading(false);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { buildScanResultHref } from "@/lib/scan-result-url";
 
 type LimitState = { plan: string; maxSites: number; message: string };
 
@@ -32,7 +33,14 @@ export function URLScanner() {
         return;
       }
       if (!res.ok) throw new Error(data.error || "Scan failed");
-      router.push(`/scan/${data.scanId}`);
+      router.push(
+        buildScanResultHref(data.scanId, {
+          aiEnabled: data.aiEnabled,
+          requiresLoginForAI: data.requiresLoginForAI,
+          requiresUpgradeForAI: data.requiresUpgradeForAI,
+          aiLimitReached: data.aiLimitReached,
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setLoading(false);
