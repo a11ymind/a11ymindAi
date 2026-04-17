@@ -172,7 +172,7 @@ export default async function DashboardPage({
             detail={
               entitlements.aiFixes
                 ? "Saved scan results include remediation guidance"
-                : "Upgrade to Pro to unlock"
+                : "Upgrade to Starter or Pro to unlock"
             }
           />
           <DashboardStat

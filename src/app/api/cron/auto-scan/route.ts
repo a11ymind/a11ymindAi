@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { entitlementsFor } from "@/lib/entitlements";
+import {
+  executeScanRecord,
+  isDueForAutoScan,
+  reserveScheduledScan,
+} from "@/lib/scan-jobs";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+type SiteResult =
+  | { siteId: string; url: string; status: "skipped"; reason: string }
+  | { siteId: string; url: string; status: "completed"; scanId: string; score: number }
+  | { siteId: string; url: string; status: "failed"; scanId: string; error: string };
+
+export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("authorization");
+
+  if (!secret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET is not configured" },
+      { status: 503 },
+    );
+  }
+
+  if (authHeader !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const startedAt = new Date();
+  const sites = await prisma.site.findMany({
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      url: true,
+      user: { select: { plan: true } },
+      scans: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { createdAt: true },
+      },
+    },
+  });
+
+  const dueSites = sites.filter((site) => {
+    const cadence = entitlementsFor(site.user.plan).autoScan;
+    return isDueForAutoScan(site.scans[0]?.createdAt, cadence, startedAt);
+  });
+
+  const results: SiteResult[] = [];
+
+  for (const site of dueSites) {
+    try {
+      const reservation = await reserveScheduledScan({ siteId: site.id, now: startedAt });
+      if (!reservation.ok) {
+        results.push({
+          siteId: site.id,
+          url: site.url,
+          status: "skipped",
+          reason: reservation.reason,
+        });
+        continue;
+      }
+
+      const execution = await executeScanRecord(reservation.scan, reservation.plan);
+      if (execution.ok) {
+        results.push({
+          siteId: site.id,
+          url: site.url,
+          status: "completed",
+          scanId: execution.scanId,
+          score: execution.score,
+        });
+      } else {
+        results.push({
+          siteId: site.id,
+          url: site.url,
+          status: "failed",
+          scanId: execution.scanId,
+          error: execution.error,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown scheduled scan failure";
+      results.push({
+        siteId: site.id,
+        url: site.url,
+        status: "skipped",
+        reason: `unexpected_error:${message}`,
+      });
+    }
+  }
+
+  const finishedAt = new Date();
+
+  return NextResponse.json({
+    startedAt: startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+    totalSites: sites.length,
+    dueSites: dueSites.length,
+    completed: results.filter((result) => result.status === "completed").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    skipped: results.filter((result) => result.status === "skipped").length,
+    results,
+  });
+}

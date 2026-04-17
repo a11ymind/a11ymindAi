@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { normalizeUrl, scanUrl } from "@/lib/scan";
-import { computeScore } from "@/lib/score";
-import { generateFixes } from "@/lib/ai";
+import { normalizeUrl } from "@/lib/scan";
 import {
   entitlementsFor,
   isAtSiteLimit,
@@ -14,6 +12,10 @@ import {
   rateLimitAnonymousScan,
   rateLimitHeaders,
 } from "@/lib/rate-limit";
+import {
+  createScanRecord,
+  executeScanRecord,
+} from "@/lib/scan-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +60,13 @@ export async function POST(req: Request) {
             "You've reached the anonymous scan limit for now. Please try again later.",
           message:
             "You've reached the anonymous scan limit for now. Please try again later or create an account to keep tracking sites from your dashboard.",
+          aiEnabled: false,
+          aiUsageCurrent: 0,
+          aiUsageLimit: null,
+          aiUsageRemaining: null,
+          aiLimitReached: false,
+          requiresLoginForAI: true,
+          requiresUpgradeForAI: false,
           retryAfterSec: rateLimit.retryAfterSec,
           limit: rateLimit.limit,
           windowMs: rateLimit.windowMs,
@@ -106,56 +115,19 @@ export async function POST(req: Request) {
     }
   }
 
-  const scan = await prisma.scan.create({
-    data: { url: target, score: 0, status: "RUNNING", userId, siteId },
-  });
+  const scan = await createScanRecord({ url: target, userId, siteId });
+  const result = await executeScanRecord(scan, userPlan);
 
-  try {
-    const result = await scanUrl(target);
-    const score = computeScore(result.violations);
-
-    // AI fixes are available to guests (first-scan teaser) and Pro users.
-    // Free/Starter logged-in users see a locked-state upsell instead.
-    const canUseAi = !userId || userPlan === "PRO";
-    const fixes = canUseAi
-      ? await generateFixes(result.violations).catch(() => [])
-      : [];
-    const fixByAxeId = new Map(fixes.map((f) => [f.axeId, f]));
-
-    await prisma.$transaction([
-      prisma.violation.createMany({
-        data: result.violations.map((v) => {
-          const first = v.nodes[0];
-          const fix = fixByAxeId.get(v.id);
-          return {
-            scanId: scan.id,
-            axeId: v.id,
-            impact: v.impact ?? "minor",
-            description: v.description,
-            help: v.help,
-            helpUrl: v.helpUrl,
-            element: first?.html?.slice(0, 4000) ?? "",
-            selector: first?.target?.join(" ") ?? "",
-            failureSummary: first?.failureSummary ?? null,
-            legalRationale: fix?.legalRationale ?? null,
-            plainEnglishFix: fix?.plainEnglishFix ?? null,
-            codeExample: fix?.codeExample ?? null,
-          };
-        }),
-      }),
-      prisma.scan.update({
-        where: { id: scan.id },
-        data: { score, status: "COMPLETED", url: result.finalUrl },
-      }),
-    ]);
-
-    return NextResponse.json({ scanId: scan.id, score });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Scan failed";
-    await prisma.scan.update({
-      where: { id: scan.id },
-      data: { status: "FAILED", error: message },
-    });
-    return NextResponse.json({ error: message, scanId: scan.id }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: result.error, scanId: result.scanId },
+      { status: 500 },
+    );
   }
+
+  return NextResponse.json({
+    scanId: result.scanId,
+    score: result.score,
+    ...result.ai,
+  });
 }

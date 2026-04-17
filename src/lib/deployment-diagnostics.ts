@@ -56,6 +56,7 @@ const REQUIRED_ENV = [
   "NEXTAUTH_SECRET",
   "NEXTAUTH_URL",
   "NEXT_PUBLIC_APP_URL",
+  "CRON_SECRET",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_STARTER_PRICE_ID",
@@ -111,6 +112,13 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
       message: starterPricePlaceholder || proPricePlaceholder
         ? "One or more Stripe price IDs still look like placeholders."
         : "Stripe price IDs do not look like placeholders.",
+    },
+    {
+      name: "Scheduled scan authentication",
+      status: process.env.CRON_SECRET ? "pass" : "fail",
+      message: process.env.CRON_SECRET
+        ? "CRON_SECRET is configured for the auto-scan route."
+        : "CRON_SECRET is missing. Scheduled auto-scans cannot be invoked safely.",
     },
     {
       name: "Anthropic integration",

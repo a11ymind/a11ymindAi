@@ -37,6 +37,7 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_STARTER_PRICE_ID=
 STRIPE_PRO_PRICE_ID=
+CRON_SECRET=
 ```
 
 Optional:
@@ -54,6 +55,8 @@ Notes:
 
 - `NEXTAUTH_URL` and `NEXT_PUBLIC_APP_URL` should match your canonical app URL
   in each environment.
+- `CRON_SECRET` secures the scheduled auto-scan endpoint. Use a random string of
+  at least 16 characters in production.
 - Paid checkout is intentionally blocked while
   `STRIPE_STARTER_PRICE_ID` / `STRIPE_PRO_PRICE_ID` still use placeholder
   values.
@@ -129,8 +132,58 @@ Production:
   guarantee from Vercel.
 - If deployed scanning is unreliable, move scanning to a dedicated worker or
   browser service before taking production traffic.
-- Auto-scan scheduling is not implemented yet, so no Vercel Cron Job setup is
-  required for the current MVP.
+- Scheduled auto-scans are driven by a once-per-day Vercel Cron route at
+  `/api/cron/auto-scan`. The route checks which saved sites are due and only
+  scans those sites.
+- The repo includes a `vercel.json` cron entry for `0 5 * * *` (5:00 UTC
+  daily), which fits Vercel Hobby's once-per-day cron limit while still
+  supporting weekly and monthly cadences.
+
+### Scheduled auto-scans
+
+- Free users do not receive scheduled scans.
+- Starter users receive a monthly auto-scan for each saved site.
+- Pro users receive a weekly auto-scan for each saved site.
+- The scheduler runs daily, then computes eligibility from the current saved
+  site owner plan plus the latest scan timestamp:
+  - Weekly cadence = due after 7 days
+  - Monthly cadence = due after 30 days
+- Manual rescans count as the latest scan too, so a recent manual run delays
+  the next scheduled run for that site instead of creating a duplicate report.
+- Scheduled scans are written into the normal `Scan` history, so they appear in
+  the same dashboard/history views as manual runs.
+
+#### Cron authentication
+
+- The cron route is protected with `CRON_SECRET`.
+- Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` when it
+  invokes the configured cron path.
+- Requests without the expected bearer token are rejected with `401`.
+
+#### Duplicate-run protection
+
+- Before creating a scheduled scan, the route re-checks the site inside a
+  serializable transaction.
+- If any scan already exists for that site inside the active cadence window,
+  the scheduled run is skipped.
+- This avoids duplicate scans from overlapping cron invocations in the current
+  single-database architecture.
+
+#### Vercel Cron setup
+
+1. Set `CRON_SECRET` in Vercel.
+2. Keep the `vercel.json` cron entry committed in this repo, or add the same
+   cron path and schedule in the Vercel dashboard.
+3. Redeploy after adding the secret or changing the schedule.
+4. Confirm the route manually if needed:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://<your-domain>/api/cron/auto-scan
+```
+
+The route returns a JSON summary with counts for completed, failed, and skipped
+sites plus per-site outcomes for logs/operator checks.
 
 ### Anonymous scan rate limiting
 
@@ -162,7 +215,14 @@ Useful Vercel references:
 ### Known limitations
 
 - PDF export is intentionally minimal and text-first.
-- Auto-scan scheduling and email alerts are not implemented yet.
+- Scheduled auto-scans run inline inside a single cron-triggered function. There
+  is no queue or fan-out worker yet, so very large numbers of due sites may
+  eventually need batching or background jobs.
+- Scheduled scan cadence is best-effort at daily precision. On Vercel Hobby,
+  cron timing can drift within the day.
+- Scheduled scans reuse the existing scan history model and are not explicitly
+  labeled separately from manual scans in the current schema.
+- Email alerts are not implemented yet.
 - Saved-site quotas are enforced in app logic and still have a theoretical
   concurrent-request race.
 - Scan target hardening now blocks obvious private/local targets, but this is
@@ -188,7 +248,9 @@ Useful Vercel references:
 8. Confirm Pro can export a PDF from a saved scan.
 9. Cancel or update a subscription in Stripe and confirm the webhook moves the
    user plan back to the expected state.
-10. Run one deployed production scan and verify Puppeteer succeeds in the live
+10. Trigger `/api/cron/auto-scan` with the cron bearer token and confirm
+    Starter/Pro sites create a scheduled scan only when due.
+11. Run one deployed production scan and verify Puppeteer succeeds in the live
     environment.
 
 ---

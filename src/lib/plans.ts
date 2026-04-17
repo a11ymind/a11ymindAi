@@ -41,7 +41,7 @@ export const PLAN_TIERS: PlanTier[] = [
       { text: "Full WCAG 2.1 AA report", included: true },
       { text: "Monthly auto-scan", included: true },
       { text: "Email alerts on regressions", included: true },
-      { text: "AI fix suggestions", included: false },
+      { text: "AI fix suggestions (20 scans / month)", included: true },
       { text: "PDF report", included: false },
     ],
   },

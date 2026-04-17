@@ -5,6 +5,7 @@ export type AutoScan = "none" | "monthly" | "weekly";
 export type Entitlements = {
   maxSites: number;
   aiFixes: boolean;
+  aiMonthlyLimit: number | null;
   pdfExport: boolean;
   autoScan: AutoScan;
 };
@@ -13,18 +14,21 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
   FREE: {
     maxSites: 1,
     aiFixes: false,
+    aiMonthlyLimit: null,
     pdfExport: false,
     autoScan: "none",
   },
   STARTER: {
     maxSites: 1,
-    aiFixes: false,
+    aiFixes: true,
+    aiMonthlyLimit: 20,
     pdfExport: false,
     autoScan: "monthly",
   },
   PRO: {
     maxSites: 10,
     aiFixes: true,
+    aiMonthlyLimit: 200,
     pdfExport: true,
     autoScan: "weekly",
   },

@@ -73,12 +73,14 @@ export default async function ScanResultPage({
   const ownedByMe = !!userId && scan.userId === userId;
   const claimable = !scan.userId;
   const savedScanOwnerPlan = scan.user?.plan ?? null;
-  const savedScanRequiresProLock = !!scan.userId && savedScanOwnerPlan !== "PRO";
+  const savedScanRequiresAiUpgrade =
+    !!scan.userId &&
+    !(savedScanOwnerPlan ? entitlementsFor(savedScanOwnerPlan).aiFixes : false);
 
   const userPlan = session?.user?.plan ?? null;
   const effectiveOwnerPlan = ownedByMe ? savedScanOwnerPlan : userPlan;
   const viewerEntitlements = effectiveOwnerPlan ? entitlementsFor(effectiveOwnerPlan) : null;
-  const canSeeAiFixes = !savedScanRequiresProLock;
+  const canSeeAiFixes = !savedScanRequiresAiUpgrade;
   const canExportPdf = ownedByMe && viewerEntitlements?.pdfExport === true;
   const limitPlan = parsePlan(searchParams?.plan);
 
@@ -155,7 +157,7 @@ export default async function ScanResultPage({
         ))}
       </section>
 
-      {savedScanRequiresProLock && scan.violations.length > 0 && (
+      {savedScanRequiresAiUpgrade && scan.violations.length > 0 && (
         <section className="container-page mt-10">
           <LockedAiFixUpsell plan={savedScanOwnerPlan} />
         </section>
@@ -436,7 +438,7 @@ function ViolationCard({
 
       {showAiFixes && !hasAnyAi && (
         <p className="mt-4 text-xs text-text-subtle">
-          AI fix suggestions unavailable (ANTHROPIC_API_KEY not set).
+          AI fix suggestions were not generated for this scan.
         </p>
       )}
 
@@ -457,12 +459,12 @@ function LockedAiFixUpsell({ plan }: { plan: string | null }) {
             <LockIcon /> AI fix suggestions are locked on your {planName} plan
           </p>
           <p className="mt-1 text-sm text-text-muted">
-            Upgrade to Pro for per-violation legal rationale, plain-English fix instructions, and
-            ready-to-copy code examples — plus PDF export and multi-site tracking.
+            Upgrade to Starter or Pro for per-violation legal rationale, plain-English fix instructions, and
+            ready-to-copy code examples.
           </p>
         </div>
         <Link href="/pricing" className="btn-primary whitespace-nowrap">
-          Upgrade to Pro
+          View plans
         </Link>
       </div>
     </div>
@@ -489,10 +491,10 @@ function LockedAiPreview() {
           <LockIcon /> AI fix suggestions are locked
         </p>
         <p className="mt-1 max-w-md text-sm text-text-muted">
-          Unlock legal rationale, plain-English remediation steps, and copy-ready code examples on Pro.
+          Unlock legal rationale, plain-English remediation steps, and copy-ready code examples on a paid plan.
         </p>
         <Link href="/pricing" className="btn-primary mt-4 text-sm">
-          Upgrade to Pro
+          View plans
         </Link>
       </div>
     </div>
