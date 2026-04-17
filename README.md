@@ -131,6 +131,9 @@ Notes:
   domain without pre-creating each sender address.
 - Resend API keys are shown only once in the dashboard. Store them in env vars
   and do not commit them.
+- Accessly now uses this foundation in the authentication flow: new accounts
+  receive a welcome email after credentials signup and after first-time Google
+  account creation.
 - If Resend is not configured, Accessly skips sending and logs a useful warning
   instead of crashing request handlers.
 

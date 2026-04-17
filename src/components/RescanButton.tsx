@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buildScanResultHref } from "@/lib/scan-result-url";
 
-export function RescanButton({ url, compact = false }: { url: string; compact?: boolean }) {
+export function RescanButton({
+  url,
+  compact = false,
+  label,
+}: {
+  url: string;
+  compact?: boolean;
+  label?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +54,7 @@ export function RescanButton({ url, compact = false }: { url: string; compact?: 
         disabled={loading}
         className={compact ? "btn-ghost text-xs" : "btn-ghost"}
       >
-        {loading ? "Scanning…" : "Re-scan"}
+        {loading ? "Scanning…" : label ?? "Re-scan"}
       </button>
       {error && <span className="text-xs text-severity-critical">{error}</span>}
     </div>

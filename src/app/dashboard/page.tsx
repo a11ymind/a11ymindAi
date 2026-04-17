@@ -188,6 +188,10 @@ export default async function DashboardPage({
           />
         </div>
 
+        <p className="mt-4 text-sm text-text-muted">
+          Websites change often, which means new accessibility issues can appear anytime.
+        </p>
+
         {atSiteLimit && user.plan !== "PRO" && (
           <div className="card mt-6 flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
             <div>
@@ -201,6 +205,17 @@ export default async function DashboardPage({
             <Link href="/pricing" className="btn-primary whitespace-nowrap">
               Start monitoring
             </Link>
+          </div>
+        )}
+
+        {sites.length === 0 && (
+          <div className="card mt-6 border-accent-muted bg-accent-muted/10 p-6">
+            <h2 className="text-lg font-semibold text-text">
+              Scan your first site to start tracking accessibility improvements
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-text-muted">
+              Run a scan on any public page, then save the websites you care about to monitor score changes, compare history, and catch new risks as the site evolves.
+            </p>
           </div>
         )}
       </section>
@@ -222,7 +237,9 @@ export default async function DashboardPage({
       <section className="container-page mt-10 space-y-4 pb-24">
         {sites.map((site) => {
           const latest = site.scans[site.scans.length - 1];
+          const previous = site.scans[site.scans.length - 2];
           const band = latest ? scoreBand(latest.score) : null;
+          const delta = latest && previous ? latest.score - previous.score : null;
           return (
             <div key={site.id} className="card p-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -233,6 +250,12 @@ export default async function DashboardPage({
                       ? `Last scanned ${formatRelative(latest.createdAt)} · ${site.scans.length} scan${site.scans.length === 1 ? "" : "s"}`
                       : "No completed scans yet"}
                   </p>
+                  {delta !== null && (
+                    <p className={`mt-2 text-xs ${delta >= 0 ? "text-accent" : "text-severity-critical"}`}>
+                      {delta > 0 ? "+" : ""}
+                      {delta} point{Math.abs(delta) === 1 ? "" : "s"} since last scan
+                    </p>
+                  )}
                 </div>
                 {latest && band && (
                   <div className="text-right">

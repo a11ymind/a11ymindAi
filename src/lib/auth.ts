@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { getServerSession } from "next-auth/next";
 import bcrypt from "bcryptjs";
+import { sendAuthWelcomeEmail } from "./email";
 import { prisma } from "./prisma";
 
 const providers: NextAuthOptions["providers"] = [
@@ -46,6 +47,16 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers,
+  events: {
+    async createUser({ user }) {
+      if (!user.email) return;
+      await sendAuthWelcomeEmail({
+        to: user.email,
+        name: user.name,
+        provider: "google",
+      });
+    },
+  },
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {

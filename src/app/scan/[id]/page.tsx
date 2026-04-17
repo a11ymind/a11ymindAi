@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CopyFixButton } from "@/components/CopyFixButton";
 import { Logo } from "@/components/Logo";
+import { RescanButton } from "@/components/RescanButton";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { getSession } from "@/lib/auth";
@@ -56,6 +58,8 @@ export default async function ScanResultPage({
   ]);
   if (!scan) notFound();
 
+  const previousScan = await findPreviousComparableScan(scan);
+
   if (scan.status === "FAILED") {
     return (
       <PageShell>
@@ -102,6 +106,7 @@ export default async function ScanResultPage({
     claimable,
   });
   const riskCount = scan.violations.length;
+  const comparison = buildScanComparison(scan, previousScan);
   const visibleIssues = scan.violations.slice(0, 6);
   const visibleFixes = scan.violations
     .filter((violation) =>
@@ -166,8 +171,10 @@ export default async function ScanResultPage({
                   {new Date(scan.createdAt).toLocaleString()} · {riskCount} risk
                   {riskCount === 1 ? "" : "s"} found
                 </p>
-                {ownedByMe && (
-                  <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <RescanButton url={scan.url} label="Re-scan site" />
+                  {ownedByMe && (
+                    <>
                     {canExportPdf ? (
                       <a
                         href={`/api/scan/${scan.id}/pdf`}
@@ -183,13 +190,14 @@ export default async function ScanResultPage({
                         PDF report is a Pro feature →
                       </Link>
                     )}
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
               <ScoreDial score={scan.score} band={band} />
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <ResultMetric
                 label="Compliance score"
                 value={`${scan.score}/100`}
@@ -203,6 +211,16 @@ export default async function ScanResultPage({
                     ? "No risks detected on this page"
                     : `${riskCount} accessibility risk${riskCount === 1 ? "" : "s"} detected on this page`
                 }
+              />
+              <ResultMetric
+                label="Score change"
+                value={comparison.deltaLabel}
+                detail={comparison.deltaDetail}
+              />
+              <ResultMetric
+                label="Progress since last scan"
+                value={comparison.progressLabel}
+                detail={comparison.issueDetail}
               />
             </div>
             <p className="mt-4 text-sm text-text-muted">
@@ -341,7 +359,7 @@ function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }
               : "Create a free account to save this scan."}
           </p>
           <p className="mt-1 text-xs text-text-muted">
-            Re-scan on demand, compare scores, and get alerts when things regress.
+            Re-scan on demand, track improvements over time, and keep your history in one place as the site changes.
           </p>
         </div>
         <Link href={href} className="btn-primary whitespace-nowrap">
@@ -358,7 +376,7 @@ function SavedBanner() {
       <div className="card flex items-center justify-between gap-4 border-accent-muted bg-accent-muted/10 p-4">
         <p className="text-sm text-text">
           <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
-          Saved to your dashboard
+          Saved to your dashboard for ongoing monitoring
         </p>
         <Link href="/dashboard" className="text-sm text-accent hover:underline">
           View history →
@@ -590,6 +608,9 @@ function RecommendedFixesPanel({
   fixes: {
     id: string;
     help: string;
+    description: string;
+    selector: string;
+    element: string;
     legalRationale: string | null;
     plainEnglishFix: string | null;
     codeExample: string | null;
@@ -643,20 +664,54 @@ function VisibleFixCard({
   fix: {
     id: string;
     help: string;
+    description: string;
+    selector: string;
+    element: string;
     legalRationale: string | null;
     plainEnglishFix: string | null;
     codeExample: string | null;
   };
 }) {
+  const beforeSnippet = fix.element || fix.selector || fix.description;
+  const afterSnippet = fix.codeExample || fix.plainEnglishFix || fix.legalRationale || "";
+  const copyText = fix.codeExample || fix.plainEnglishFix || afterSnippet;
+  const timeToFix = estimateFixTime(fix.help, fix.codeExample, fix.plainEnglishFix);
+
   return (
     <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
-      <p className="text-sm font-semibold text-text">{fix.help}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-text">{fix.help}</p>
+        {copyText ? <CopyFixButton text={copyText} /> : null}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-subtle">
+        <span className="rounded-full border border-border px-2.5 py-1">
+          Takes ~{timeToFix}
+        </span>
+        <span className="rounded-full border border-border px-2.5 py-1">
+          Based on accessibility guidelines
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <FixBlock label="Before" value={beforeSnippet || "Current markup or behavior needs improvement."} />
+        <FixBlock label="After" value={afterSnippet || "Apply the recommended accessibility fix to improve this experience."} />
+      </div>
       {fix.plainEnglishFix && (
-        <p className="mt-2 text-sm text-text">{fix.plainEnglishFix}</p>
+        <p className="mt-3 text-sm text-text">{fix.plainEnglishFix}</p>
       )}
       {fix.legalRationale && (
         <p className="mt-2 text-xs text-text-muted">{fix.legalRationale}</p>
       )}
+    </div>
+  );
+}
+
+function FixBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg/50 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">{label}</p>
+      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-text">
+        {value}
+      </pre>
     </div>
   );
 }
@@ -870,8 +925,119 @@ function lockedFixPreview(help: string): string {
   return "Apply a targeted accessibility fix with plain-English steps and implementation guidance.";
 }
 
+function estimateFixTime(
+  help: string,
+  codeExample: string | null,
+  plainEnglishFix: string | null,
+) {
+  const text = `${help} ${codeExample ?? ""} ${plainEnglishFix ?? ""}`.toLowerCase();
+
+  if (text.includes("contrast") || text.includes("alt") || text.includes("label")) {
+    return "1 minute";
+  }
+  if (text.includes("heading") || text.includes("button") || text.includes("link")) {
+    return "3 minutes";
+  }
+  if (text.includes("form") || text.includes("keyboard") || text.includes("focus")) {
+    return "5 minutes";
+  }
+  return "2 minutes";
+}
+
 function parsePlan(value: string | undefined): "FREE" | "STARTER" | "PRO" | null {
   return value === "FREE" || value === "STARTER" || value === "PRO" ? value : null;
+}
+
+async function findPreviousComparableScan(scan: {
+  id: string;
+  createdAt: Date;
+  siteId: string | null;
+  userId: string | null;
+  url: string;
+}) {
+  const select = {
+    id: true,
+    score: true,
+    createdAt: true,
+    violations: { select: { axeId: true } },
+  } as const;
+
+  if (scan.siteId) {
+    return prisma.scan.findFirst({
+      where: {
+        siteId: scan.siteId,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
+
+  if (scan.userId) {
+    return prisma.scan.findFirst({
+      where: {
+        userId: scan.userId,
+        url: scan.url,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
+
+  return null;
+}
+
+function buildScanComparison(
+  current: {
+    score: number;
+    violations: { axeId: string }[];
+  },
+  previous:
+    | {
+        score: number;
+        createdAt: Date;
+        violations: { axeId: string }[];
+      }
+    | null,
+) {
+  if (!previous) {
+    return {
+      deltaLabel: "No baseline",
+      deltaDetail: "Run another scan to measure progress over time.",
+      progressLabel: "No baseline",
+      newCount: 0,
+      fixedCount: 0,
+      issueDetail: "No earlier scan available for comparison.",
+    };
+  }
+
+  const delta = current.score - previous.score;
+  const currentIssues = new Set(current.violations.map((violation) => violation.axeId));
+  const previousIssues = new Set(previous.violations.map((violation) => violation.axeId));
+  let newCount = 0;
+  let fixedCount = 0;
+
+  for (const axeId of currentIssues) {
+    if (!previousIssues.has(axeId)) newCount += 1;
+  }
+
+  for (const axeId of previousIssues) {
+    if (!currentIssues.has(axeId)) fixedCount += 1;
+  }
+
+  return {
+    deltaLabel: delta === 0 ? "No change" : `${delta > 0 ? "+" : ""}${delta} points`,
+    deltaDetail: `${Math.abs(delta)} point${Math.abs(delta) === 1 ? "" : "s"} ${delta >= 0 ? "better" : "lower"} than the previous scan`,
+    progressLabel: `${fixedCount} fixed / ${newCount} new`,
+    newCount,
+    fixedCount,
+    issueDetail: `New risks: ${newCount} · Fixed risks: ${fixedCount}`,
+  };
 }
 
 function hostOf(url: string): string {

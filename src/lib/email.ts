@@ -75,3 +75,57 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     };
   }
 }
+
+export async function sendAuthWelcomeEmail(input: {
+  to: string;
+  name?: string | null;
+  provider: "credentials" | "google";
+}): Promise<SendEmailResult> {
+  const greeting = input.name?.trim() ? `Hi ${input.name.trim()},` : "Hi,";
+  const providerLine =
+    input.provider === "google"
+      ? "Your Accessly account is ready and linked to your Google sign-in."
+      : "Your Accessly account is ready and you can now sign in with your email and password.";
+
+  const text = [
+    greeting,
+    "",
+    "Welcome to Accessly.",
+    providerLine,
+    "",
+    "You can now:",
+    "- run accessibility scans",
+    "- save monitored websites",
+    "- track regressions over time from your dashboard",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h1 style="font-size: 18px; margin-bottom: 12px;">Welcome to Accessly</h1>
+      <p style="margin: 0 0 12px;">${escapeHtml(greeting)}</p>
+      <p style="margin: 0 0 12px;">${escapeHtml(providerLine)}</p>
+      <p style="margin: 0 0 12px;">You can now:</p>
+      <ul style="margin: 0; padding-left: 18px;">
+        <li>run accessibility scans</li>
+        <li>save monitored websites</li>
+        <li>track regressions over time from your dashboard</li>
+      </ul>
+    </div>
+  `;
+
+  return sendEmail({
+    to: input.to,
+    subject: "Welcome to Accessly",
+    text,
+    html,
+  });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}

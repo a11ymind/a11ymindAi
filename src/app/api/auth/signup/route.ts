@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { sendAuthWelcomeEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -41,7 +42,13 @@ export async function POST(req: Request) {
       passwordHash,
       name: parsed.data.name || null,
     },
-    select: { id: true, email: true },
+    select: { id: true, email: true, name: true },
+  });
+
+  await sendAuthWelcomeEmail({
+    to: user.email,
+    name: user.name,
+    provider: "credentials",
   });
 
   return NextResponse.json({ ok: true, userId: user.id });
