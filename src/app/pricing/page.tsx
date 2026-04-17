@@ -52,19 +52,76 @@ export default async function PricingPage({
       )}
 
       <section className="container-page flex flex-col items-center py-16 text-center sm:py-20">
+        <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 py-1 text-xs text-text-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          Cancel anytime
+        </span>
         <h1 className="max-w-2xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-          Simple pricing. <span className="text-accent">No surprise audits.</span>
+          Pick the level of <span className="text-accent">protection</span> your site needs.
         </h1>
         <p className="mt-5 max-w-xl text-base text-text-muted">
-          Start free. Upgrade when you want automatic scans and AI-generated fix suggestions. Cancel
-          any time.
+          Start free. Upgrade when you want plain-English fixes, ongoing monitoring, and reports
+          you can hand to a client.
         </p>
       </section>
 
-      <section className="container-page grid gap-6 pb-20 md:grid-cols-3">
+      <section className="container-page grid items-stretch gap-6 pb-12 md:grid-cols-3">
         {PLAN_TIERS.map((tier) => (
-          <PricingCard key={tier.id} tier={tier} currentPlan={currentPlan} signedIn={!!session?.user} />
+          <PricingCard
+            key={tier.id}
+            tier={tier}
+            currentPlan={currentPlan}
+            signedIn={!!session?.user}
+          />
         ))}
+      </section>
+
+      {/* Why subscribe / monitoring justification */}
+      <section className="container-page pb-16">
+        <div className="card mx-auto max-w-4xl p-8 sm:p-10">
+          <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-accent">
+                Why a subscription
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                Accessibility isn&apos;t a one-time job.
+              </h2>
+            </div>
+            <ul className="space-y-4 text-sm">
+              <li className="flex items-start gap-3">
+                <BulletDot />
+                <span>
+                  <span className="text-text">Sites change constantly.</span>{" "}
+                  <span className="text-text-muted">
+                    New components, redesigns, and content updates can introduce fresh accessibility
+                    risks overnight.
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <BulletDot />
+                <span>
+                  <span className="text-text">Repeat scans catch regressions.</span>{" "}
+                  <span className="text-text-muted">
+                    Accessly re-scans your saved sites automatically and flags new risks as soon as
+                    they appear.
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <BulletDot />
+                <span>
+                  <span className="text-text">You stay protected, not just informed.</span>{" "}
+                  <span className="text-text-muted">
+                    One-shot audits go stale. Ongoing monitoring keeps your compliance score
+                    trending in the right direction.
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="container-page pb-24">
@@ -78,12 +135,41 @@ export default async function PricingPage({
           </ul>
           <p className="mt-5 text-xs text-text-subtle">
             AI fix suggestions are generated on demand by Claude. We respect robots.txt and never
-            modify your site.
+            modify your site. Accessly helps you reduce accessibility risk — it does not constitute
+            legal advice or a guarantee of WCAG/ADA compliance.
           </p>
         </div>
       </section>
     </main>
   );
+}
+
+type PlanCopy = {
+  pitch: string;
+  bestFor: string;
+  primaryCta: string;
+};
+
+const PLAN_COPY: Record<string, PlanCopy> = {
+  FREE: {
+    pitch: "See what\u2019s at risk on one site, on demand.",
+    bestFor: "Best for a quick gut-check before you commit.",
+    primaryCta: "Get started",
+  },
+  STARTER: {
+    pitch: "Plain-English fixes and monthly monitoring for one site.",
+    bestFor: "Best for small sites and solo operators.",
+    primaryCta: "Fix my site",
+  },
+  PRO: {
+    pitch: "Weekly monitoring across multiple sites, plus PDF reports.",
+    bestFor: "Best for agencies and serious site owners.",
+    primaryCta: "Get full protection",
+  },
+};
+
+function planCopy(id: string): PlanCopy {
+  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Get started" };
 }
 
 function PricingCard({
@@ -96,28 +182,33 @@ function PricingCard({
   signedIn: boolean;
 }) {
   const isCurrent = currentPlan === tier.id;
+  const copy = planCopy(tier.id);
   const highlightCls = tier.highlight
-    ? "border-accent shadow-glow"
+    ? "border-accent shadow-glow md:-translate-y-2"
     : "border-border";
 
   return (
-    <div className={`card flex flex-col p-6 ${highlightCls}`}>
+    <div className={`card relative flex flex-col p-6 transition-transform ${highlightCls}`}>
+      {tier.highlight && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-accent bg-accent px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-bg">
+          Most popular
+        </span>
+      )}
       <div className="flex items-baseline justify-between">
         <h2 className="text-lg font-semibold">{tier.name}</h2>
-        {tier.highlight && (
-          <span className="rounded-full border border-accent-muted bg-accent-muted/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
-            Most popular
-          </span>
-        )}
       </div>
-      <p className="mt-1 text-sm text-text-muted">{tier.tagline}</p>
+      <p className="mt-1 text-sm text-text-muted">{copy.pitch}</p>
 
       <div className="mt-5 flex items-baseline gap-1">
         <span className="text-4xl font-semibold tracking-tight">
           ${tier.priceUsd}
         </span>
-        <span className="text-sm text-text-muted">/month</span>
+        <span className="text-sm text-text-muted">
+          {tier.priceUsd === 0 ? "forever" : "/month"}
+        </span>
       </div>
+
+      <p className="mt-2 text-xs text-text-subtle">{copy.bestFor}</p>
 
       <div className="mt-6">
         <PricingCTA
@@ -125,6 +216,7 @@ function PricingCard({
           isCurrent={isCurrent}
           signedIn={signedIn}
           currentPlan={currentPlan}
+          primaryCta={copy.primaryCta}
         />
       </div>
 
@@ -148,11 +240,13 @@ function PricingCTA({
   isCurrent,
   signedIn,
   currentPlan,
+  primaryCta,
 }: {
   tier: PlanTier;
   isCurrent: boolean;
   signedIn: boolean;
   currentPlan: string | null;
+  primaryCta: string;
 }) {
   if (isCurrent) {
     return (
@@ -164,7 +258,7 @@ function PricingCTA({
   if (tier.id === "FREE") {
     return (
       <Link href={signedIn ? "/dashboard" : "/signup"} className="btn-ghost w-full">
-        {signedIn ? "Go to dashboard" : "Get started free"}
+        {signedIn ? "Go to dashboard" : primaryCta}
       </Link>
     );
   }
@@ -180,17 +274,19 @@ function PricingCTA({
       </Link>
     );
   }
-  // Paid tier — route through the Stripe checkout endpoint. That endpoint
-  // (built in step 4) will redirect unauthenticated users to /login first.
   const href = `/api/stripe/checkout?plan=${tier.id}`;
   return (
     <Link
       href={href}
       className={tier.highlight ? "btn-primary w-full" : "btn-ghost w-full"}
     >
-      {`Start ${tier.name}`}
+      {primaryCta}
     </Link>
   );
+}
+
+function BulletDot() {
+  return <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />;
 }
 
 function CheckOrDash({ included }: { included: boolean }) {
