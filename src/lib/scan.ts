@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 import { AxePuppeteer } from "@axe-core/puppeteer";
 
 export type AxeNode = {
@@ -28,6 +29,8 @@ export type ScanResult = {
   inapplicable: number;
 };
 
+const DEFAULT_VIEWPORT = { width: 1280, height: 900 };
+
 export function normalizeUrl(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) throw new Error("URL is required");
@@ -49,15 +52,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   const target = normalizeUrl(url);
   const parsedTarget = new URL(target);
   await assertPublicHostname(parsedTarget.hostname);
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
-  });
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
@@ -74,7 +69,9 @@ export async function scanUrl(url: string): Promise<ScanResult> {
       );
     }
 
-    const results = await new AxePuppeteer(page)
+    const results = await new AxePuppeteer(
+      page as ConstructorParameters<typeof AxePuppeteer>[0],
+    )
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
       .analyze();
 
@@ -89,6 +86,29 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   } finally {
     await browser.close();
   }
+}
+
+async function launchBrowser() {
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: DEFAULT_VIEWPORT,
+      executablePath: await chromium.executablePath(),
+      headless: "shell",
+    });
+  }
+
+  const localPuppeteer = await import("puppeteer");
+  return localPuppeteer.default.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
+    defaultViewport: DEFAULT_VIEWPORT,
+  });
 }
 
 async function assertPublicHostname(hostname: string) {
