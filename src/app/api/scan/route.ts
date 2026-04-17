@@ -5,11 +5,13 @@ import { getSession } from "@/lib/auth";
 import { normalizeUrl } from "@/lib/scan";
 import {
   rateLimitAnonymousScan,
+  rateLimitAuthenticatedScan,
   rateLimitHeaders,
 } from "@/lib/rate-limit";
 import {
   createScanRecord,
   executeScanRecord,
+  reapStaleRunningScans,
 } from "@/lib/scan-jobs";
 
 export const runtime = "nodejs";
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
   let userPlan: "FREE" | "STARTER" | "PRO" | null = null;
 
   if (!userId) {
-    const rateLimit = rateLimitAnonymousScan(req);
+    const rateLimit = await rateLimitAnonymousScan(req);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -80,6 +82,31 @@ export async function POST(req: Request) {
       select: { plan: true },
     });
     userPlan = user?.plan ?? "FREE";
+
+    // Release any of this user's prior scans that got stuck in RUNNING.
+    // Protects the AI reservation slot + gives an accurate in-flight count.
+    await reapStaleRunningScans(userId);
+
+    const authLimit = await rateLimitAuthenticatedScan(userId, userPlan);
+    if (!authLimit.allowed) {
+      return NextResponse.json(
+        {
+          code: "RATE_LIMITED",
+          error: "You've reached your daily scan limit on this plan.",
+          message:
+            "You've reached your daily scan limit on this plan. It resets in 24 hours, or upgrade for more headroom.",
+          plan: userPlan,
+          limit: authLimit.limit,
+          retryAfterSec: authLimit.retryAfterSec,
+          windowMs: authLimit.windowMs,
+        },
+        {
+          status: 429,
+          headers: rateLimitHeaders(authLimit),
+        },
+      );
+    }
+
     const existing = await prisma.site.findUnique({
       where: { userId_url: { userId, url: target } },
       select: { id: true },

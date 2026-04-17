@@ -1,9 +1,6 @@
 import { isIP } from "node:net";
-
-type Bucket = {
-  count: number;
-  resetAt: number;
-};
+import { Prisma, type Plan } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export type RateLimitResult = {
   allowed: boolean;
@@ -16,75 +13,129 @@ export type RateLimitResult = {
   windowMs: number;
 };
 
-const DEFAULT_LIMIT = 5;
-const DEFAULT_WINDOW_MS = 60 * 60 * 1000;
-const CLEANUP_THRESHOLD = 5_000;
+const DEFAULT_ANON_LIMIT = 5;
+const DEFAULT_ANON_WINDOW_MS = 60 * 60 * 1000;
 
-const globalRateLimitStore = globalThis as typeof globalThis & {
-  accesslyAnonScanBuckets?: Map<string, Bucket>;
+// Authenticated scan caps per 24h rolling window, by plan.
+const AUTH_SCAN_LIMITS: Record<Plan, number> = {
+  FREE: 10,
+  STARTER: 50,
+  PRO: 500,
 };
-
-const buckets =
-  globalRateLimitStore.accesslyAnonScanBuckets ??
-  new Map<string, Bucket>();
-
-if (!globalRateLimitStore.accesslyAnonScanBuckets) {
-  globalRateLimitStore.accesslyAnonScanBuckets = buckets;
-}
+const AUTH_SCAN_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function anonymousScanRateLimitConfig() {
   return {
-    limit: positiveIntFromEnv("ANON_SCAN_RATE_LIMIT_MAX", DEFAULT_LIMIT),
+    limit: positiveIntFromEnv("ANON_SCAN_RATE_LIMIT_MAX", DEFAULT_ANON_LIMIT),
     windowMs: positiveIntFromEnv(
       "ANON_SCAN_RATE_LIMIT_WINDOW_MS",
-      DEFAULT_WINDOW_MS,
+      DEFAULT_ANON_WINDOW_MS,
     ),
   };
 }
 
-export function rateLimitAnonymousScan(req: Request): RateLimitResult {
+export async function rateLimitAnonymousScan(
+  req: Request,
+): Promise<RateLimitResult> {
   const { limit, windowMs } = anonymousScanRateLimitConfig();
   const ip = extractClientIp(req);
   const key = `anon-scan:${ip ?? "unknown"}`;
-  const now = Date.now();
+  return consumeBucket({ key, limit, windowMs, ip });
+}
 
-  if (buckets.size > CLEANUP_THRESHOLD) {
-    cleanupExpiredBuckets(now);
-  }
-
-  const existing = buckets.get(key);
-  const bucket =
-    existing && existing.resetAt > now
-      ? existing
-      : { count: 0, resetAt: now + windowMs };
-
-  let allowed = false;
-  if (bucket.count < limit) {
-    bucket.count += 1;
-    allowed = true;
-  }
-
-  buckets.set(key, bucket);
-
-  return {
-    allowed,
-    ip,
+export async function rateLimitAuthenticatedScan(
+  userId: string,
+  plan: Plan,
+): Promise<RateLimitResult> {
+  const limit = AUTH_SCAN_LIMITS[plan];
+  const key = `user-scan:${userId}`;
+  return consumeBucket({
     key,
     limit,
-    remaining: Math.max(0, limit - bucket.count),
-    resetAt: bucket.resetAt,
-    retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
-    windowMs,
-  };
+    windowMs: AUTH_SCAN_WINDOW_MS,
+    ip: null,
+  });
+}
+
+async function consumeBucket(input: {
+  key: string;
+  limit: number;
+  windowMs: number;
+  ip: string | null;
+}): Promise<RateLimitResult> {
+  const { key, limit, windowMs, ip } = input;
+  const now = Date.now();
+  const windowStart = new Date(now);
+
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.rateLimitBucket.findUnique({ where: { key } });
+        const stillInWindow =
+          existing && existing.windowStart.getTime() + windowMs > now;
+
+        const bucketWindowStart = stillInWindow
+          ? existing.windowStart
+          : windowStart;
+        const currentCount = stillInWindow ? existing.count : 0;
+
+        if (currentCount >= limit) {
+          return {
+            allowed: false,
+            count: currentCount,
+            windowStart: bucketWindowStart,
+          };
+        }
+
+        await tx.rateLimitBucket.upsert({
+          where: { key },
+          create: { key, windowStart: bucketWindowStart, count: 1 },
+          update: { windowStart: bucketWindowStart, count: currentCount + 1 },
+        });
+
+        return {
+          allowed: true,
+          count: currentCount + 1,
+          windowStart: bucketWindowStart,
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    const resetAt = result.windowStart.getTime() + windowMs;
+    return {
+      allowed: result.allowed,
+      ip,
+      key,
+      limit,
+      remaining: Math.max(0, limit - result.count),
+      resetAt,
+      retryAfterSec: Math.max(1, Math.ceil((resetAt - now) / 1000)),
+      windowMs,
+    };
+  } catch (error) {
+    // Under serializable conflicts (P2034) or transient DB issues, fail open
+    // rather than block legitimate traffic. These are rare and low-impact.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return {
+        allowed: true,
+        ip,
+        key,
+        limit,
+        remaining: limit,
+        resetAt: now + windowMs,
+        retryAfterSec: 1,
+        windowMs,
+      };
+    }
+    throw error;
+  }
 }
 
 export function extractClientIp(req: Request): string | null {
-  // Best-effort for a trusted reverse-proxy deployment such as Vercel.
-  // We only read the standard proxy-populated headers we expect here, then
-  // accept them only when they parse as concrete IP literals.
-  // If the app is deployed without a trusted proxy normalizing these headers,
-  // clients may be able to spoof IPs or multiple users may collapse into one
-  // "unknown" bucket. That limitation is documented in the README.
   const xRealIp = parseIp(req.headers.get("x-real-ip"));
   if (xRealIp) return xRealIp;
 
@@ -115,12 +166,4 @@ function positiveIntFromEnv(name: string, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function cleanupExpiredBuckets(now: number) {
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key);
-    }
-  }
 }

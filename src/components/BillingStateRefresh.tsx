@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 // After a Stripe Checkout success redirect, Stripe's webhook is still
@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 // the current server component tree.
 export function BillingStateRefresh({ enabled }: { enabled: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { update } = useSession();
   const ran = useRef(false);
   const [, startTransition] = useTransition();
@@ -33,11 +34,13 @@ export function BillingStateRefresh({ enabled }: { enabled: boolean }) {
         await update();
       } finally {
         startTransition(() => {
-          router.refresh();
+          // Strip ?upgraded=1 so bookmarking/refreshing doesn't re-trigger
+          // the sync on every load. router.replace also re-renders RSC tree.
+          router.replace(pathname);
         });
       }
     })();
-  }, [enabled, router, startTransition, update]);
+  }, [enabled, pathname, router, startTransition, update]);
 
   return null;
 }

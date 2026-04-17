@@ -61,10 +61,12 @@ model Account {
 }
 
 model Site {
-  id        String   @id @default(cuid())
-  userId    String
-  url       String
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  userId           String
+  url              String
+  createdAt        DateTime  @default(now())
+  lastAlertSentAt  DateTime?
+  lastAlertScanId  String?
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   scans Scan[]
@@ -74,15 +76,16 @@ model Site {
 }
 
 model Scan {
-  id         String      @id @default(cuid())
-  url        String
-  score      Int
-  status     ScanStatus  @default(COMPLETED)
-  error      String?
-  createdAt  DateTime    @default(now())
-  userId     String?
-  siteId     String?
-  violations Violation[]
+  id              String      @id @default(cuid())
+  url             String
+  score           Int
+  status          ScanStatus  @default(COMPLETED)
+  error           String?
+  aiReservedMonth String?
+  createdAt       DateTime    @default(now())
+  userId          String?
+  siteId          String?
+  violations      Violation[]
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   site Site? @relation(fields: [siteId], references: [id], onDelete: SetNull)
@@ -91,6 +94,17 @@ model Scan {
   @@index([userId])
   @@index([siteId])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([userId, aiReservedMonth])
+}
+
+model RateLimitBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart])
 }
 
 model Violation {

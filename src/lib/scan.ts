@@ -45,6 +45,30 @@ export function normalizeUrl(input: string): string {
   if (isBlockedHostname(parsed.hostname)) {
     throw new Error("That URL points to a private or local address and cannot be scanned");
   }
+
+  // Canonicalize so Site unique-key lookups collapse trivial URL variants.
+  parsed.hostname = parsed.hostname.toLowerCase();
+  parsed.hash = "";
+  parsed.pathname = parsed.pathname.toLowerCase();
+  if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+    parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+  }
+
+  // Drop tracking params — they shouldn't create distinct Site rows.
+  const trackingPrefixes = ["utm_", "mc_", "fbclid", "gclid", "yclid"];
+  const keysToDelete: string[] = [];
+  parsed.searchParams.forEach((_v, key) => {
+    const lower = key.toLowerCase();
+    if (
+      trackingPrefixes.some((p) =>
+        p.endsWith("_") ? lower.startsWith(p) : lower === p,
+      )
+    ) {
+      keysToDelete.push(key);
+    }
+  });
+  for (const key of keysToDelete) parsed.searchParams.delete(key);
+
   return parsed.toString();
 }
 
@@ -59,6 +83,43 @@ export async function scanUrl(url: string): Promise<ScanResult> {
     await page.setUserAgent(
       "Mozilla/5.0 (compatible; AccesslyBot/1.0; +https://accessly.app)",
     );
+
+    // Mitigate SSRF via sub-resource requests. The browser loads the target
+    // page and every script/image/XHR that page kicks off; a malicious site
+    // can redirect or fetch internal addresses. Re-validate each request's
+    // hostname with a fresh DNS lookup before allowing it.
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      void (async () => {
+        try {
+          const reqUrl = new URL(request.url());
+          if (reqUrl.protocol === "data:" || reqUrl.protocol === "blob:") {
+            await request.continue();
+            return;
+          }
+          if (reqUrl.protocol !== "http:" && reqUrl.protocol !== "https:") {
+            await request.abort("blockedbyclient");
+            return;
+          }
+          if (isBlockedHostname(reqUrl.hostname)) {
+            await request.abort("blockedbyclient");
+            return;
+          }
+          if (await hostnameResolvesToBlockedIp(reqUrl.hostname)) {
+            await request.abort("blockedbyclient");
+            return;
+          }
+          await request.continue();
+        } catch {
+          try {
+            await request.abort("blockedbyclient");
+          } catch {
+            // Request may already be settled.
+          }
+        }
+      })();
+    });
+
     const response = await page.goto(target, {
       waitUntil: "networkidle2",
       timeout: 45_000,
@@ -66,6 +127,14 @@ export async function scanUrl(url: string): Promise<ScanResult> {
     if (!response || !response.ok()) {
       throw new Error(
         `Target returned ${response?.status() ?? "no response"}. Cannot scan.`,
+      );
+    }
+
+    // Re-check the landed URL in case of redirect to a private address.
+    const finalParsed = new URL(page.url());
+    if (isBlockedHostname(finalParsed.hostname)) {
+      throw new Error(
+        "Target redirected to a private or local address and cannot be scanned",
       );
     }
 
@@ -116,13 +185,16 @@ async function assertPublicHostname(hostname: string) {
     throw new Error("That URL points to a private or local address and cannot be scanned");
   }
 
-  const addresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
-  if (
-    addresses.length > 0 &&
-    addresses.some((entry) => isBlockedIp(entry.address))
-  ) {
+  if (await hostnameResolvesToBlockedIp(hostname)) {
     throw new Error("That URL resolves to a private or local address and cannot be scanned");
   }
+}
+
+async function hostnameResolvesToBlockedIp(hostname: string): Promise<boolean> {
+  if (isIP(hostname)) return isBlockedIp(hostname);
+  const addresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
+  if (addresses.length === 0) return false;
+  return addresses.some((entry) => isBlockedIp(entry.address));
 }
 
 function isBlockedHostname(hostname: string): boolean {

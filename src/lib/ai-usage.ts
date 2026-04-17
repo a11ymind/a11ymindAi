@@ -32,10 +32,6 @@ function monthKey(now: Date): string {
   return `${year}-${month}`;
 }
 
-function reservationMarker(month: string): string {
-  return `__AI_RESERVED__:${month}`;
-}
-
 function buildSummary(input: {
   aiEnabled: boolean;
   aiUsageCurrent: number;
@@ -104,10 +100,7 @@ export async function reserveAiUsageSlot(
   now = new Date(),
 ): Promise<
   | { ok: false; summary: AiUsageSummary }
-  | {
-      ok: true;
-      summary: AiUsageSummary;
-    }
+  | { ok: true; summary: AiUsageSummary }
 > {
   const limit = aiUsageLimitForPlan(plan);
   if (limit === null) {
@@ -118,7 +111,6 @@ export async function reserveAiUsageSlot(
   }
 
   const month = monthKey(now);
-  const marker = reservationMarker(month);
 
   try {
     const summary = await prisma.$transaction(
@@ -128,17 +120,17 @@ export async function reserveAiUsageSlot(
             id: scanId,
             userId,
             status: "RUNNING",
-            error: null,
+            aiReservedMonth: null,
           },
           data: {
-            error: marker,
+            aiReservedMonth: month,
           },
         });
 
         if (reserved.count === 0) {
           return buildSummary({
             aiEnabled: false,
-            aiUsageCurrent: await countAiUsagesThisMonth(userId, now),
+            aiUsageCurrent: await countAiUsagesThisMonth(userId, now, tx),
             aiUsageLimit: limit,
             aiLimitReached: true,
             requiresLoginForAI: false,
@@ -146,13 +138,13 @@ export async function reserveAiUsageSlot(
           });
         }
 
-        const current = await countAiUsagesThisMonth(userId, now, tx, marker);
+        const current = await countAiUsagesThisMonth(userId, now, tx, month);
         const aiLimitReached = current > limit;
 
         if (aiLimitReached) {
           await tx.scan.update({
             where: { id: scanId },
-            data: { error: null },
+            data: { aiReservedMonth: null },
           });
         }
 
@@ -191,7 +183,7 @@ async function countAiUsagesThisMonth(
   userId: string,
   now: Date,
   db: Pick<typeof prisma, "scan"> = prisma,
-  marker?: string,
+  includeReservationMonth?: string,
 ): Promise<number> {
   const { start, end } = monthWindow(now);
 
@@ -209,11 +201,11 @@ async function countAiUsagesThisMonth(
             some: aiGeneratedViolationFilter(),
           },
         },
-        ...(marker
+        ...(includeReservationMonth
           ? [
               {
                 status: "RUNNING" as const,
-                error: marker,
+                aiReservedMonth: includeReservationMonth,
               },
             ]
           : []),
@@ -226,13 +218,10 @@ export async function clearAiReservation(scanId: string): Promise<void> {
   await prisma.scan.updateMany({
     where: {
       id: scanId,
-      status: "RUNNING",
-      error: {
-        startsWith: "__AI_RESERVED__:",
-      },
+      aiReservedMonth: { not: null },
     },
     data: {
-      error: null,
+      aiReservedMonth: null,
     },
   });
 }

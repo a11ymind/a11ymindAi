@@ -24,6 +24,32 @@ export type ExecuteScanResult =
   | { ok: true; scanId: string; score: number; ai: AiUsageSummary }
   | { ok: false; scanId: string; error: string };
 
+// Scans are executed inline with maxDuration=60. If a function times out
+// mid-transaction, the Scan row stays in RUNNING forever and (pre-fix) its
+// AI reservation slot is permanently consumed. Before kicking off a new scan
+// we clean up any of the user's own stale RUNNING rows.
+const STALE_SCAN_THRESHOLD_MS = 5 * 60 * 1000;
+
+export async function reapStaleRunningScans(
+  userId: string,
+  now = new Date(),
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - STALE_SCAN_THRESHOLD_MS);
+  const { count } = await prisma.scan.updateMany({
+    where: {
+      userId,
+      status: "RUNNING",
+      createdAt: { lt: cutoff },
+    },
+    data: {
+      status: "FAILED",
+      error: "Scan timed out",
+      aiReservedMonth: null,
+    },
+  });
+  return count;
+}
+
 export async function createScanRecord(input: {
   url: string;
   userId: string | null;

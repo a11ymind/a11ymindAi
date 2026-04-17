@@ -1,25 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildScanResultHref } from "@/lib/scan-result-url";
-
-type LimitState = { plan: string; maxSites: number; message: string };
 
 export function URLScanner() {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limit, setLimit] = useState<LimitState | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!url.trim() || loading) return;
     setLoading(true);
     setError(null);
-    setLimit(null);
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -27,11 +22,6 @@ export function URLScanner() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (res.status === 402 && data.error === "SITE_LIMIT") {
-        setLimit({ plan: data.plan, maxSites: data.maxSites, message: data.message });
-        setLoading(false);
-        return;
-      }
       if (!res.ok) throw new Error(data.error || "Scan failed");
       router.push(
         buildScanResultHref(data.scanId, {
@@ -82,18 +72,7 @@ export function URLScanner() {
           Loading the page in a headless browser and running 90+ WCAG checks. This usually takes 15–45 seconds.
         </p>
       )}
-      {limit && (
-        <div
-          className="mt-3 rounded-md border border-accent-muted bg-accent-muted/10 p-3 text-sm"
-          role="alert"
-        >
-          <p className="text-text">{limit.message}</p>
-          <Link href="/pricing" className="mt-2 inline-block text-sm font-medium text-accent hover:underline">
-            Start monitoring →
-          </Link>
-        </div>
-      )}
-      {error && !limit && (
+      {error && (
         <p className="mt-3 text-sm text-severity-critical" role="alert">
           {error}
         </p>
