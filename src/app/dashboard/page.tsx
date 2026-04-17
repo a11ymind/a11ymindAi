@@ -85,7 +85,7 @@ export default async function DashboardPage({
           <PlanBadge plan={user.plan} />
           {user.plan === "FREE" ? (
             <Link href="/pricing" className="text-sm text-accent hover:underline">
-              Upgrade
+              Get AI fixes
             </Link>
           ) : (
             <Link
@@ -112,7 +112,7 @@ export default async function DashboardPage({
               </p>
             </div>
             <Link href="/pricing" className="text-sm text-accent hover:underline">
-              View plans
+              Start monitoring
             </Link>
           </div>
         </section>
@@ -137,11 +137,11 @@ export default async function DashboardPage({
       <section className="container-page mt-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Your sites</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Scan any page. Monitor saved sites.</h1>
             <p className="mt-1 text-sm text-text-muted">
               {sites.length === 0
-                ? "Scan your first URL to start tracking compliance."
-                : `${sites.length} site${sites.length === 1 ? "" : "s"} being tracked.`}
+                ? "Run a manual scan on any URL, then save the sites you want Accessly to keep monitoring."
+                : `${sites.length} website${sites.length === 1 ? "" : "s"} currently being monitored.`}
             </p>
           </div>
           <div className="w-full sm:w-auto sm:min-w-[28rem]">
@@ -155,8 +155,8 @@ export default async function DashboardPage({
             value={`${sites.length}/${entitlements.maxSites}`}
             detail={
               entitlements.maxSites === 1
-                ? "One tracked site on this plan"
-                : "Track up to ten saved sites"
+                ? "Monitor 1 website"
+                : "Monitor up to 10 websites"
             }
           />
           <DashboardStat
@@ -192,15 +192,14 @@ export default async function DashboardPage({
           <div className="card mt-6 flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-medium text-text">
-                You&apos;ve used {sites.length} of {entitlements.maxSites} saved site
-                {entitlements.maxSites === 1 ? "" : "s"} on {user.plan === "FREE" ? "Free" : "Starter"}.
+                You can monitor {entitlements.maxSites} website{entitlements.maxSites === 1 ? "" : "s"} on your current plan.
               </p>
               <p className="mt-1 text-sm text-text-muted">
-                Manual rescans still work for tracked sites. Upgrade to save a new site and expand coverage.
+                You can still scan any page manually. Upgrade to track more sites and keep monitoring changes as your site evolves.
               </p>
             </div>
             <Link href="/pricing" className="btn-primary whitespace-nowrap">
-              Upgrade plan
+              Start monitoring
             </Link>
           </div>
         )}

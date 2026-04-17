@@ -27,6 +27,11 @@ export type DeploymentDiagnostic = {
     anthropic: {
       configured: boolean;
     };
+    resend: {
+      configured: boolean;
+      fromAddressPresent: boolean;
+      partial: boolean;
+    };
     googleOAuth: {
       configured: boolean;
       partial: boolean;
@@ -66,6 +71,8 @@ const REQUIRED_ENV = [
 const OPTIONAL_ENV = [
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_MODEL",
+  "RESEND_API_KEY",
+  "RESEND_FROM_EMAIL",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "ANON_SCAN_RATE_LIMIT_MAX",
@@ -128,6 +135,21 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
         : "Anthropic API key is missing. AI fix generation will stay disabled.",
     },
     {
+      name: "Resend integration",
+      status:
+        process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL
+          ? "pass"
+          : process.env.RESEND_API_KEY || process.env.RESEND_FROM_EMAIL
+            ? "fail"
+            : "warn",
+      message:
+        process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL
+          ? "Resend is configured for transactional email."
+          : process.env.RESEND_API_KEY || process.env.RESEND_FROM_EMAIL
+            ? "Resend is partially configured. Set both API key and from address."
+            : "Resend is not configured yet. Email sending stays disabled.",
+    },
+    {
       name: "Google OAuth integration",
       status: googlePartial ? "fail" : googleEnabled ? "pass" : "warn",
       message: googlePartial
@@ -175,6 +197,11 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
       anthropic: {
         configured: Boolean(process.env.ANTHROPIC_API_KEY),
       },
+      resend: {
+        configured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL),
+        fromAddressPresent: Boolean(process.env.RESEND_FROM_EMAIL),
+        partial: Boolean(process.env.RESEND_API_KEY) !== Boolean(process.env.RESEND_FROM_EMAIL),
+      },
       googleOAuth: {
         configured: googleEnabled,
         partial: googlePartial,
@@ -208,6 +235,8 @@ function envVarDiagnostic(name: string, required: boolean): EnvVarDiagnostic {
   if (
     name === "GOOGLE_CLIENT_ID" ||
     name === "GOOGLE_CLIENT_SECRET" ||
+    name === "RESEND_API_KEY" ||
+    name === "RESEND_FROM_EMAIL" ||
     name === "ANON_SCAN_RATE_LIMIT_MAX" ||
     name === "ANON_SCAN_RATE_LIMIT_WINDOW_MS" ||
     name === "ANTHROPIC_MODEL"

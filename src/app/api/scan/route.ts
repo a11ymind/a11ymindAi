@@ -4,11 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { normalizeUrl } from "@/lib/scan";
 import {
-  entitlementsFor,
-  isAtSiteLimit,
-  savedSiteLimitMessage,
-} from "@/lib/entitlements";
-import {
   rateLimitAnonymousScan,
   rateLimitHeaders,
 } from "@/lib/rate-limit";
@@ -85,8 +80,6 @@ export async function POST(req: Request) {
       select: { plan: true },
     });
     userPlan = user?.plan ?? "FREE";
-    const limits = entitlementsFor(userPlan);
-
     const existing = await prisma.site.findUnique({
       where: { userId_url: { userId, url: target } },
       select: { id: true },
@@ -94,24 +87,6 @@ export async function POST(req: Request) {
 
     if (existing) {
       siteId = existing.id;
-    } else {
-      const count = await prisma.site.count({ where: { userId } });
-      if (isAtSiteLimit(userPlan, count)) {
-        return NextResponse.json(
-          {
-            error: "SITE_LIMIT",
-            plan: userPlan,
-            maxSites: limits.maxSites,
-            message: savedSiteLimitMessage(userPlan),
-          },
-          { status: 402 },
-        );
-      }
-      const created = await prisma.site.create({
-        data: { userId, url: target },
-        select: { id: true },
-      });
-      siteId = created.id;
     }
   }
 

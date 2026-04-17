@@ -152,24 +152,24 @@ type PlanCopy = {
 
 const PLAN_COPY: Record<string, PlanCopy> = {
   FREE: {
-    pitch: "See what\u2019s at risk on one site, on demand.",
+    pitch: "Scan any page on demand, then monitor one website for free.",
     bestFor: "Best for a quick gut-check before you commit.",
-    primaryCta: "Get started",
+    primaryCta: "Start scanning",
   },
   STARTER: {
-    pitch: "Plain-English fixes and monthly monitoring for one site.",
+    pitch: "Scan any page, with AI fixes and monthly monitoring for one website.",
     bestFor: "Best for small sites and solo operators.",
     primaryCta: "Fix my site",
   },
   PRO: {
-    pitch: "Weekly monitoring across multiple sites, plus PDF reports.",
+    pitch: "Scan any page and monitor multiple websites weekly, plus PDF reports.",
     bestFor: "Best for agencies and serious site owners.",
     primaryCta: "Get full protection",
   },
 };
 
 function planCopy(id: string): PlanCopy {
-  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Get started" };
+  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Start scanning" };
 }
 
 function PricingCard({

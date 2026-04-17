@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { SignOutButton } from "@/components/UserMenu";
+import { TestEmailButton } from "@/components/TestEmailButton";
 import { getSession } from "@/lib/auth";
 import { getDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
 
@@ -87,6 +88,23 @@ export default async function DiagnosticsPage() {
               }
             />
             <IntegrationRow
+              label="Resend"
+              status={
+                diagnostics.integrations.resend.partial
+                  ? "fail"
+                  : diagnostics.integrations.resend.configured
+                    ? "pass"
+                    : "warn"
+              }
+              detail={
+                diagnostics.integrations.resend.configured
+                  ? "Transactional email is ready to send."
+                  : diagnostics.integrations.resend.partial
+                    ? "Only one Resend variable is set. Add both API key and from address."
+                    : "Transactional email is not configured yet."
+              }
+            />
+            <IntegrationRow
               label="Google OAuth"
               status={
                 diagnostics.integrations.googleOAuth.partial
@@ -103,6 +121,13 @@ export default async function DiagnosticsPage() {
                     : "Email/password auth only."
               }
             />
+          </div>
+          <div className="mt-5 rounded-lg border border-border bg-bg-muted/40 px-4 py-4">
+            <p className="text-sm font-medium text-text">Email verification</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Send a test email to your signed-in address to confirm Resend is wired correctly.
+            </p>
+            <TestEmailButton disabled={!diagnostics.integrations.resend.configured} />
           </div>
         </div>
 

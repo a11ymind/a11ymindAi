@@ -7,7 +7,6 @@ import { getSession } from "@/lib/auth";
 import {
   entitlementsFor,
   planLabel,
-  savedSiteLimitMessage,
 } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +36,9 @@ export default async function ScanResultPage({
     plan?: string;
     pdf?: string;
     aiEnabled?: string;
+    aiUsageCurrent?: string;
+    aiUsageLimit?: string;
+    aiUsageRemaining?: string;
     requiresLoginForAI?: string;
     requiresUpgradeForAI?: string;
     aiLimitReached?: string;
@@ -79,7 +81,8 @@ export default async function ScanResultPage({
 
   const userId = session?.user?.id;
   const ownedByMe = !!userId && scan.userId === userId;
-  const claimable = !scan.userId;
+  const savedToDashboard = ownedByMe && !!scan.siteId;
+  const claimable = !scan.siteId && (!scan.userId || ownedByMe);
   const savedScanOwnerPlan = scan.user?.plan ?? null;
   const savedScanRequiresAiUpgrade =
     !!scan.userId &&
@@ -118,14 +121,14 @@ export default async function ScanResultPage({
   return (
     <PageShell loggedIn={!!userId}>
       {claimable && <ClaimBanner scanId={scan.id} loggedIn={!!userId} />}
-      {ownedByMe && <SavedBanner />}
+      {savedToDashboard && <SavedBanner />}
       {claimable && searchParams?.limit === "site_limit" && limitPlan && (
         <InlineBanner
           tone="upgrade"
           title="You hit your saved-site limit"
-          body={`${savedSiteLimitMessage(limitPlan)} You can still keep this anonymous result public, or upgrade to save it.`}
+          body={`You can monitor ${limitPlan === "PRO" ? "10 websites" : "1 website"} on your current plan. You can still scan any page manually, or upgrade to track more sites.`}
           ctaHref="/pricing"
-          ctaLabel="View plans"
+          ctaLabel="Start monitoring"
         />
       )}
       {searchParams?.pdf === "pro_required" && ownedByMe && (
@@ -202,6 +205,9 @@ export default async function ScanResultPage({
                 }
               />
             </div>
+            <p className="mt-4 text-sm text-text-muted">
+              Some of these accessibility risks may impact usability, conversions, and accessibility compliance.
+            </p>
           </div>
 
           <div className="card p-6">
@@ -209,8 +215,13 @@ export default async function ScanResultPage({
               <div>
                 <p className="text-xs uppercase tracking-wider text-text-subtle">Detected risks</p>
                 <h2 className="mt-2 text-xl font-semibold text-text">
-                  {riskCount === 0 ? "No risks detected" : `${riskCount} risk${riskCount === 1 ? "" : "s"} on this page`}
+                  {riskCount === 0
+                    ? "No accessibility risks detected"
+                    : `${riskCount} accessibility risk${riskCount === 1 ? "" : "s"} on this page`}
                 </h2>
+                <p className="mt-2 text-sm text-text-muted">
+                  Some of these may affect how people navigate, read, or complete key actions on the page.
+                </p>
               </div>
               <span className="rounded-full border border-border px-3 py-1 text-xs text-text-subtle">
                 1 page scanned
@@ -325,7 +336,9 @@ function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }
       <div className="card flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-text">
-            {loggedIn ? "Save this scan to track progress over time." : "Create a free account to save this scan."}
+            {loggedIn
+              ? "Save this scan to monitor this website over time."
+              : "Create a free account to save this scan."}
           </p>
           <p className="mt-1 text-xs text-text-muted">
             Re-scan on demand, compare scores, and get alerts when things regress.
@@ -485,6 +498,12 @@ function RiskListItem({
         <div>
           <p className="text-sm font-semibold text-text">{violation.help}</p>
           <p className="mt-1 text-sm text-text-muted">{violation.description}</p>
+          <p className="mt-2 text-xs text-text-subtle">
+            <span className="font-medium text-text">What this means:</span> {plainEnglishRiskMeaning(violation.help, violation.description)}
+          </p>
+          <p className="mt-1 text-xs text-text-subtle">
+            <span className="font-medium text-text">Why it matters:</span> {plainEnglishRiskImpact(violation.help, violation.impact)}
+          </p>
         </div>
         <span className="rounded-full border border-border px-2.5 py-1 text-[11px] uppercase tracking-wider text-text-subtle">
           {violation.impact || "minor"}
@@ -529,6 +548,24 @@ function ViolationCard({
       </div>
 
       <p className="mt-4 text-sm text-text-muted">{violation.description}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-bg-muted/40 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+            What this means
+          </p>
+          <p className="mt-2 text-sm text-text">
+            {plainEnglishRiskMeaning(violation.help, violation.description)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-bg-muted/40 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+            Why it matters
+          </p>
+          <p className="mt-2 text-sm text-text">
+            {plainEnglishRiskImpact(violation.help, violation.impact)}
+          </p>
+        </div>
+      </div>
 
       <Section label="Affected element">
         <code className="block overflow-x-auto rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text">
@@ -563,14 +600,25 @@ function RecommendedFixesPanel({
     impact: string;
   }[];
 }) {
+  const usage =
+    "aiUsageLimit" in state && state.aiUsageLimit !== null && state.aiUsageCurrent !== null
+      ? {
+          current: state.aiUsageCurrent,
+          limit: state.aiUsageLimit,
+          remaining: state.aiUsageRemaining,
+          limitReached: state.aiLimitReached,
+        }
+      : null;
+
   return (
     <aside className="card h-fit p-6 lg:sticky lg:top-6">
       <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
       <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
       <div className="mt-4 space-y-2 text-sm text-text-muted">
         <p>New accessibility risks can appear anytime.</p>
-        <p>You scanned 1 page — more pages may have issues.</p>
+        <p>You scanned 1 page — more pages may have accessibility risks.</p>
       </div>
+      {usage && <AiUsagePanel usage={usage} />}
 
       {state.mode === "visible" ? (
         <div className="mt-6 space-y-4">
@@ -613,6 +661,51 @@ function VisibleFixCard({
   );
 }
 
+function AiUsagePanel({
+  usage,
+}: {
+  usage: {
+    current: number;
+    limit: number;
+    remaining: number | null;
+    limitReached: boolean;
+  };
+}) {
+  const percent = Math.max(0, Math.min(100, Math.round((usage.current / usage.limit) * 100)));
+  const toneClass = usage.limitReached
+    ? "border-severity-critical/40 bg-severity-critical/10"
+    : percent >= 80
+      ? "border-[#f59e0b]/40 bg-[#f59e0b]/10"
+      : percent >= 50
+        ? "border-border bg-bg-muted/50"
+        : "border-border bg-bg-muted/30";
+  const barClass = usage.limitReached
+    ? "bg-severity-critical"
+    : percent >= 80
+      ? "bg-[#f59e0b]"
+      : "bg-accent";
+  const message = usage.limitReached
+    ? "AI fix limit reached for this billing month."
+    : percent >= 80
+      ? `Only ${usage.remaining ?? 0} AI fix generation${usage.remaining === 1 ? "" : "s"} left this month.`
+      : percent >= 50
+        ? "You are halfway through this month's AI fix allowance."
+        : "AI fixes are available for this scan.";
+
+  return (
+    <div className={`mt-5 rounded-xl border p-4 ${toneClass}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-text">AI fixes used: {usage.current} / {usage.limit}</p>
+        <p className="text-xs text-text-subtle">{percent}% used</p>
+      </div>
+      <div className="mt-3 h-2 rounded-full bg-white/10">
+        <div className={`h-2 rounded-full transition-all ${barClass}`} style={{ width: `${percent}%` }} />
+      </div>
+      <p className="mt-3 text-xs text-text-muted">{message}</p>
+    </div>
+  );
+}
+
 function LockedAiPreview({
   state,
   fallbackViolations,
@@ -622,7 +715,7 @@ function LockedAiPreview({
 }) {
   return (
     <div className="relative mt-5 overflow-hidden rounded-xl border border-accent-muted/40 bg-bg-muted/70">
-      <div className="space-y-4 p-4 blur-sm">
+      <div className="space-y-4 p-4">
         {fallbackViolations.map((violation) => (
           <div key={violation.id} className="rounded-xl border border-border bg-bg p-4">
             <div className="flex items-start justify-between gap-3">
@@ -631,7 +724,10 @@ function LockedAiPreview({
                 {violation.impact || "minor"}
               </span>
             </div>
-            <div className="mt-3 space-y-2">
+            <p className="mt-3 text-sm text-text">
+              {lockedFixPreview(violation.help)}
+            </p>
+            <div className="mt-3 space-y-2 blur-sm">
               <LockedLine className="w-full" />
               <LockedLine className="w-11/12" />
               <LockedLine className="w-4/5" />
@@ -702,6 +798,78 @@ function severityColor(impact: Impact): string {
   }[impact];
 }
 
+function plainEnglishRiskMeaning(help: string, description: string): string {
+  const text = `${help} ${description}`.toLowerCase();
+
+  if (text.includes("contrast")) {
+    return "Important text or interface elements may blend into the background and become hard to read.";
+  }
+  if (text.includes("label")) {
+    return "A form control or interactive element may not have a clear name that assistive technology can announce.";
+  }
+  if (text.includes("heading")) {
+    return "The page structure may be harder to scan because sections are not clearly organized for people using assistive tools.";
+  }
+  if (text.includes("link")) {
+    return "A link may not clearly describe where it goes or what action it triggers.";
+  }
+  if (text.includes("button")) {
+    return "An action may be present visually but not described clearly enough for assistive technology users.";
+  }
+  if (text.includes("image") || text.includes("alt")) {
+    return "A visual element may be missing text that explains its purpose to people who cannot see it.";
+  }
+
+  return "People using keyboards, screen readers, or magnification may not get the same information or feedback as sighted mouse users.";
+}
+
+function plainEnglishRiskImpact(help: string, impact: string): string {
+  const level = impact.toLowerCase();
+  const base =
+    level === "critical"
+      ? "This can block someone from completing a key task."
+      : level === "serious"
+        ? "This can create major friction for people relying on assistive technology."
+        : level === "moderate"
+          ? "This can make the page confusing or unreliable for some users."
+          : "This can still add unnecessary friction and reduce confidence in the experience.";
+
+  const text = help.toLowerCase();
+  if (text.includes("form") || text.includes("label")) {
+    return `${base} It often affects signups, checkouts, contact forms, or other conversion steps.`;
+  }
+  if (text.includes("link") || text.includes("button")) {
+    return `${base} It can make navigation and next steps harder to understand.`;
+  }
+  if (text.includes("contrast")) {
+    return `${base} It usually hurts readability and makes content easier to miss.`;
+  }
+
+  return base;
+}
+
+function lockedFixPreview(help: string): string {
+  const text = help.toLowerCase();
+
+  if (text.includes("contrast")) {
+    return "Increase contrast so important text and controls stay readable in real-world lighting.";
+  }
+  if (text.includes("label")) {
+    return "Add a clear accessible name so screen readers can explain what this control does.";
+  }
+  if (text.includes("heading")) {
+    return "Use a clearer heading structure so the page reads in a logical order.";
+  }
+  if (text.includes("link")) {
+    return "Rewrite the link text so users understand the destination before they click.";
+  }
+  if (text.includes("image") || text.includes("alt")) {
+    return "Add descriptive alternative text so the image's purpose is still communicated.";
+  }
+
+  return "Apply a targeted accessibility fix with plain-English steps and implementation guidance.";
+}
+
 function parsePlan(value: string | undefined): "FREE" | "STARTER" | "PRO" | null {
   return value === "FREE" || value === "STARTER" || value === "PRO" ? value : null;
 }
@@ -725,36 +893,36 @@ function singlePageCoverageTease({
   plan: "FREE" | "STARTER" | "PRO" | null;
   claimable: boolean;
 }) {
-  const scope = `We only scanned the page you entered. Other pages on ${host} may still contain accessibility issues, broken flows, or regressions this report didn't catch.`;
+  const scope = `We only scanned the page you entered. Other pages on ${host} may still contain accessibility risks, broken flows, or regressions this report didn't catch.`;
 
   if (plan === "PRO") {
     return {
-      body: `${scope} Save tracked sites in your dashboard to keep monitoring them over time.`,
+      body: `${scope} Accessibility issues can appear again as your site changes, so keep monitored sites in your dashboard and stay ahead of regressions.`,
       ctaHref: claimable ? "/dashboard" : "/dashboard",
-      ctaLabel: "Open dashboard",
+      ctaLabel: "Start monitoring",
     };
   }
 
   if (plan === "STARTER") {
     return {
-      body: `${scope} Upgrade to Pro for broader multi-site monitoring and weekly automated coverage.`,
+      body: `${scope} Accessibility issues can appear again as your site changes. Upgrade to Pro to monitor more websites and catch regressions weekly.`,
       ctaHref: "/pricing",
-      ctaLabel: "Upgrade to Pro",
+      ctaLabel: "Start monitoring",
     };
   }
 
   if (loggedIn) {
     return {
-      body: `${scope} Upgrade to Starter or Pro to turn one-off checks into ongoing site monitoring.`,
+      body: `${scope} Accessibility issues can appear again as your site changes. Upgrade to Starter or Pro to turn one-off checks into ongoing monitoring.`,
       ctaHref: "/pricing",
-      ctaLabel: "View plans",
+      ctaLabel: "Start monitoring",
     };
   }
 
   return {
-    body: `${scope} Create an account and upgrade when you're ready for broader coverage and ongoing monitoring.`,
+    body: `${scope} Accessibility issues can appear again as your site changes. Create an account when you're ready to start monitoring.`,
     ctaHref: "/pricing",
-    ctaLabel: "View plans",
+    ctaLabel: "Start monitoring",
   };
 }
 
@@ -762,6 +930,9 @@ function parseAiFlags(
   searchParams:
     | {
         aiEnabled?: string;
+        aiUsageCurrent?: string;
+        aiUsageLimit?: string;
+        aiUsageRemaining?: string;
         requiresLoginForAI?: string;
         requiresUpgradeForAI?: string;
         aiLimitReached?: string;
@@ -770,6 +941,9 @@ function parseAiFlags(
 ) {
   return {
     aiEnabled: searchParams?.aiEnabled === "1",
+    aiUsageCurrent: parseNonNegativeInt(searchParams?.aiUsageCurrent),
+    aiUsageLimit: parseNonNegativeInt(searchParams?.aiUsageLimit),
+    aiUsageRemaining: parseNonNegativeInt(searchParams?.aiUsageRemaining),
     requiresLoginForAI: searchParams?.requiresLoginForAI === "1",
     requiresUpgradeForAI: searchParams?.requiresUpgradeForAI === "1",
     aiLimitReached: searchParams?.aiLimitReached === "1",
@@ -794,7 +968,13 @@ function recommendedFixesState({
   apiAiFlags: ReturnType<typeof parseAiFlags>;
 }) {
   if (hasPersistedAi && canSeeAiFixes) {
-    return { mode: "visible" as const };
+    return {
+      mode: "visible" as const,
+      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
+      aiUsageLimit: apiAiFlags.aiUsageLimit,
+      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+      aiLimitReached: apiAiFlags.aiLimitReached,
+    };
   }
 
   if (apiAiFlags.requiresLoginForAI || (!userId && claimable)) {
@@ -803,6 +983,10 @@ function recommendedFixesState({
       body: "Log in to see recommended fixes, save your scan, and keep tracking new accessibility regressions over time.",
       ctaHref: `/login?scanId=${encodeURIComponent(scanId)}`,
       ctaLabel: "Log in to see recommended fixes",
+      aiUsageCurrent: null,
+      aiUsageLimit: null,
+      aiUsageRemaining: null,
+      aiLimitReached: false,
     };
   }
 
@@ -811,7 +995,11 @@ function recommendedFixesState({
       mode: "locked" as const,
       body: "Upgrade to generate recommended fixes with legal rationale, plain-English steps, and copy-ready remediation guidance.",
       ctaHref: "/pricing",
-      ctaLabel: "Upgrade to generate fixes",
+      ctaLabel: "Get AI fixes",
+      aiUsageCurrent: null,
+      aiUsageLimit: null,
+      aiUsageRemaining: null,
+      aiLimitReached: false,
     };
   }
 
@@ -823,7 +1011,11 @@ function recommendedFixesState({
           ? "You reached your monthly AI fix limit on Starter. Upgrade to Pro for higher coverage."
           : "You reached your monthly AI fix limit for now. New AI fixes will become available again next month.",
       ctaHref: userPlan === "STARTER" ? "/pricing" : undefined,
-      ctaLabel: userPlan === "STARTER" ? "Upgrade to Pro" : undefined,
+      ctaLabel: userPlan === "STARTER" ? "Get AI fixes" : undefined,
+      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
+      aiUsageLimit: apiAiFlags.aiUsageLimit,
+      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+      aiLimitReached: true,
     };
   }
 
@@ -831,6 +1023,16 @@ function recommendedFixesState({
     mode: "locked" as const,
     body: "Recommended fixes are not available for this scan yet. Save it and re-scan from your dashboard to keep monitoring changes over time.",
     ctaHref: claimable ? `/login?scanId=${encodeURIComponent(scanId)}` : "/dashboard",
-    ctaLabel: claimable ? "Save this scan" : "Open dashboard",
+    ctaLabel: claimable ? "Start monitoring" : "Start monitoring",
+    aiUsageCurrent: apiAiFlags.aiUsageCurrent,
+    aiUsageLimit: apiAiFlags.aiUsageLimit,
+    aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+    aiLimitReached: apiAiFlags.aiLimitReached,
   };
+}
+
+function parseNonNegativeInt(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }

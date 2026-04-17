@@ -8,8 +8,8 @@ Marketing tagline: *"Know your accessibility risk before a lawsuit does."*
 
 ```bash
 cp .env.example .env
-# fill DATABASE_URL, ANTHROPIC_API_KEY, NEXTAUTH_SECRET, and (optionally)
-# GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+# fill DATABASE_URL, NEXTAUTH_SECRET, and any optional integrations you want
+# (Anthropic, Google OAuth, Resend)
 npm install
 npx prisma db push
 npm run dev
@@ -45,6 +45,8 @@ Optional:
 ```bash
 ANTHROPIC_API_KEY=
 ANTHROPIC_MODEL=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ANON_SCAN_RATE_LIMIT_MAX=5
@@ -64,6 +66,9 @@ Notes:
   after changing secrets or price IDs.
 - Anonymous scan rate limiting defaults to `5` requests per IP per `3600000`
   ms (1 hour) unless you override the optional env vars above.
+- `RESEND_FROM_EMAIL` should be a sender string Resend accepts, such as
+  `Accessly <onboarding@resend.dev>` for initial testing or
+  `Accessly <hello@yourdomain.com>` after you verify a domain.
 
 ### Local setup
 
@@ -83,6 +88,8 @@ npm run dev
   integrations are configured, whether Stripe price IDs still look like
   placeholders, and whether `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` look
   aligned.
+- It also includes a protected `Send test email` action that sends a Resend test
+  email to the signed-in user's own address.
 - Secret values are never rendered. The page only shows presence and simple
   deterministic status checks.
 - Protection is intentionally lightweight for the current architecture: the
@@ -99,6 +106,33 @@ npm run dev
    production.
 4. Validate the end-to-end flow from `/pricing` through checkout, redirect, and
    dashboard plan state.
+
+### Resend setup
+
+1. Create a Resend account.
+2. Create an API key. Prefer a sending-only key for production use.
+3. Add these env vars:
+
+```bash
+RESEND_API_KEY=
+RESEND_FROM_EMAIL="Accessly <onboarding@resend.dev>"
+```
+
+4. For initial testing, you can use Resend's default `resend.dev` sender, but
+   it is only suitable for sending to your own email address.
+5. Before production rollout, verify a domain in Resend and switch
+   `RESEND_FROM_EMAIL` to an address on that verified domain, such as
+   `Accessly <hello@yourdomain.com>`.
+6. Redeploy after adding or changing email settings.
+
+Notes:
+
+- Once a domain is verified in Resend, you can send from addresses at that
+  domain without pre-creating each sender address.
+- Resend API keys are shown only once in the dashboard. Store them in env vars
+  and do not commit them.
+- If Resend is not configured, Accessly skips sending and logs a useful warning
+  instead of crashing request handlers.
 
 ### Webhook setup
 
@@ -223,6 +257,8 @@ Useful Vercel references:
 - Scheduled scans reuse the existing scan history model and are not explicitly
   labeled separately from manual scans in the current schema.
 - Email alerts are not implemented yet.
+- Resend is wired as a minimal transactional-email foundation only. There is no
+  template system, queueing, or alert-delivery workflow yet.
 - Saved-site quotas are enforced in app logic and still have a theoretical
   concurrent-request race.
 - Scan target hardening now blocks obvious private/local targets, but this is
@@ -252,6 +288,8 @@ Useful Vercel references:
     Starter/Pro sites create a scheduled scan only when due.
 11. Run one deployed production scan and verify Puppeteer succeeds in the live
     environment.
+12. Visit `/dashboard/diagnostics` while signed in and use `Send test email` to
+    confirm Resend delivery.
 
 ---
 

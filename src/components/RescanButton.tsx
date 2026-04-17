@@ -24,6 +24,9 @@ export function RescanButton({ url, compact = false }: { url: string; compact?: 
       router.push(
         buildScanResultHref(data.scanId, {
           aiEnabled: data.aiEnabled,
+          aiUsageCurrent: data.aiUsageCurrent,
+          aiUsageLimit: data.aiUsageLimit,
+          aiUsageRemaining: data.aiUsageRemaining,
           requiresLoginForAI: data.requiresLoginForAI,
           requiresUpgradeForAI: data.requiresUpgradeForAI,
           aiLimitReached: data.aiLimitReached,

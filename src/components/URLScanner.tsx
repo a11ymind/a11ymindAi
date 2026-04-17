@@ -36,6 +36,9 @@ export function URLScanner() {
       router.push(
         buildScanResultHref(data.scanId, {
           aiEnabled: data.aiEnabled,
+          aiUsageCurrent: data.aiUsageCurrent,
+          aiUsageLimit: data.aiUsageLimit,
+          aiUsageRemaining: data.aiUsageRemaining,
           requiresLoginForAI: data.requiresLoginForAI,
           requiresUpgradeForAI: data.requiresUpgradeForAI,
           aiLimitReached: data.aiLimitReached,
@@ -86,7 +89,7 @@ export function URLScanner() {
         >
           <p className="text-text">{limit.message}</p>
           <Link href="/pricing" className="mt-2 inline-block text-sm font-medium text-accent hover:underline">
-            View plans →
+            Start monitoring →
           </Link>
         </div>
       )}
