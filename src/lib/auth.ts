@@ -1,0 +1,86 @@
+import type { NextAuthOptions } from "next-auth";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { getServerSession } from "next-auth/next";
+import bcrypt from "bcryptjs";
+import { prisma } from "./prisma";
+
+const providers: NextAuthOptions["providers"] = [
+  CredentialsProvider({
+    name: "Email",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.password) return null;
+      const email = credentials.email.trim().toLowerCase();
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+      if (!user?.passwordHash) return null;
+      const ok = await bcrypt.compare(credentials.password, user.passwordHash);
+      if (!ok) return null;
+      return { id: user.id, email: user.email, name: user.name, plan: user.plan };
+    },
+  }),
+];
+
+export const googleEnabled = Boolean(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+);
+
+if (googleEnabled) {
+  providers.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
+    }),
+  );
+}
+
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
+  pages: { signIn: "/login" },
+  providers,
+  callbacks: {
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = user.id;
+        token.plan = user.plan;
+        token.planUpdatedAt = Date.now();
+        return token;
+      }
+      // Refresh plan from DB every 5 min so Stripe webhooks take effect
+      // without requiring the user to log out.
+      const fiveMin = 5 * 60 * 1000;
+      const stale =
+        !token.planUpdatedAt || Date.now() - token.planUpdatedAt > fiveMin;
+      if (token.id && (stale || trigger === "update")) {
+        const db = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { plan: true },
+        });
+        if (db) {
+          token.plan = db.plan;
+          token.planUpdatedAt = Date.now();
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id;
+        session.user.plan = token.plan;
+      }
+      return session;
+    },
+  },
+};
+
+export function getSession() {
+  return getServerSession(authOptions);
+}

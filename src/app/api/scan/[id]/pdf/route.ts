@@ -1,0 +1,89 @@
+import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { entitlementsFor } from "@/lib/entitlements";
+import { renderScanPdf } from "@/lib/pdf";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } },
+) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.redirect(
+      new URL(`/login?callbackUrl=${encodeURIComponent(`/scan/${params.id}`)}`, _req.url),
+    );
+  }
+
+  const scan = await prisma.scan.findUnique({
+    where: { id: params.id },
+    include: {
+      user: {
+        select: { plan: true },
+      },
+      violations: {
+        select: {
+          axeId: true,
+          impact: true,
+          help: true,
+          description: true,
+          selector: true,
+          legalRationale: true,
+          plainEnglishFix: true,
+          codeExample: true,
+        },
+      },
+    },
+  });
+
+  if (!scan || scan.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (scan.status !== "COMPLETED") {
+    return redirectToScan(params.id, "failed", _req.url);
+  }
+
+  const entitlements = entitlementsFor(scan.user?.plan ?? "FREE");
+  if (!entitlements.pdfExport) {
+    return redirectToScan(params.id, "pro_required", _req.url);
+  }
+
+  try {
+    const pdf = renderScanPdf(scan);
+    return new NextResponse(new Uint8Array(pdf), {
+      status: 200,
+      headers: {
+        "content-type": "application/pdf",
+        "content-disposition": `attachment; filename="${reportFilename(scan.url, scan.createdAt)}"`,
+        "cache-control": "private, no-store",
+      },
+    });
+  } catch (error) {
+    console.error("[scan/pdf] failed:", error);
+    return redirectToScan(params.id, "failed", _req.url);
+  }
+}
+
+function redirectToScan(scanId: string, code: string, requestUrl: string) {
+  const url = new URL(`/scan/${scanId}`, requestUrl);
+  url.searchParams.set("pdf", code);
+  return NextResponse.redirect(url, { status: 303 });
+}
+
+function reportFilename(url: string, createdAt: Date): string {
+  const stamp = createdAt.toISOString().slice(0, 10);
+  const host = hostFromUrl(url).replace(/[^a-z0-9.-]/gi, "-");
+  return `accessly-${host}-${stamp}.pdf`;
+}
+
+function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname || "report";
+  } catch {
+    return "report";
+  }
+}

@@ -1,0 +1,55 @@
+import type { Plan } from "@prisma/client";
+
+export type AutoScan = "none" | "monthly" | "weekly";
+
+export type Entitlements = {
+  maxSites: number;
+  aiFixes: boolean;
+  pdfExport: boolean;
+  autoScan: AutoScan;
+};
+
+export const ENTITLEMENTS: Record<Plan, Entitlements> = {
+  FREE: {
+    maxSites: 1,
+    aiFixes: false,
+    pdfExport: false,
+    autoScan: "none",
+  },
+  STARTER: {
+    maxSites: 1,
+    aiFixes: false,
+    pdfExport: false,
+    autoScan: "monthly",
+  },
+  PRO: {
+    maxSites: 10,
+    aiFixes: true,
+    pdfExport: true,
+    autoScan: "weekly",
+  },
+};
+
+export function entitlementsFor(plan: Plan): Entitlements {
+  return ENTITLEMENTS[plan];
+}
+
+export function planLabel(plan: Plan): string {
+  return plan === "STARTER" ? "Starter" : plan === "PRO" ? "Pro" : "Free";
+}
+
+export function isAtSiteLimit(plan: Plan, siteCount: number): boolean {
+  return siteCount >= entitlementsFor(plan).maxSites;
+}
+
+export function savedSiteLimitMessage(plan: Plan): string {
+  const { maxSites } = entitlementsFor(plan);
+  if (plan === "PRO") {
+    return `You've reached the ${maxSites}-site limit.`;
+  }
+  return `Your ${planLabel(plan)} plan allows ${maxSites} saved site${maxSites === 1 ? "" : "s"}. Upgrade to track more.`;
+}
+
+export function autoScanLabel(value: AutoScan): string {
+  return value === "weekly" ? "Weekly" : value === "monthly" ? "Monthly" : "Not included";
+}
