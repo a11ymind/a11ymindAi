@@ -10,6 +10,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/accessly_ci?schema=public
       NEXTAUTH_SECRET: ci-nextauth-secret-not-for-production
       NEXTAUTH_URL: http://127.0.0.1:3000
@@ -23,16 +24,16 @@ jobs:
       RESEND_API_KEY: re_ci_dummy
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
 
       - name: Restore Next.js build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.[jt]s', 'src/**/*.[jt]sx', 'tests/**/*.ts', 'next.config.*', 'tailwind.config.*', 'postcss.config.*', 'tsconfig.json') }}
