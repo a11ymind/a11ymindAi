@@ -6,6 +6,7 @@ import {
   isDueForAutoScan,
   reserveScheduledScan,
 } from "@/lib/scan-jobs";
+import { maybeSendScheduledScanAlert, type AlertOutcome } from "@/lib/scan-alert";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,14 @@ export const maxDuration = 300;
 
 type SiteResult =
   | { siteId: string; url: string; status: "skipped"; reason: string }
-  | { siteId: string; url: string; status: "completed"; scanId: string; score: number }
+  | {
+      siteId: string;
+      url: string;
+      status: "completed";
+      scanId: string;
+      score: number;
+      alert: AlertOutcome;
+    }
   | { siteId: string; url: string; status: "failed"; scanId: string; error: string };
 
 export async function GET(req: Request) {
@@ -68,12 +76,30 @@ export async function GET(req: Request) {
 
       const execution = await executeScanRecord(reservation.scan, reservation.plan);
       if (execution.ok) {
+        let alert: AlertOutcome = {
+          status: "skipped",
+          reason: "not_attempted",
+        };
+        try {
+          alert = await maybeSendScheduledScanAlert({
+            siteId: site.id,
+            currentScanId: execution.scanId,
+            now: startedAt,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Unknown alert failure";
+          console.error(`[cron] alert failure for site ${site.id}:`, error);
+          alert = { status: "failed", error: message };
+        }
+
         results.push({
           siteId: site.id,
           url: site.url,
           status: "completed",
           scanId: execution.scanId,
           score: execution.score,
+          alert,
         });
       } else {
         results.push({
@@ -106,6 +132,9 @@ export async function GET(req: Request) {
     completed: results.filter((result) => result.status === "completed").length,
     failed: results.filter((result) => result.status === "failed").length,
     skipped: results.filter((result) => result.status === "skipped").length,
+    alertsSent: results.filter(
+      (result) => result.status === "completed" && result.alert.status === "sent",
+    ).length,
     results,
   });
 }

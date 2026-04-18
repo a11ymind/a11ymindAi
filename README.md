@@ -174,7 +174,13 @@ Production:
   scans those sites.
 - The repo includes a `vercel.json` cron entry for `0 5 * * *` (5:00 UTC
   daily), which fits Vercel Hobby's once-per-day cron limit while still
-  supporting weekly and monthly cadences.
+  supporting weekly and monthly cadences. The weekly/monthly cadence is
+  enforced in app logic (`isDueForAutoScan` + `reserveScheduledScan`) rather
+  than by multiple cron schedules — the daily run simply filters down to
+  sites whose last scan is older than 7 or 30 days depending on plan.
+- Vercel Pro is only required if you need either (a) sub-daily cadence
+  (e.g. hourly rescans), or (b) multiple distinct cron schedules. The
+  current weekly/monthly product tiers do **not** require Pro.
 
 ### Scheduled auto-scans
 
@@ -189,6 +195,24 @@ Production:
   the next scheduled run for that site instead of creating a duplicate report.
 - Scheduled scans are written into the normal `Scan` history, so they appear in
   the same dashboard/history views as manual runs.
+
+##### Email alerts
+
+- After each successful scheduled scan the cron compares the new scan against
+  the previous `COMPLETED` scan for that site (set-diff of axe rule IDs).
+- An alert email is sent only when there is a meaningful change:
+  - at least one **new** issue appeared, or
+  - the accessibility **score dropped**
+- Alerts go only to Starter and Pro users with an email on file. Free users do
+  not receive scheduled alerts.
+- Cooldown: the same site will not email more than once per ~23h, tracked via
+  `Site.lastAlertSentAt` / `Site.lastAlertScanId`. This is belt-and-braces on
+  top of the weekly/monthly cadence gate.
+- Send failures are logged and attached to the per-site cron result; they do
+  not abort the batch or mark the scan as failed.
+- Email content is defined in `sendScheduledScanAlertEmail` in
+  `src/lib/email.ts`. The report link uses `NEXT_PUBLIC_APP_URL` (falls back to
+  `APP_URL`) + `/scan/<id>`, so set one of those in production.
 
 #### Cron authentication
 
@@ -259,9 +283,11 @@ Useful Vercel references:
   cron timing can drift within the day.
 - Scheduled scans reuse the existing scan history model and are not explicitly
   labeled separately from manual scans in the current schema.
-- Email alerts are not implemented yet.
-- Resend is wired as a minimal transactional-email foundation only. There is no
-  template system, queueing, or alert-delivery workflow yet.
+- Scheduled-scan email alerts are implemented (Starter + Pro, sent from the
+  daily cron when a completed scheduled scan has new issues or a score drop).
+  Free users do not receive alerts.
+- Resend is wired as a minimal transactional-email foundation. No template
+  system or queueing, but welcome emails and scheduled-scan alerts both use it.
 - Saved-site quotas are enforced in app logic and still have a theoretical
   concurrent-request race.
 - Scan target hardening now blocks obvious private/local targets, but this is

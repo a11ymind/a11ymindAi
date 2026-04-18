@@ -121,6 +121,64 @@ export async function sendAuthWelcomeEmail(input: {
   });
 }
 
+export async function sendScheduledScanAlertEmail(input: {
+  to: string;
+  siteUrl: string;
+  previousScore: number | null;
+  currentScore: number;
+  newIssues: number;
+  fixedIssues: number;
+  reportUrl: string;
+}): Promise<SendEmailResult> {
+  const {
+    to,
+    siteUrl,
+    previousScore,
+    currentScore,
+    newIssues,
+    fixedIssues,
+    reportUrl,
+  } = input;
+
+  const scoreChanged =
+    previousScore !== null && previousScore !== currentScore;
+  const subject =
+    newIssues > 0
+      ? "New accessibility issues detected on your site"
+      : "Your accessibility score changed";
+
+  const scoreLine = scoreChanged
+    ? `Score: ${previousScore} → ${currentScore}`
+    : `Score: ${currentScore}`;
+
+  const text = [
+    `We just ran a scheduled accessibility scan on ${siteUrl}.`,
+    "",
+    scoreLine,
+    `New issues: ${newIssues}`,
+    `Fixed issues: ${fixedIssues}`,
+    "",
+    `View the full report: ${reportUrl}`,
+  ].join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h1 style="font-size: 18px; margin-bottom: 12px;">${escapeHtml(subject)}</h1>
+      <p style="margin: 0 0 12px;">We just ran a scheduled accessibility scan on <strong>${escapeHtml(siteUrl)}</strong>.</p>
+      <ul style="margin: 0 0 16px; padding-left: 18px;">
+        <li>${escapeHtml(scoreLine)}</li>
+        <li>New issues: <strong>${newIssues}</strong></li>
+        <li>Fixed issues: <strong>${fixedIssues}</strong></li>
+      </ul>
+      <p style="margin: 0 0 12px;">
+        <a href="${escapeHtml(reportUrl)}" style="color: #06b6d4;">View the full report →</a>
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, text, html });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
