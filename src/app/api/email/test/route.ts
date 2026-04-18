@@ -21,17 +21,17 @@ export async function POST() {
   const now = new Date();
   const result = await sendEmail({
     to,
-    subject: "Accessly test email",
+    subject: "a11ymind test email",
     text: [
-      "This is a test email from Accessly.",
+      "This is a test email from a11ymind.",
       "",
       `Sent at: ${now.toISOString()}`,
       "If you received this, Resend is wired correctly for transactional email.",
     ].join("\n"),
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-        <h1 style="font-size: 18px; margin-bottom: 12px;">Accessly test email</h1>
-        <p style="margin: 0 0 12px;">This is a test email from Accessly.</p>
+        <h1 style="font-size: 18px; margin-bottom: 12px;">a11ymind test email</h1>
+        <p style="margin: 0 0 12px;">This is a test email from a11ymind.</p>
         <p style="margin: 0 0 12px;">Sent at: <code>${now.toISOString()}</code></p>
         <p style="margin: 0;">If you received this, Resend is wired correctly for transactional email.</p>
       </div>

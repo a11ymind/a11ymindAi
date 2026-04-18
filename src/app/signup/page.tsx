@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { AuthForm } from "@/components/AuthForm";
 import { githubEnabled, googleEnabled } from "@/lib/auth";
 
-export const metadata = { title: "Sign up — Accessly" };
+export const metadata = { title: "Sign up — a11ymind" };
 
 export default function SignupPage() {
   return (

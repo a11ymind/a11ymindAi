@@ -1,4 +1,4 @@
-# Accessly
+# a11ymind
 
 An AI-powered ADA/WCAG accessibility compliance tool.
 
@@ -19,19 +19,19 @@ See `CLAUDE.md` for the architecture overview and commands reference.
 
 ---
 
-## Accessly GitHub Action v1
+## a11ymind GitHub Action v1
 
-Accessly also ships a lightweight JavaScript GitHub Action for CI-time scans of
+a11ymind also ships a lightweight JavaScript GitHub Action for CI-time scans of
 preview or live URLs.
 
-- Accessly app: post-deploy monitoring, reporting, alerts, dashboards
-- Accessly Action v1: pre-deploy scan helper for preview URLs in CI
+- a11ymind app: post-deploy monitoring, reporting, alerts, dashboards
+- a11ymind Action v1: pre-deploy scan helper for preview URLs in CI
 
 Example:
 
 ```yaml
-- name: Accessly scan
-  id: accessly
+- name: a11ymind scan
+  id: a11ymind
   uses: <owner>/<repo>@v1
   with:
     url: https://preview.example.com
@@ -39,14 +39,14 @@ Example:
     output-json: true
     output-markdown: true
 
-- name: Upload Accessly artifacts
+- name: Upload a11ymind artifacts
   if: always()
   uses: actions/upload-artifact@v4
   with:
-    name: accessly-report
+    name: a11ymind-report
     path: |
-      ${{ steps.accessly.outputs.json-path }}
-      ${{ steps.accessly.outputs.markdown-path }}
+      ${{ steps.a11ymind.outputs.json-path }}
+      ${{ steps.a11ymind.outputs.markdown-path }}
 ```
 
 The action writes Markdown and JSON artifacts into the workspace, adds a job
@@ -108,8 +108,8 @@ Notes:
 - Anonymous scan rate limiting defaults to `5` requests per IP per `3600000`
   ms (1 hour) unless you override the optional env vars above.
 - `RESEND_FROM_EMAIL` should be a sender string Resend accepts, such as
-  `Accessly <onboarding@resend.dev>` for initial testing or
-  `Accessly <hello@yourdomain.com>` after you verify a domain.
+  `a11ymind <onboarding@resend.dev>` for initial testing or
+  `a11ymind <hello@a11ymind.ai>` after you verify a domain.
 
 ### Local setup
 
@@ -156,14 +156,14 @@ npm run dev
 
 ```bash
 RESEND_API_KEY=
-RESEND_FROM_EMAIL="Accessly <onboarding@resend.dev>"
+RESEND_FROM_EMAIL="a11ymind <hello@a11ymind.ai>"
 ```
 
 4. For initial testing, you can use Resend's default `resend.dev` sender, but
    it is only suitable for sending to your own email address.
 5. Before production rollout, verify a domain in Resend and switch
    `RESEND_FROM_EMAIL` to an address on that verified domain, such as
-   `Accessly <hello@yourdomain.com>`.
+   `a11ymind <hello@a11ymind.ai>`.
 6. Redeploy after adding or changing email settings.
 
 Notes:
@@ -172,10 +172,10 @@ Notes:
   domain without pre-creating each sender address.
 - Resend API keys are shown only once in the dashboard. Store them in env vars
   and do not commit them.
-- Accessly now uses this foundation in the authentication flow: new accounts
+- a11ymind now uses this foundation in the authentication flow: new accounts
   receive a welcome email after credentials signup and after first-time social
   account creation.
-- If Resend is not configured, Accessly skips sending and logs a useful warning
+- If Resend is not configured, a11ymind skips sending and logs a useful warning
   instead of crashing request handlers.
 
 ### GitHub OAuth setup
@@ -184,9 +184,9 @@ Notes:
    https://github.com/settings/developers
 2. Create a new OAuth App.
 3. Use these production values:
-   - Homepage URL: `https://accesslyai.vercel.app`
+   - Homepage URL: `https://www.a11ymind.ai`
    - Authorization callback URL:
-     `https://accesslyai.vercel.app/api/auth/callback/github`
+     `https://www.a11ymind.ai/api/auth/callback/github`
 4. Add these env vars:
 
 ```bash
@@ -204,7 +204,7 @@ Notes:
   Apps. Keep the configured callback aligned with the environment you are
   actively testing, or prioritize the production callback for deployment
   readiness.
-- Accessly keeps GitHub sign-in inside the existing NextAuth/Auth.js setup, so
+- a11ymind keeps GitHub sign-in inside the existing NextAuth/Auth.js setup, so
   current billing, checkout resume, scan-claim, and dashboard return flows
   continue to use the same callback URL handling.
 
@@ -230,7 +230,7 @@ Production:
 
 ### Deployment notes for Vercel
 
-- Accessly uses Next.js App Router and standard Node.js route handlers, which
+- a11ymind uses Next.js App Router and standard Node.js route handlers, which
   Vercel supports out of the box for Next.js deployments.
 - Configure all required env vars in the Vercel project before promoting to
   production.
@@ -395,7 +395,7 @@ Useful Vercel references:
 
 ## Setting up Stripe
 
-Accessly uses Stripe Checkout for subscription signup, the Stripe Billing
+a11ymind uses Stripe Checkout for subscription signup, the Stripe Billing
 Portal for cancellations/upgrades, and a webhook to mirror the subscription
 state into `User.plan`. The three pricing tiers are defined in
 `src/lib/plans.ts`:
@@ -448,7 +448,7 @@ Run these four commands in order. Copy the `price_...` ID printed by each
 ```bash
 # Starter
 stripe products create \
-  --name "Accessly Starter" \
+  --name "a11ymind Starter" \
   --description "1 saved site, monthly auto-scan, email alerts"
 
 stripe prices create \
@@ -460,7 +460,7 @@ stripe prices create \
 
 # Pro
 stripe products create \
-  --name "Accessly Pro" \
+  --name "a11ymind Pro" \
   --description "Up to 10 sites, weekly auto-scan, AI fix suggestions, PDF export"
 
 stripe prices create \

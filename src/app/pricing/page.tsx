@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 import { getSession } from "@/lib/auth";
 import { PLAN_TIERS, type PlanTier } from "@/lib/plans";
 
-export const metadata = { title: "Pricing — Accessly" };
+export const metadata = { title: "Pricing — a11ymind" };
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage({
@@ -104,7 +104,7 @@ export default async function PricingPage({
                 <span>
                   <span className="text-text">Repeat scans catch regressions.</span>{" "}
                   <span className="text-text-muted">
-                    Accessly re-scans your saved sites automatically and flags new risks as soon as
+                    a11ymind re-scans your saved sites automatically and flags new risks as soon as
                     they appear.
                   </span>
                 </span>
@@ -135,7 +135,7 @@ export default async function PricingPage({
           </ul>
           <p className="mt-5 text-xs text-text-subtle">
             AI fix suggestions are generated on demand by Claude. We respect robots.txt and never
-            modify your site. Accessly helps you reduce accessibility risk — it does not constitute
+            modify your site. a11ymind helps you reduce accessibility risk — it does not constitute
             legal advice or a guarantee of WCAG/ADA compliance.
           </p>
         </div>

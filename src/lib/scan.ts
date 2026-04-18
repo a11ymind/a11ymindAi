@@ -82,7 +82,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
     await page.setUserAgent(
-      "Mozilla/5.0 (compatible; AccesslyBot/1.0; +https://accessly.app)",
+      "Mozilla/5.0 (compatible; a11ymindBot/1.0; +https://www.a11ymind.ai)",
     );
 
     // Mitigate SSRF via sub-resource requests. The browser loads the target

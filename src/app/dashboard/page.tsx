@@ -22,7 +22,7 @@ import {
 } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dashboard — Accessly" };
+export const metadata = { title: "Dashboard — a11ymind" };
 
 const SERIES_COLORS = [
   "#06b6d4",
@@ -115,7 +115,7 @@ export default async function DashboardPage({
             <div>
               <p className="text-sm font-medium text-text">Your subscription is active.</p>
               <p className="text-xs text-text-muted">
-                Accessly refreshed your billing state so your latest plan and entitlements are available now.
+                a11ymind refreshed your billing state so your latest plan and entitlements are available now.
               </p>
             </div>
             <Link href="/pricing" className="text-sm text-accent hover:underline">
@@ -147,7 +147,7 @@ export default async function DashboardPage({
             <h1 className="text-2xl font-semibold tracking-tight">Scan any page. Monitor saved sites.</h1>
             <p className="mt-1 text-sm text-text-muted">
               {sites.length === 0
-                ? "Run a manual scan on any URL, then save the sites you want Accessly to keep monitoring."
+                ? "Run a manual scan on any URL, then save the sites you want a11ymind to keep monitoring."
                 : `${sites.length} website${sites.length === 1 ? "" : "s"} currently being monitored.`}
             </p>
           </div>
@@ -488,7 +488,7 @@ function buildBadgeSnippet({
   homeUrl: string;
   badgeUrl: string;
 }) {
-  return `<a href="${homeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Accessibility monitored by Accessly">
-  <img src="${badgeUrl}" alt="Accessibility monitored by Accessly" style="height:36px;width:auto;border:0" />
+  return `<a href="${homeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Accessibility monitored by a11ymind">
+  <img src="${badgeUrl}" alt="Accessibility monitored by a11ymind" style="height:36px;width:auto;border:0" />
 </a>`;
 }

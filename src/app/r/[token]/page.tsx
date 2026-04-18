@@ -9,7 +9,7 @@ import { scoreBand } from "@/lib/score";
 // render 404; worst-case a revoked token stays viewable for up to 5 min.
 export const revalidate = 300;
 export const metadata = {
-  title: "Shared accessibility report — Accessly",
+  title: "Shared accessibility report — a11ymind",
   robots: { index: false, follow: false },
 };
 
@@ -140,7 +140,7 @@ export default async function SharedReportPage({
         })}
         <div className="card mt-8 flex flex-col items-start gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-text-muted">
-            Want to check your own site? Accessly scans any URL in seconds.
+            Want to check your own site? a11ymind scans any URL in seconds.
           </p>
           <Link href="/" className="btn-primary text-sm">
             Run a free scan

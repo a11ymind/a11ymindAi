@@ -32,7 +32,7 @@ export function BadgeEmbedCard({
             Monitoring badge
           </p>
           <p className="mt-1 text-sm text-text">
-            Add a lightweight footer badge to show this website is actively monitored by Accessly.
+            Add a lightweight footer badge to show this website is actively monitored by a11ymind.
           </p>
           <p className="mt-1 text-xs text-text-muted">
             This signals ongoing accessibility monitoring. It does not claim certification or full compliance.
@@ -40,7 +40,7 @@ export function BadgeEmbedCard({
           <div className="mt-3 rounded-xl border border-white/10 bg-background px-3 py-3">
             <Image
               src={badgeUrl}
-              alt={`Accessibility monitored by Accessly for ${siteUrl}`}
+              alt={`Accessibility monitored by a11ymind for ${siteUrl}`}
               width={244}
               height={36}
               className="h-9 w-auto"

@@ -88,7 +88,7 @@ function redirectToScan(scanId: string, code: string, requestUrl: string) {
 function reportFilename(url: string, createdAt: Date): string {
   const stamp = createdAt.toISOString().slice(0, 10);
   const host = hostFromUrl(url).replace(/[^a-z0-9.-]/gi, "-");
-  return `accessly-${host}-${stamp}.pdf`;
+  return `a11ymind-${host}-${stamp}.pdf`;
 }
 
 function hostFromUrl(url: string): string {

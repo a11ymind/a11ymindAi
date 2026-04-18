@@ -2,7 +2,7 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
       <ShieldMark />
-      <span className="text-lg font-semibold tracking-tight">Accessly</span>
+      <span className="text-lg font-semibold tracking-tight">a11ymind</span>
     </div>
   );
 }

@@ -52,11 +52,11 @@ function renderBadgeSvg({
   const border = active ? "#17414d" : "#323232";
   const statusDot = active ? "#06b6d4" : "#6b7280";
   const statusText = active ? "Accessibility monitored" : "Monitoring inactive";
-  const hostText = active ? hostname : "Accessly";
+  const hostText = active ? hostname : "a11ymind";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" viewBox="0 0 ${BADGE_WIDTH} ${BADGE_HEIGHT}" role="img" aria-label="${escapeXml(
-    active ? "Accessibility monitored by Accessly" : "Accessly monitoring inactive",
+    active ? "Accessibility monitored by a11ymind" : "a11ymind monitoring inactive",
   )}">
   <rect x="0.5" y="0.5" width="${BADGE_WIDTH - 1}" height="${BADGE_HEIGHT - 1}" rx="10" fill="${background}" stroke="${border}" />
   <circle cx="18" cy="18" r="5" fill="${statusDot}" />
@@ -66,7 +66,7 @@ function renderBadgeSvg({
   <text x="30" y="27" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="10">${escapeXml(
     hostText,
   )}</text>
-  <text x="${BADGE_WIDTH - 16}" y="22" text-anchor="end" fill="#06b6d4" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="700">Accessly</text>
+  <text x="${BADGE_WIDTH - 16}" y="22" text-anchor="end" fill="#06b6d4" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="700">a11ymind</text>
 </svg>`;
 }
 

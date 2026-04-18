@@ -84,13 +84,13 @@ export async function sendAuthWelcomeEmail(input: {
   const greeting = input.name?.trim() ? `Hi ${input.name.trim()},` : "Hi,";
   const providerLine =
     input.provider === "social"
-      ? "Your Accessly account is ready and linked to your social sign-in."
-      : "Your Accessly account is ready and you can now sign in with your email and password.";
+      ? "Your a11ymind account is ready and linked to your social sign-in."
+      : "Your a11ymind account is ready and you can now sign in with your email and password.";
 
   const text = [
     greeting,
     "",
-    "Welcome to Accessly.",
+    "Welcome to a11ymind.",
     providerLine,
     "",
     "You can now:",
@@ -101,7 +101,7 @@ export async function sendAuthWelcomeEmail(input: {
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-      <h1 style="font-size: 18px; margin-bottom: 12px;">Welcome to Accessly</h1>
+      <h1 style="font-size: 18px; margin-bottom: 12px;">Welcome to a11ymind</h1>
       <p style="margin: 0 0 12px;">${escapeHtml(greeting)}</p>
       <p style="margin: 0 0 12px;">${escapeHtml(providerLine)}</p>
       <p style="margin: 0 0 12px;">You can now:</p>
@@ -115,7 +115,7 @@ export async function sendAuthWelcomeEmail(input: {
 
   return sendEmail({
     to: input.to,
-    subject: "Welcome to Accessly",
+    subject: "Welcome to a11ymind",
     text,
     html,
   });

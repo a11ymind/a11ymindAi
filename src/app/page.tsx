@@ -62,9 +62,9 @@ export default async function LandingPage() {
       {/* Problem / differentiation */}
       <section className="container-page py-16">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs uppercase tracking-wider text-accent">Why Accessly</p>
+          <p className="text-xs uppercase tracking-wider text-accent">Why a11ymind</p>
           <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            Most tools tell you what&apos;s wrong. Accessly helps you fix it.
+            Most tools tell you what&apos;s wrong. a11ymind helps you fix it.
           </h2>
           <p className="mt-4 text-base text-text-muted">
             Traditional accessibility scanners spit out a wall of technical violations and leave
@@ -86,7 +86,7 @@ export default async function LandingPage() {
           />
           <ComparisonCard
             tone="accent"
-            label="Accessly"
+            label="a11ymind"
             points={[
               "Plain-English explanations of every risk",
               "Copy-pasteable code fixes, per violation",
@@ -154,7 +154,7 @@ export default async function LandingPage() {
               </h2>
               <p className="mt-4 text-base text-text-muted">
                 Websites change. A new template, a redesigned hero, an added form — any of them can
-                introduce new accessibility risks overnight. Accessly re-scans your saved sites on a
+                introduce new accessibility risks overnight. a11ymind re-scans your saved sites on a
                 schedule and flags regressions before users (or lawyers) do.
               </p>
               <ul className="mt-5 space-y-2 text-sm text-text">
@@ -204,7 +204,7 @@ export default async function LandingPage() {
 
       <footer className="container-page flex flex-col items-center justify-between gap-4 border-t border-border py-8 text-xs text-text-subtle sm:flex-row">
         <Logo />
-        <p>© {new Date().getFullYear()} Accessly. Built for small teams that can&apos;t afford a six-figure audit.</p>
+        <p>© {new Date().getFullYear()} a11ymind. Built for small teams that can&apos;t afford a six-figure audit.</p>
       </footer>
     </main>
   );
@@ -267,7 +267,7 @@ function ResultPreview() {
           <span className="h-2 w-2 rounded-full bg-severity-critical/80" />
           <span className="h-2 w-2 rounded-full bg-severity-moderate/80" />
           <span className="h-2 w-2 rounded-full bg-accent/80" />
-          <span className="ml-3 font-mono">accessly.app/scan/preview</span>
+          <span className="ml-3 font-mono">a11ymind.ai/scan/preview</span>
         </div>
         <span className="text-[10px] uppercase tracking-wider text-text-subtle">Preview</span>
       </div>

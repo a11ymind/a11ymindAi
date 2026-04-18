@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { getDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Diagnostics — Accessly" };
+export const metadata = { title: "Diagnostics — a11ymind" };
 
 export default async function DiagnosticsPage() {
   const session = await getSession();
