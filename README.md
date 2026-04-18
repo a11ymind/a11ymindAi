@@ -19,34 +19,34 @@ See `CLAUDE.md` for the architecture overview and commands reference.
 
 ---
 
-## a11ymind GitHub Action v1
+## AccessLint GitHub Action v1
 
-a11ymind also ships a lightweight JavaScript GitHub Action for CI-time scans of
-preview or live URLs.
+a11ymind also ships `a11ymind/accesslint`, a lightweight JavaScript GitHub
+Action for CI-time scans of preview or live URLs.
 
 - a11ymind app: post-deploy monitoring, reporting, alerts, dashboards
-- a11ymind Action v1: pre-deploy scan helper for preview URLs in CI
+- AccessLint v1: pre-deploy scan helper for preview URLs in CI
 
 Example:
 
 ```yaml
-- name: a11ymind scan
-  id: a11ymind
-  uses: <owner>/<repo>@v1
+- name: AccessLint scan
+  id: accesslint
+  uses: a11ymind/accesslint@v1
   with:
     url: https://preview.example.com
     fail-on: serious
     output-json: true
     output-markdown: true
 
-- name: Upload a11ymind artifacts
+- name: Upload AccessLint artifacts
   if: always()
   uses: actions/upload-artifact@v4
   with:
-    name: a11ymind-report
+    name: accesslint-report
     path: |
-      ${{ steps.a11ymind.outputs.json-path }}
-      ${{ steps.a11ymind.outputs.markdown-path }}
+      ${{ steps.accesslint.outputs.json-path }}
+      ${{ steps.accesslint.outputs.markdown-path }}
 ```
 
 The action writes Markdown and JSON artifacts into the workspace, adds a job

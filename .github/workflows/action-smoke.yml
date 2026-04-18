@@ -24,16 +24,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      ACCESSLY_SMOKE_URL: https://www.example.com
+      ACCESSLINT_SMOKE_URL: https://www.example.com
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Run Accessly action
+      - name: Run AccessLint action
         id: accessly
         uses: ./
         with:
-          url: ${{ env.ACCESSLY_SMOKE_URL }}
+          url: ${{ env.ACCESSLINT_SMOKE_URL }}
           fail-on: none
           output-json: true
           output-markdown: true
@@ -53,13 +53,13 @@ jobs:
           test -f "${{ steps.accessly.outputs.markdown-path }}"
 
           grep -q '"score"' "${{ steps.accessly.outputs.json-path }}"
-          grep -q '# Accessly scan summary' "${{ steps.accessly.outputs.markdown-path }}"
+          grep -q '# AccessLint scan summary' "${{ steps.accessly.outputs.markdown-path }}"
 
-      - name: Upload Accessly smoke artifacts
+      - name: Upload AccessLint smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: accessly-action-smoke-report
+          name: accesslint-smoke-report
           path: |
             ${{ steps.accessly.outputs.json-path }}
             ${{ steps.accessly.outputs.markdown-path }}

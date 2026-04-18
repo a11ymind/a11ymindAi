@@ -1,16 +1,16 @@
-name: Accessly Scan
-description: Scan a preview or live URL in CI for accessibility risks with Accessly.
-author: Accessly
+name: AccessLint
+description: "Scan a preview or live URL in CI for accessibility risks with a11ymind/accesslint."
+author: a11ymind
 branding:
   icon: eye
   color: blue
 
 inputs:
   url:
-    description: Preview or live URL to scan with Accessly
+    description: Preview or live URL to scan with AccessLint
     required: true
   fail-on:
-    description: Fail the step when risks at or above this severity are found. Allowed values: none, minor, moderate, serious, critical.
+    description: "Fail the step when risks at or above this severity are found. Allowed values: none, minor, moderate, serious, critical."
     required: false
     default: serious
   output-json:
@@ -22,9 +22,9 @@ inputs:
     required: false
     default: "true"
   output-dir:
-    description: Directory where report artifacts are written. Files are named accessly-report.json and accessly-summary.md.
+    description: "Directory where report artifacts are written. Files are named accesslint-report.json and accesslint-summary.md."
     required: false
-    default: .accessly-action
+    default: .accesslint
 
 outputs:
   score:
@@ -40,9 +40,9 @@ outputs:
   minor-count:
     description: Count of minor accessibility risks
   json-path:
-    description: Relative path to accessly-report.json, or an empty string when JSON output is disabled
+    description: Relative path to accesslint-report.json, or an empty string when JSON output is disabled
   markdown-path:
-    description: Relative path to accessly-summary.md, or an empty string when Markdown output is disabled
+    description: Relative path to accesslint-summary.md, or an empty string when Markdown output is disabled
   threshold-exceeded:
     description: true when the configured fail-on threshold was exceeded, otherwise false
 

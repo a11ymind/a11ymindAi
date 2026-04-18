@@ -1,17 +1,17 @@
-# Accessly GitHub Action v1
+# AccessLint GitHub Action v1
 
-Accessly Action v1 is a lightweight JavaScript GitHub Action for scanning a preview or live URL in CI before deployment.
+AccessLint is a lightweight JavaScript GitHub Action for scanning a preview or live URL in CI before deployment.
 
-It complements the main Accessly app:
+It complements the main a11ymind app:
 
-- Accessly app: post-deploy monitoring, saved sites, alerts, dashboards, reports
-- Accessly Action v1: pre-deploy CI scan helper for preview URLs
+- a11ymind app: post-deploy monitoring, saved sites, alerts, dashboards, reports
+- AccessLint: pre-deploy CI scan helper for preview URLs
 
 ## What v1 does
 
 - scans one preview or live URL
 - runs automated axe-based accessibility checks
-- computes an Accessly score
+- computes an accessibility score
 - writes optional JSON and Markdown reports into the workspace
 - adds a GitHub Actions job summary
 - can fail the workflow step when risks at or above a configured severity are found
@@ -24,7 +24,7 @@ This action is intentionally small and developer-facing. It is meant to help eng
 
 - v1 is best suited to GitHub-hosted Linux runners such as `ubuntu-latest`
 - it expects Chrome to be available on the runner
-- it does not use the Vercel serverless Chromium path from the main Accessly app
+- it does not use the Vercel serverless Chromium path from the main a11ymind app
 
 ## Non-goals for v1
 
@@ -69,18 +69,18 @@ Default: `true`
 
 Optional directory where generated files are written.
 
-Default: `.accessly-action`
+Default: `.accesslint`
 
 ## Outputs
 
-- `score`: Accessly score from `0` to `100`
+- `score`: accessibility score from `0` to `100`
 - `total-risks`: total detected accessibility risks
 - `critical-count`: count of critical risks
 - `serious-count`: count of serious risks
 - `moderate-count`: count of moderate risks
 - `minor-count`: count of minor risks
-- `json-path`: path to `accessly-report.json`, or empty when disabled
-- `markdown-path`: path to `accessly-summary.md`, or empty when disabled
+- `json-path`: path to `accesslint-report.json`, or empty when disabled
+- `markdown-path`: path to `accesslint-summary.md`, or empty when disabled
 - `threshold-exceeded`: `true` or `false`
 
 ## Fail-on behavior
@@ -97,8 +97,8 @@ The step still writes reports and a job summary before failing on the configured
 
 By default the action writes:
 
-- `.accessly-action/accessly-report.json`
-- `.accessly-action/accessly-summary.md`
+- `.accesslint/accesslint-report.json`
+- `.accesslint/accesslint-summary.md`
 
 If you change `output-dir`, the filenames remain the same and only the directory changes.
 
@@ -106,26 +106,26 @@ If you change `output-dir`, the filenames remain the same and only the directory
 
 For local testing inside this repository, use `uses: ./`.
 
-For another repository, use `uses: <owner>/<repo>@v1`.
+For another repository, use `uses: a11ymind/accesslint@v1`.
 
 ```yaml
 - name: Checkout
   uses: actions/checkout@v6
 
-- name: Accessly scan
+- name: AccessLint scan
   id: accessly
-  uses: <owner>/<repo>@v1
+  uses: a11ymind/accesslint@v1
   with:
     url: https://preview.example.com
     fail-on: serious
     output-json: true
     output-markdown: true
 
-- name: Upload Accessly artifacts
+- name: Upload AccessLint artifacts
   if: always()
   uses: actions/upload-artifact@v4
   with:
-    name: accessly-report
+    name: accesslint-report
     path: |
       ${{ steps.accessly.outputs.json-path }}
       ${{ steps.accessly.outputs.markdown-path }}

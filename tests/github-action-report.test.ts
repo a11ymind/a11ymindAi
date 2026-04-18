@@ -78,7 +78,7 @@ test("report helpers render markdown and JSON artifacts", () => {
     result,
   });
 
-  assert.match(markdown, /# Accessly scan summary/);
+  assert.match(markdown, /# AccessLint scan summary/);
   assert.match(markdown, /Accessibility score: 87\/100/);
   assert.match(markdown, /\*\*serious\*\* Elements must meet minimum color contrast ratio thresholds/);
 
@@ -115,4 +115,5 @@ test("report helpers format a concise success summary", () => {
   assert.match(message, /score 87\/100/);
   assert.match(message, /Critical 0 \| Serious 1 \| Moderate 0 \| Minor 1/);
   assert.match(message, /threshold \(serious\) was exceeded/);
+  assert.match(message, /AccessLint scan complete/);
 });

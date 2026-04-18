@@ -20,9 +20,9 @@ async function run() {
   const failOn = parseFailOn(core.getInput("fail-on"));
   const outputJson = parseBooleanInput(core.getInput("output-json"), true);
   const outputMarkdown = parseBooleanInput(core.getInput("output-markdown"), true);
-  const outputDir = core.getInput("output-dir") || ".accessly-action";
+  const outputDir = core.getInput("output-dir") || ".accesslint";
 
-  core.info(`Accessly: scanning ${url}`);
+  core.info(`AccessLint: scanning ${url}`);
   let result: Awaited<ReturnType<typeof scanUrl>>;
   try {
     result = await scanUrl(url);
@@ -32,7 +32,7 @@ async function run() {
         ? error.message
         : "Unknown scan failure";
     throw new Error(
-      `Accessly could not scan ${url}. ${message} This action currently expects a reachable preview/live URL on a GitHub-hosted Linux runner with Chrome available.`,
+      `AccessLint could not scan ${url}. ${message} This action currently expects a reachable preview/live URL on a GitHub-hosted Linux runner with Chrome available.`,
     );
   }
   const score = computeScore(result.violations);
@@ -63,14 +63,14 @@ async function run() {
       result,
     });
     await writeFile(jsonPath, `${JSON.stringify(jsonReport, null, 2)}\n`, "utf8");
-    core.info(`Accessly: wrote JSON report to ${jsonPath}`);
+    core.info(`AccessLint: wrote JSON report to ${jsonPath}`);
   }
 
   let markdownPath = "";
   if (outputMarkdown) {
     markdownPath = path.join(outputDir, ACTION_MARKDOWN_FILENAME);
     await writeFile(markdownPath, `${markdown}\n`, "utf8");
-    core.info(`Accessly: wrote Markdown report to ${markdownPath}`);
+    core.info(`AccessLint: wrote Markdown report to ${markdownPath}`);
   }
 
   core.summary.addRaw(markdown, true);
@@ -100,7 +100,7 @@ async function run() {
 
   if (exceeded) {
     core.setFailed(
-      `Accessly found ${result.violations.length} accessibility risk${result.violations.length === 1 ? "" : "s"} and the configured fail-on threshold (${failOn}) was exceeded. Review the job summary and uploaded report artifacts for details.`,
+      `AccessLint found ${result.violations.length} accessibility risk${result.violations.length === 1 ? "" : "s"} and the configured fail-on threshold (${failOn}) was exceeded. Review the job summary and uploaded report artifacts for details.`,
     );
   }
 }
@@ -124,5 +124,5 @@ function emitAnnotations(violations: Awaited<ReturnType<typeof scanUrl>>["violat
 }
 
 void run().catch((error) => {
-  core.setFailed(error instanceof Error ? error.message : "Accessly Action failed");
+  core.setFailed(error instanceof Error ? error.message : "AccessLint failed");
 });
