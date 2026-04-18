@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { AnchorLink } from "@/components/AnchorLink";
 import { getSession } from "@/lib/auth";
 
 export async function SiteHeader({
@@ -24,8 +25,18 @@ export async function SiteHeader({
           </Link>
           {variant === "marketing" && (
             <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
-              <HeaderLink href="/#how-it-works">How it works</HeaderLink>
-              <HeaderLink href="/#faq">FAQ</HeaderLink>
+              <AnchorLink
+                href="/#how-it-works"
+                className="hidden rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-bg-elevated/60 hover:text-text sm:inline-block"
+              >
+                How it works
+              </AnchorLink>
+              <AnchorLink
+                href="/#faq"
+                className="hidden rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-bg-elevated/60 hover:text-text sm:inline-block"
+              >
+                FAQ
+              </AnchorLink>
               <HeaderLink href="/pricing">Pricing</HeaderLink>
               {session?.user ? (
                 <Link

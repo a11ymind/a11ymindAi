@@ -6,6 +6,12 @@
   html {
     color-scheme: dark;
     overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+  :target,
+  section[id],
+  [id] {
+    scroll-margin-top: 5rem;
   }
   body {
     @apply bg-bg text-text font-sans antialiased;
