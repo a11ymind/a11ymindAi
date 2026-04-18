@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { appUrl, priceIdFor, stripe } from "@/lib/stripe";
+import { appUrl, isStripeMissingCustomerError, priceIdFor, stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,33 +51,35 @@ export async function GET(req: Request) {
   }
 
   try {
-    let customerId = user.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe().customers.create({
-        email: user.email,
-        name: user.name ?? undefined,
-        metadata: { userId: user.id },
+    let customerId = user.stripeCustomerId ?? (await createStripeCustomer(user));
+    let checkout;
+    try {
+      checkout = await createCheckoutSession({
+        customerId,
+        priceId,
+        userId: user.id,
+        plan: planParam,
       });
-      customerId = customer.id;
+    } catch (e) {
+      if (!user.stripeCustomerId || !isStripeMissingCustomerError(e)) {
+        throw e;
+      }
+
+      console.warn(
+        `[stripe/checkout] stale customer id ${user.stripeCustomerId} for user ${user.id}; recreating`,
+      );
       await prisma.user.update({
         where: { id: user.id },
-        data: { stripeCustomerId: customerId },
+        data: { stripeCustomerId: null },
+      });
+      customerId = await createStripeCustomer(user);
+      checkout = await createCheckoutSession({
+        customerId,
+        priceId,
+        userId: user.id,
+        plan: planParam,
       });
     }
-
-    const checkout = await stripe().checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${appUrl()}/dashboard?upgraded=1`,
-      cancel_url: `${appUrl()}/pricing?canceled=1`,
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      subscription_data: {
-        metadata: { userId: user.id, plan: planParam },
-      },
-      client_reference_id: user.id,
-    });
 
     if (!checkout.url) {
       return redirectWithError("/pricing", "checkout_no_url");
@@ -93,4 +95,42 @@ function redirectWithError(path: string, code: string) {
   const u = new URL(path, appUrl());
   u.searchParams.set("error", code);
   return NextResponse.redirect(u);
+}
+
+async function createStripeCustomer(user: {
+  id: string;
+  email: string;
+  name: string | null;
+}) {
+  const customer = await stripe().customers.create({
+    email: user.email,
+    name: user.name ?? undefined,
+    metadata: { userId: user.id },
+  });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { stripeCustomerId: customer.id },
+  });
+  return customer.id;
+}
+
+async function createCheckoutSession(input: {
+  customerId: string;
+  priceId: string;
+  userId: string;
+  plan: "STARTER" | "PRO";
+}) {
+  return stripe().checkout.sessions.create({
+    mode: "subscription",
+    customer: input.customerId,
+    line_items: [{ price: input.priceId, quantity: 1 }],
+    success_url: `${appUrl()}/dashboard?upgraded=1`,
+    cancel_url: `${appUrl()}/pricing?canceled=1`,
+    allow_promotion_codes: true,
+    billing_address_collection: "auto",
+    subscription_data: {
+      metadata: { userId: input.userId, plan: input.plan },
+    },
+    client_reference_id: input.userId,
+  });
 }

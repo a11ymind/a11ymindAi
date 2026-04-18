@@ -3,7 +3,8 @@ import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
 import { isIP } from "node:net";
 import puppeteer from "puppeteer-core";
-import { AxePuppeteer } from "@axe-core/puppeteer";
+import type { Browser } from "puppeteer-core";
+import * as axe from "axe-core";
 
 export type AxeNode = {
   html: string;
@@ -139,11 +140,19 @@ export async function scanUrl(url: string): Promise<ScanResult> {
       );
     }
 
-    const results = await new AxePuppeteer(
-      page as ConstructorParameters<typeof AxePuppeteer>[0],
-    )
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
-      .analyze();
+    await page.evaluate(axe.source);
+    const results = await page.evaluate(async () => {
+      const runtimeAxe = (globalThis as { axe?: typeof axe }).axe;
+      if (!runtimeAxe) {
+        throw new Error("axe-core failed to initialize in the page context");
+      }
+      return runtimeAxe.run(document, {
+        runOnly: {
+          type: "tag",
+          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"],
+        },
+      });
+    });
 
     return {
       url: target,
@@ -158,7 +167,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   }
 }
 
-async function launchBrowser() {
+async function launchBrowser(): Promise<Browser> {
   if (process.env.GITHUB_ACTIONS === "true") {
     return puppeteer.launch({
       executablePath: githubActionsChromePath(),
@@ -184,7 +193,7 @@ async function launchBrowser() {
   }
 
   const localPuppeteer = await import("puppeteer");
-  return localPuppeteer.default.launch({
+  return (await localPuppeteer.default.launch({
     headless: true,
     args: [
       "--no-sandbox",
@@ -193,7 +202,7 @@ async function launchBrowser() {
       "--disable-gpu",
     ],
     defaultViewport: DEFAULT_VIEWPORT,
-  });
+  })) as unknown as Browser;
 }
 
 function githubActionsChromePath() {

@@ -54,3 +54,29 @@ export function appUrl(): string {
     "http://localhost:3000"
   );
 }
+
+export function isStripeMissingCustomerError(error: unknown): boolean {
+  const candidate = error as
+    | {
+        message?: unknown;
+        code?: unknown;
+        param?: unknown;
+        raw?: { message?: unknown; code?: unknown; param?: unknown };
+      }
+    | undefined;
+
+  const message =
+    typeof candidate?.raw?.message === "string"
+      ? candidate.raw.message
+      : typeof candidate?.message === "string"
+        ? candidate.message
+        : "";
+  const code = candidate?.raw?.code ?? candidate?.code;
+  const param = candidate?.raw?.param ?? candidate?.param;
+
+  return (
+    message.toLowerCase().includes("no such customer") &&
+    (code === undefined || code === "resource_missing") &&
+    (param === undefined || param === "customer")
+  );
+}
