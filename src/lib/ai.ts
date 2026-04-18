@@ -51,19 +51,38 @@ const TOOL = {
   },
 };
 
+// Hard caps to bound Claude input cost regardless of how pathological the
+// scanned page is. A site with 2000 violations would otherwise send ~500K
+// tokens per scan.
+const MAX_VIOLATIONS_SENT = 50;
+const MAX_NODES_PER_VIOLATION = 3;
+const MAX_HTML_CHARS = 400;
+
+const IMPACT_RANK: Record<string, number> = {
+  critical: 0,
+  serious: 1,
+  moderate: 2,
+  minor: 3,
+};
+
 function compactViolations(violations: AxeViolation[]) {
-  return violations.map((v) => ({
+  const ranked = [...violations].sort(
+    (a, b) => (IMPACT_RANK[a.impact ?? "minor"] ?? 4) - (IMPACT_RANK[b.impact ?? "minor"] ?? 4),
+  );
+  return ranked.slice(0, MAX_VIOLATIONS_SENT).map((v) => ({
     axeId: v.id,
     impact: v.impact,
     help: v.help,
     description: v.description,
     helpUrl: v.helpUrl,
-    affectedElements: v.nodes.slice(0, 3).map((n) => ({
-      html: n.html.slice(0, 400),
+    affectedElements: v.nodes.slice(0, MAX_NODES_PER_VIOLATION).map((n) => ({
+      html: n.html.slice(0, MAX_HTML_CHARS),
       selector: n.target?.join(" ") ?? "",
     })),
   }));
 }
+
+const AI_CALL_TIMEOUT_MS = 30_000;
 
 export async function generateFixes(
   violations: AxeViolation[],
@@ -72,29 +91,39 @@ export async function generateFixes(
   if (!process.env.ANTHROPIC_API_KEY) return [];
   if (violations.length === 0) return [];
 
-  const response = await client.messages.create({
-    model: modelForPlan(plan),
-    max_tokens: 4096,
-    system: [
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS);
+  let response;
+  try {
+    response = await client.messages.create(
       {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
+        model: modelForPlan(plan),
+        max_tokens: 4096,
+        system: [
+          {
+            type: "text",
+            text: SYSTEM_PROMPT,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        tools: [TOOL],
+        tool_choice: { type: "tool", name: "report_fixes" },
+        messages: [
+          {
+            role: "user",
+            content: `Here are the violations found on the page. Return fixes in order.\n\n${JSON.stringify(
+              compactViolations(violations),
+              null,
+              2,
+            )}`,
+          },
+        ],
       },
-    ],
-    tools: [TOOL],
-    tool_choice: { type: "tool", name: "report_fixes" },
-    messages: [
-      {
-        role: "user",
-        content: `Here are the violations found on the page. Return fixes in order.\n\n${JSON.stringify(
-          compactViolations(violations),
-          null,
-          2,
-        )}`,
-      },
-    ],
-  });
+      { signal: controller.signal },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const toolUse = response.content.find((b) => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") return [];

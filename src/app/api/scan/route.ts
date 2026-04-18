@@ -111,6 +111,26 @@ export async function POST(req: Request) {
       }
     }
 
+    // Cap concurrent in-flight scans per user. Prevents someone firing 50
+    // parallel requests to bypass monthly/daily caps before any complete.
+    const concurrencyCap =
+      userPlan === "PRO" ? 5 : userPlan === "STARTER" ? 2 : 1;
+    const inFlight = await prisma.scan.count({
+      where: { userId, status: "RUNNING" },
+    });
+    if (inFlight >= concurrencyCap) {
+      return NextResponse.json(
+        {
+          code: "TOO_MANY_INFLIGHT",
+          error: `You already have ${inFlight} scan${inFlight === 1 ? "" : "s"} running.`,
+          message: `You already have ${inFlight} scan${inFlight === 1 ? "" : "s"} running. Wait for those to finish before starting another.`,
+          plan: userPlan,
+          limit: concurrencyCap,
+        },
+        { status: 429 },
+      );
+    }
+
     const authLimit = await rateLimitAuthenticatedScan(userId, userPlan);
     if (!authLimit.allowed) {
       return NextResponse.json(
