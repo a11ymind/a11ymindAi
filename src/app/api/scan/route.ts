@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { normalizeUrl } from "@/lib/scan";
 import {
+  extractClientIp,
   rateLimitAnonymousScan,
   rateLimitAuthenticatedScan,
   rateLimitHeaders,
+  rateLimitUserAction,
 } from "@/lib/rate-limit";
 import {
   createScanRecord,
@@ -129,6 +131,32 @@ export async function POST(req: Request) {
         },
         { status: 429 },
       );
+    }
+
+    // Per-IP authenticated-scan cap. Stops bulk-farmed accounts that share
+    // a single IP from each spending their per-user quota — they share the
+    // IP budget instead. Legit office networks have plenty of headroom.
+    const clientIp = extractClientIp(req);
+    if (clientIp) {
+      const ipLimit = await rateLimitUserAction({
+        userId: `ip:${clientIp}`,
+        action: "auth-scan-ip",
+        limit: 40,
+        windowMs: 24 * 60 * 60 * 1000,
+      });
+      if (!ipLimit.allowed) {
+        return NextResponse.json(
+          {
+            code: "RATE_LIMITED",
+            error:
+              "Too many scans from this network today. Try again in 24 hours.",
+            message:
+              "Too many scans have been run from this network today. If you're on a shared office or VPN, try again in a few hours or contact support.",
+            retryAfterSec: ipLimit.retryAfterSec,
+          },
+          { status: 429, headers: rateLimitHeaders(ipLimit) },
+        );
+      }
     }
 
     const authLimit = await rateLimitAuthenticatedScan(userId, userPlan);
