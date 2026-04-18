@@ -2,10 +2,19 @@
 
 AccessLint is a lightweight JavaScript GitHub Action for scanning a preview or live URL in CI before deployment.
 
+Catch accessibility risks on a single preview, staging, or live URL before code merges or deploys.
+
 It complements the main a11ymind app:
 
 - a11ymind app: post-deploy monitoring, saved sites, alerts, dashboards, reports
 - AccessLint: pre-deploy CI scan helper for preview URLs
+
+## Features
+
+- scan one URL in CI
+- generate JSON and Markdown reports
+- fail the job on configurable severity thresholds
+- optionally post or update a concise pull request summary comment
 
 ## What v1 does
 
@@ -19,6 +28,23 @@ It complements the main a11ymind app:
 ## Current v1 scope
 
 This action is intentionally small and developer-facing. It is meant to help engineering teams catch accessibility risks during CI for a single deployed URL.
+
+## Release and versioning
+
+Recommended GitHub Action release strategy:
+
+- cut immutable semantic version tags such as `v1.0.0`, `v1.0.1`, `v1.1.0`
+- move the major tag `v1` to the latest stable `v1.x.y` release
+- keep consumer examples on `uses: a11ymind/accesslint@v1`
+
+Practical release notes:
+
+- keep `action.yml` at the repository root
+- keep `github-action/dist/index.js` committed so consumers do not need a build step
+- rebuild the bundle with `npm run action:build` before tagging a release
+- run `npm run test`, `npm run build`, and `npm run typecheck` before cutting tags
+
+See [CHANGELOG.md](CHANGELOG.md) for the current v1 release summary.
 
 ## Quick start
 
@@ -64,6 +90,124 @@ This keeps the action simple in consumer repos:
 - fail the job only when the chosen severity threshold is exceeded
 - always upload the JSON and Markdown reports for inspection
 
+## Test from another repository
+
+Use this minimal workflow in another repository to validate external consumption
+through `a11ymind/accesslint@v1`.
+
+```yaml
+name: AccessLint smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  accesslint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run AccessLint
+        id: accesslint
+        uses: a11ymind/accesslint@v1
+        with:
+          url: https://www.example.com
+          fail-on: none
+
+      - name: Upload AccessLint artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accesslint-report
+          path: |
+            ${{ steps.accesslint.outputs.json-path }}
+            ${{ steps.accesslint.outputs.markdown-path }}
+```
+
+Notes:
+
+- start with `fail-on: none` for a simple external smoke test
+- v1 is best suited to GitHub-hosted Ubuntu runners
+- add `pull-requests: write` only if you want PR comments
+
+## Pull request comments
+
+AccessLint can optionally post a concise summary comment on the triggering pull
+request and update that same comment on later runs.
+
+Required workflow permissions:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+```
+
+Example:
+
+```yaml
+name: Accessibility scan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  accesslint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run AccessLint
+        id: accesslint
+        uses: a11ymind/accesslint@v1
+        with:
+          url: https://preview.example.com
+          fail-on: serious
+          comment-pr: true
+
+      - name: Upload AccessLint artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accesslint-report
+          path: |
+            ${{ steps.accesslint.outputs.json-path }}
+            ${{ steps.accesslint.outputs.markdown-path }}
+```
+
+Example comment shape:
+
+```md
+## AccessLint summary
+
+- URL: https://preview.example.com
+- Score: 88/100
+- Risks: 2
+- Severity: Critical 0 | Serious 1 | Moderate 0 | Minor 1
+- Fail-on threshold: serious
+- Threshold result: exceeded
+- JSON report: `.accesslint/accesslint-report.json`
+- Markdown report: `.accesslint/accesslint-summary.md`
+
+### Top risks
+
+- **serious** Elements must meet minimum color contrast ratio thresholds (1 node)
+```
+
+Notes:
+
+- PR comments are opt-in through `comment-pr: true`
+- they only run in `pull_request` or `pull_request_target` context
+- AccessLint updates a single managed comment in place instead of posting duplicates
+- the comment includes the relative JSON and Markdown report paths when those outputs are enabled
+- if permissions or token access are missing, the scan still completes and the comment is skipped with a warning
+
 ## Runner expectation
 
 - v1 is best suited to GitHub-hosted Linux runners such as `ubuntu-latest`
@@ -72,7 +216,7 @@ This keeps the action simple in consumer repos:
 
 ## Non-goals for v1
 
-- no PR comments
+- no rich PR review annotations beyond the optional summary comment
 - no AI fixes
 - no crawling
 - no monetization or API key model yet
@@ -114,6 +258,19 @@ Default: `true`
 Optional directory where generated files are written.
 
 Default: `.accesslint`
+
+### `comment-pr`
+
+Optional. Post or update a concise summary comment on the triggering pull
+request.
+
+Default: `false`
+
+### `github-token`
+
+Optional. GitHub token used for PR comments.
+
+Default: `${{ github.token }}`
 
 ## Outputs
 
@@ -193,11 +350,33 @@ is easy to swap later if maintainers want a different stable public test page.
 The smoke workflow uses `fail-on: none` so it validates action behavior without
 turning expected findings on a public test page into a flaky pipeline failure.
 
+## Future release process
+
+When you are ready to publish a stable release later:
+
+1. Update `github-action/CHANGELOG.md` with the consumer-facing release notes.
+2. Rebuild the committed action bundle with `npm run action:build`.
+3. Run `npm run test`, `npm run build`, and `npm run typecheck`.
+4. Commit the final bundle/docs changes.
+5. Create and push a semantic version tag such as `v1.0.0`.
+6. Move or create the floating `v1` tag to point at the latest stable `v1.x.y` release.
+
+This repository is already structured so consumers can use:
+
+- `a11ymind/accesslint@v1`
+- `a11ymind/accesslint@v1.0.0`
+
 ## Limitations
 
 - scans one URL only
 - no authenticated/session-aware scanning flow yet
 - no crawling across multiple pages
-- no PR comment integration yet
+- PR comments are summary-only and opt-in
 - no AI remediation output yet
 - currently best suited to GitHub-hosted Linux runners with Chrome available
+
+## Repo notes for future publication
+
+- The action is published from the repository root because `action.yml` lives there.
+- The implementation source stays under `github-action/`, which is fine for Marketplace publication as long as the root metadata and bundled entrypoint remain stable.
+- The main repo is still a monorepo for the broader a11ymind app, so release notes should stay explicit that AccessLint is the CI Action surface, not the full SaaS product.

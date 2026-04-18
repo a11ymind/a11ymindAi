@@ -1,5 +1,5 @@
 name: AccessLint
-description: "Scan a preview or live URL in CI for accessibility risks with a11ymind/accesslint."
+description: "Scan a single preview, staging, or live URL in CI for accessibility risks."
 author: a11ymind
 branding:
   icon: eye
@@ -7,18 +7,26 @@ branding:
 
 inputs:
   url:
-    description: Preview, staging, or live URL to scan with AccessLint
+    description: Single preview, staging, or live URL to scan with AccessLint
     required: true
   fail-on:
     description: "Fail the step when risks at or above this severity are found. Allowed values: none, minor, moderate, serious, critical."
     required: false
     default: serious
+  comment-pr:
+    description: Post or update a concise summary comment on the triggering pull request when running in pull_request context
+    required: false
+    default: "false"
+  github-token:
+    description: GitHub token used for optional pull request comments. Defaults to github.token.
+    required: false
+    default: ${{ github.token }}
   output-json:
-    description: Write a machine-readable JSON report into the workspace as accesslint-report.json
+    description: Write a machine-readable JSON report as accesslint-report.json
     required: false
     default: "true"
   output-markdown:
-    description: Write a human-readable Markdown summary into the workspace as accesslint-summary.md
+    description: Write a human-readable Markdown summary as accesslint-summary.md
     required: false
     default: "true"
   output-dir:
@@ -28,9 +36,9 @@ inputs:
 
 outputs:
   score:
-    description: Accessibility score from 0 to 100 for the scanned page
+    description: Accessibility score from 0 to 100 for the scanned URL
   total-risks:
-    description: Total number of detected accessibility risks
+    description: Total number of detected accessibility risks on the scanned URL
   critical-count:
     description: Count of critical accessibility risks
   serious-count:
