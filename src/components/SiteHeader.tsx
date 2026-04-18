@@ -10,39 +10,47 @@ export async function SiteHeader({
   const session = variant === "minimal" ? null : await getSession();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
-      <div className="container-page flex items-center justify-between py-4">
-        <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
-          <Logo />
-        </Link>
-        {variant === "marketing" && (
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <HeaderLink href="/#how-it-works">How it works</HeaderLink>
-            <HeaderLink href="/#faq">FAQ</HeaderLink>
-            <HeaderLink href="/pricing">Pricing</HeaderLink>
-            {session?.user ? (
-              <Link
-                href="/dashboard"
-                className="ml-1 rounded-md bg-bg-elevated/80 px-3 py-1.5 text-sm text-text transition-colors hover:bg-bg-elevated"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <>
-                <HeaderLink href="/login">Sign in</HeaderLink>
+    <>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-bg"
+      >
+        Skip to main content
+      </a>
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
+        <div className="container-page flex items-center justify-between gap-3 py-4">
+          <Link href="/" aria-label="a11ymind AI home" className="flex min-w-0 items-center">
+            <Logo />
+          </Link>
+          {variant === "marketing" && (
+            <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
+              <HeaderLink href="/#how-it-works">How it works</HeaderLink>
+              <HeaderLink href="/#faq">FAQ</HeaderLink>
+              <HeaderLink href="/pricing">Pricing</HeaderLink>
+              {session?.user ? (
                 <Link
-                  href="/signup"
-                  className="ml-1 inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                  href="/dashboard"
+                  className="rounded-md bg-bg-elevated/80 px-3 py-1.5 text-sm text-text transition-colors hover:bg-bg-elevated"
                 >
-                  Get started
-                  <span aria-hidden>→</span>
+                  Dashboard
                 </Link>
-              </>
-            )}
-          </nav>
-        )}
-      </div>
-    </header>
+              ) : (
+                <>
+                  <HeaderLink href="/login">Sign in</HeaderLink>
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                  >
+                    Get started
+                    <span aria-hidden>→</span>
+                  </Link>
+                </>
+              )}
+            </nav>
+          )}
+        </div>
+      </header>
+    </>
   );
 }
 

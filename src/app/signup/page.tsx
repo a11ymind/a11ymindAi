@@ -7,8 +7,9 @@ export const metadata = { title: "Sign up — a11ymind AI" };
 
 export default function SignupPage() {
   return (
-    <main className="min-h-screen">
+    <>
       <SiteHeader variant="minimal" />
+      <main id="main" className="min-h-screen">
       <div className="relative overflow-hidden">
         <div className="aurora" aria-hidden="true" />
         <div className="container-page relative flex flex-col items-center py-16 sm:py-24">
@@ -36,7 +37,8 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

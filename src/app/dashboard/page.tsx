@@ -82,14 +82,14 @@ export default async function DashboardPage({
     entitlements.autoScan === "none" ? "Manual only" : autoScanLabel(entitlements.autoScan);
 
   return (
-    <main className="min-h-screen">
+    <>
       <BillingStateRefresh enabled={searchParams?.upgraded === "1"} />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
-        <div className="container-page flex flex-wrap items-center justify-between gap-4 py-4">
+        <div className="container-page flex flex-wrap items-center justify-between gap-3 py-4">
           <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
             <Logo />
           </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
             <PlanBadge plan={user.plan} />
             {user.plan === "FREE" ? (
               <Link
@@ -106,13 +106,14 @@ export default async function DashboardPage({
                 Manage billing
               </Link>
             )}
-            <span className="hidden text-sm text-text-muted md:inline">
+            <span className="hidden max-w-[14rem] truncate text-sm text-text-muted md:inline">
               {user.name || user.email}
             </span>
             <SignOutButton />
           </div>
         </div>
       </header>
+      <main id="main" className="min-h-screen">
 
       {searchParams?.upgraded === "1" && (
         <section className="container-page">
@@ -156,7 +157,7 @@ export default async function DashboardPage({
                 : `${sites.length} website${sites.length === 1 ? "" : "s"} currently being monitored.`}
             </p>
           </div>
-          <div className="w-full sm:w-auto sm:min-w-[28rem]">
+          <div className="w-full sm:w-auto sm:min-w-[22rem] lg:min-w-[28rem]">
             <URLScanner />
           </div>
         </div>
@@ -340,6 +341,7 @@ export default async function DashboardPage({
         })}
       </section>
     </main>
+    </>
   );
 }
 

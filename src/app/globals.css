@@ -5,9 +5,11 @@
 @layer base {
   html {
     color-scheme: dark;
+    overflow-x: hidden;
   }
   body {
     @apply bg-bg text-text font-sans antialiased;
+    overflow-x: hidden;
     font-feature-settings: "ss01", "cv11";
     background-color: #0a0a0b;
     background-image:
@@ -30,7 +32,7 @@
 
 @layer components {
   .container-page {
-    @apply mx-auto w-full max-w-6xl px-6;
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
   }
   .card {
     @apply rounded-xl border border-border bg-bg-elevated/80 backdrop-blur-sm shadow-card;

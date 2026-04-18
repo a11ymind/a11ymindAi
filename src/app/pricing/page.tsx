@@ -16,8 +16,9 @@ export default async function PricingPage({
   const banner = pricingBanner(searchParams?.error, searchParams?.canceled);
 
   return (
-    <main className="min-h-screen">
+    <>
       <SiteHeader />
+      <main id="main" className="min-h-screen">
 
       {banner && (
         <section className="container-page pt-4">
@@ -127,7 +128,8 @@ export default async function PricingPage({
           </p>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
 

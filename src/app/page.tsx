@@ -12,15 +12,15 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   return (
-    <main className="min-h-screen">
+    <>
       <SiteHeader />
-
+      <main id="main" className="min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section aria-labelledby="hero-heading" className="relative overflow-hidden">
         <div className="aurora" aria-hidden="true" />
         <div className="grid-bg" aria-hidden="true" />
 
-        <div className="container-page relative flex flex-col items-center py-20 text-center sm:py-28">
+        <div className="container-page relative flex flex-col items-center py-16 text-center sm:py-24 md:py-28">
           <Link
             href="/pricing"
             className="group chip mb-7 animate-fade-in-up transition-colors hover:border-accent/40 hover:text-text"
@@ -35,7 +35,10 @@ export default async function LandingPage() {
             </span>
           </Link>
 
-          <h1 className="max-w-4xl animate-fade-in-up text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
+          <h1
+            id="hero-heading"
+            className="max-w-4xl animate-fade-in-up text-balance text-[2rem] font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
+          >
             <span className="shimmer-text">Ship accessible sites</span>
             <br />
             <span className="gradient-text">before a lawsuit finds them.</span>
@@ -70,7 +73,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Stats strip */}
-      <section className="container-page -mt-6 pb-8">
+      <section aria-label="Key metrics" className="container-page -mt-6 pb-8">
         <div className="card grid grid-cols-2 divide-border/60 overflow-hidden rounded-2xl p-0 md:grid-cols-4 md:divide-x">
           <StatCell value="90+" label="WCAG 2.1 rules checked" />
           <StatCell value="<45s" label="Average scan time" />
@@ -80,10 +83,10 @@ export default async function LandingPage() {
       </section>
 
       {/* Problem / differentiation */}
-      <section className="container-page py-20">
+      <section aria-labelledby="why-heading" className="container-page py-16 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Why a11ymind AI</Eyebrow>
-          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="why-heading" className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
             Most tools tell you what&apos;s wrong.{" "}
             <span className="gradient-text">a11ymind AI fixes it.</span>
           </h2>
@@ -118,10 +121,10 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="container-page py-20">
+      <section id="how-it-works" aria-labelledby="how-heading" className="container-page py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <Eyebrow>How it works</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="how-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             Three steps. No setup.
           </h2>
           <p className="mt-4 text-base text-text-muted">
@@ -151,10 +154,10 @@ export default async function LandingPage() {
       </section>
 
       {/* Demo / value preview */}
-      <section className="container-page py-20">
+      <section aria-labelledby="preview-heading" className="container-page py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <Eyebrow>What you get</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="preview-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             A report you&apos;ll actually use.
           </h2>
           <p className="mt-4 text-base text-text-muted">
@@ -168,12 +171,12 @@ export default async function LandingPage() {
       </section>
 
       {/* Monitoring */}
-      <section className="container-page py-20">
-        <div className="gradient-border relative mx-auto max-w-5xl rounded-2xl p-8 sm:p-12">
+      <section aria-labelledby="monitoring-heading" className="container-page py-16 sm:py-20">
+        <div className="gradient-border relative mx-auto max-w-5xl rounded-2xl p-6 sm:p-10 md:p-12">
           <div className="grid gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:items-center">
             <div>
               <Eyebrow>Ongoing protection</Eyebrow>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h2 id="monitoring-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
                 Accessibility isn&apos;t a one-time fix.
               </h2>
               <p className="mt-4 text-base text-text-muted">
@@ -214,7 +217,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Testimonial */}
-      <section className="container-page py-16">
+      <section aria-label="Customer testimonial" className="container-page py-12 sm:py-16">
         <figure className="mx-auto max-w-3xl text-center">
           <blockquote className="text-balance text-xl font-medium leading-snug text-text sm:text-2xl">
             <span className="text-accent">&ldquo;</span>
@@ -230,10 +233,10 @@ export default async function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="container-page py-20">
+      <section id="faq" aria-labelledby="faq-heading" className="container-page py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <Eyebrow>FAQ</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="faq-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             Questions we hear a lot.
           </h2>
         </div>
@@ -262,13 +265,13 @@ export default async function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="container-page py-24">
-        <div className="relative mx-auto flex max-w-3xl flex-col items-center overflow-hidden rounded-2xl border border-border bg-bg-elevated/60 p-10 text-center sm:p-14">
+      <section aria-labelledby="cta-heading" className="container-page py-16 sm:py-24">
+        <div className="relative mx-auto flex max-w-3xl flex-col items-center overflow-hidden rounded-2xl border border-border bg-bg-elevated/60 p-6 text-center sm:p-10 md:p-14">
           <div
             aria-hidden="true"
             className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
           />
-          <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="cta-heading" className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
             Scan your site now.{" "}
             <span className="gradient-text">See what&apos;s at risk in under a minute.</span>
           </h2>
@@ -286,8 +289,9 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
 
@@ -442,21 +446,21 @@ function ComparisonCard({
 function ResultPreview() {
   return (
     <div className="card mx-auto max-w-4xl overflow-hidden p-0 shadow-glow-lg">
-      <div className="flex items-center justify-between border-b border-border bg-bg-muted/60 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-severity-critical/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-severity-moderate/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-accent/80" />
-          <span className="ml-3 font-mono text-xs text-text-subtle">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-bg-muted/60 px-4 py-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-severity-critical/80" />
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-severity-moderate/80" />
+          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-accent/80" />
+          <span className="ml-2 truncate font-mono text-xs text-text-subtle sm:ml-3">
             a11ymind.ai/scan/preview
           </span>
         </div>
-        <span className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+        <span className="hidden flex-shrink-0 text-[10px] uppercase tracking-[0.18em] text-text-subtle sm:inline">
           Preview
         </span>
       </div>
 
-      <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+      <div className="grid gap-6 p-4 sm:p-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
         <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-bg-muted/60 p-5">
           <ScoreDial score={62} />
           <p className="mt-3 text-xs uppercase tracking-wider text-text-subtle">
@@ -560,13 +564,13 @@ function RiskRow({
   const labelText =
     impact === "critical" ? "Critical" : impact === "serious" ? "Serious" : "Moderate";
   return (
-    <div className="flex items-center justify-between rounded-md border border-border bg-bg-muted/50 px-3 py-2 transition-colors hover:border-border-strong">
-      <div className="flex items-center gap-3">
-        <span className={`h-2 w-2 rounded-full ${color}`} />
-        <span className="text-sm text-text">{label}</span>
+    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-muted/50 px-3 py-2 transition-colors hover:border-border-strong">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`h-2 w-2 flex-shrink-0 rounded-full ${color}`} />
+        <span className="truncate text-sm text-text">{label}</span>
       </div>
-      <div className="flex items-center gap-3 text-xs text-text-subtle">
-        <span>{labelText}</span>
+      <div className="flex flex-shrink-0 items-center gap-3 text-xs text-text-subtle">
+        <span className="hidden sm:inline">{labelText}</span>
         <span className="tabular-nums text-text">{count}</span>
       </div>
     </div>
