@@ -79,12 +79,12 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 export async function sendAuthWelcomeEmail(input: {
   to: string;
   name?: string | null;
-  provider: "credentials" | "google";
+  provider: "credentials" | "social";
 }): Promise<SendEmailResult> {
   const greeting = input.name?.trim() ? `Hi ${input.name.trim()},` : "Hi,";
   const providerLine =
-    input.provider === "google"
-      ? "Your Accessly account is ready and linked to your Google sign-in."
+    input.provider === "social"
+      ? "Your Accessly account is ready and linked to your social sign-in."
       : "Your Accessly account is ready and you can now sign in with your email and password.";
 
   const text = [

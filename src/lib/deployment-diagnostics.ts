@@ -1,4 +1,4 @@
-import { googleEnabled } from "@/lib/auth";
+import { githubEnabled, googleEnabled } from "@/lib/auth";
 
 type CheckLevel = "pass" | "warn" | "fail";
 
@@ -33,6 +33,10 @@ export type DeploymentDiagnostic = {
       partial: boolean;
     };
     googleOAuth: {
+      configured: boolean;
+      partial: boolean;
+    };
+    githubOAuth: {
       configured: boolean;
       partial: boolean;
     };
@@ -75,6 +79,8 @@ const OPTIONAL_ENV = [
   "RESEND_FROM_EMAIL",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
+  "GITHUB_ID",
+  "GITHUB_SECRET",
   "ANON_SCAN_RATE_LIMIT_MAX",
   "ANON_SCAN_RATE_LIMIT_WINDOW_MS",
 ] as const;
@@ -104,6 +110,9 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
   const googleClientId = Boolean(process.env.GOOGLE_CLIENT_ID);
   const googleClientSecret = Boolean(process.env.GOOGLE_CLIENT_SECRET);
   const googlePartial = googleClientId !== googleClientSecret;
+  const githubClientId = Boolean(process.env.GITHUB_ID);
+  const githubClientSecret = Boolean(process.env.GITHUB_SECRET);
+  const githubPartial = githubClientId !== githubClientSecret;
 
   const checks: DeploymentDiagnostic["checks"] = [
     {
@@ -159,6 +168,15 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
           : "Google OAuth is not configured. Email/password auth only.",
     },
     {
+      name: "GitHub OAuth integration",
+      status: githubPartial ? "fail" : githubEnabled ? "pass" : "warn",
+      message: githubPartial
+        ? "GitHub OAuth is partially configured. Set both client ID and client secret."
+        : githubEnabled
+          ? "GitHub OAuth is configured."
+          : "GitHub OAuth is not configured.",
+    },
+    {
       name: "App URL consistency",
       status:
         !nextAuthUrl.valid || !publicAppUrl.valid
@@ -206,6 +224,10 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
         configured: googleEnabled,
         partial: googlePartial,
       },
+      githubOAuth: {
+        configured: githubEnabled,
+        partial: githubPartial,
+      },
     },
     appUrls: {
       nextAuthUrl,
@@ -235,6 +257,8 @@ function envVarDiagnostic(name: string, required: boolean): EnvVarDiagnostic {
   if (
     name === "GOOGLE_CLIENT_ID" ||
     name === "GOOGLE_CLIENT_SECRET" ||
+    name === "GITHUB_ID" ||
+    name === "GITHUB_SECRET" ||
     name === "RESEND_API_KEY" ||
     name === "RESEND_FROM_EMAIL" ||
     name === "ANON_SCAN_RATE_LIMIT_MAX" ||

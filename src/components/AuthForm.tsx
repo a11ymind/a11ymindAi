@@ -8,7 +8,15 @@ import { safeAppRedirectPath } from "@/lib/redirects";
 
 type Mode = "login" | "signup";
 
-export function AuthForm({ mode, googleEnabled }: { mode: Mode; googleEnabled: boolean }) {
+export function AuthForm({
+  mode,
+  googleEnabled,
+  githubEnabled,
+}: {
+  mode: Mode;
+  googleEnabled: boolean;
+  githubEnabled: boolean;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const scanId = params.get("scanId");
@@ -25,6 +33,7 @@ export function AuthForm({ mode, googleEnabled }: { mode: Mode; googleEnabled: b
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const socialEnabled = googleEnabled || githubEnabled;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,6 +77,10 @@ export function AuthForm({ mode, googleEnabled }: { mode: Mode; googleEnabled: b
     signIn("google", { callbackUrl });
   }
 
+  function onGitHub() {
+    signIn("github", { callbackUrl });
+  }
+
   return (
     <div className="w-full max-w-sm">
       <h1 className="text-2xl font-semibold tracking-tight">
@@ -84,17 +97,32 @@ export function AuthForm({ mode, googleEnabled }: { mode: Mode; googleEnabled: b
         )}
       </p>
 
-      {googleEnabled && (
+      {socialEnabled && (
         <>
-          <button
-            type="button"
-            onClick={onGoogle}
-            className="btn-ghost mt-6 w-full"
-            disabled={loading}
-          >
-            <GoogleIcon />
-            <span className="ml-2">Continue with Google</span>
-          </button>
+          <div className="mt-6 space-y-3">
+            {googleEnabled && (
+              <button
+                type="button"
+                onClick={onGoogle}
+                className="btn-ghost w-full"
+                disabled={loading}
+              >
+                <GoogleIcon />
+                <span className="ml-2">Continue with Google</span>
+              </button>
+            )}
+            {githubEnabled && (
+              <button
+                type="button"
+                onClick={onGitHub}
+                className="btn-ghost w-full"
+                disabled={loading}
+              >
+                <GitHubIcon />
+                <span className="ml-2">Continue with GitHub</span>
+              </button>
+            )}
+          </div>
           <div className="my-5 flex items-center gap-3 text-xs text-text-subtle">
             <span className="h-px flex-1 bg-border" />
             or continue with email
@@ -103,7 +131,7 @@ export function AuthForm({ mode, googleEnabled }: { mode: Mode; googleEnabled: b
         </>
       )}
 
-      <form onSubmit={onSubmit} className={`space-y-3 ${googleEnabled ? "" : "mt-6"}`}>
+      <form onSubmit={onSubmit} className={`space-y-3 ${socialEnabled ? "" : "mt-6"}`}>
         {mode === "signup" && (
           <Field label="Name (optional)">
             <input
@@ -217,6 +245,14 @@ function GoogleIcon() {
         fill="#1976D2"
         d="M43.6 20.5H42V20.4H24v7.2h11.3c-.7 2-2 3.7-3.7 5l6.1 5c-.4.4 6.7-4.9 6.7-13.6 0-1.2-.1-2.4-.4-3.5z"
       />
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M12 .5C5.65.5.5 5.66.5 12.02c0 5.09 3.29 9.41 7.86 10.94.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.55-3.88-1.55-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.02 1.76 2.68 1.25 3.34.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.72 0-1.26.45-2.3 1.19-3.11-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.19 1.19a11.08 11.08 0 0 1 5.81 0c2.22-1.5 3.19-1.19 3.19-1.19.63 1.59.23 2.77.11 3.06.74.81 1.19 1.85 1.19 3.11 0 4.45-2.7 5.42-5.28 5.7.41.35.78 1.04.78 2.11 0 1.52-.01 2.75-.01 3.12 0 .31.21.67.8.56A11.53 11.53 0 0 0 23.5 12C23.5 5.66 18.35.5 12 .5Z" />
     </svg>
   );
 }

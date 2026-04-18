@@ -9,7 +9,7 @@ Marketing tagline: *"Know your accessibility risk before a lawsuit does."*
 ```bash
 cp .env.example .env
 # fill DATABASE_URL, NEXTAUTH_SECRET, and any optional integrations you want
-# (Anthropic, Google OAuth, Resend)
+# (Anthropic, Google OAuth, GitHub OAuth, Resend)
 npm install
 npx prisma db push
 npm run dev
@@ -49,6 +49,8 @@ RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+GITHUB_ID=
+GITHUB_SECRET=
 ANON_SCAN_RATE_LIMIT_MAX=5
 ANON_SCAN_RATE_LIMIT_WINDOW_MS=3600000
 ```
@@ -132,10 +134,40 @@ Notes:
 - Resend API keys are shown only once in the dashboard. Store them in env vars
   and do not commit them.
 - Accessly now uses this foundation in the authentication flow: new accounts
-  receive a welcome email after credentials signup and after first-time Google
+  receive a welcome email after credentials signup and after first-time social
   account creation.
 - If Resend is not configured, Accessly skips sending and logs a useful warning
   instead of crashing request handlers.
+
+### GitHub OAuth setup
+
+1. Open GitHub OAuth Apps at
+   https://github.com/settings/developers
+2. Create a new OAuth App.
+3. Use these production values:
+   - Homepage URL: `https://accesslyai.vercel.app`
+   - Authorization callback URL:
+     `https://accesslyai.vercel.app/api/auth/callback/github`
+4. Add these env vars:
+
+```bash
+GITHUB_ID=
+GITHUB_SECRET=
+```
+
+5. Redeploy after adding the credentials.
+
+Notes:
+
+- For local development, the optional callback URL is:
+  `http://localhost:3000/api/auth/callback/github`
+- GitHub OAuth Apps support a single configured callback URL, unlike GitHub
+  Apps. Keep the configured callback aligned with the environment you are
+  actively testing, or prioritize the production callback for deployment
+  readiness.
+- Accessly keeps GitHub sign-in inside the existing NextAuth/Auth.js setup, so
+  current billing, checkout resume, scan-claim, and dashboard return flows
+  continue to use the same callback URL handling.
 
 ### Webhook setup
 

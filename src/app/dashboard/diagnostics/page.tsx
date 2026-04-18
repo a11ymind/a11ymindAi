@@ -121,6 +121,23 @@ export default async function DiagnosticsPage() {
                     : "Email/password auth only."
               }
             />
+            <IntegrationRow
+              label="GitHub OAuth"
+              status={
+                diagnostics.integrations.githubOAuth.partial
+                  ? "fail"
+                  : diagnostics.integrations.githubOAuth.configured
+                    ? "pass"
+                    : "warn"
+              }
+              detail={
+                diagnostics.integrations.githubOAuth.partial
+                  ? "Only one GitHub OAuth variable is set."
+                  : diagnostics.integrations.githubOAuth.configured
+                    ? "GitHub OAuth is enabled."
+                    : "GitHub OAuth is not configured."
+              }
+            />
           </div>
           <div className="mt-5 rounded-lg border border-border bg-bg-muted/40 px-4 py-4">
             <p className="text-sm font-medium text-text">Email verification</p>

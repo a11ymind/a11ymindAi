@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { AuthForm } from "@/components/AuthForm";
-import { googleEnabled } from "@/lib/auth";
+import { githubEnabled, googleEnabled } from "@/lib/auth";
 
 export const metadata = { title: "Log in — Accessly" };
 
@@ -16,7 +16,11 @@ export default function LoginPage() {
       </header>
       <div className="container-page flex justify-center py-16">
         <Suspense fallback={null}>
-          <AuthForm mode="login" googleEnabled={googleEnabled} />
+          <AuthForm
+            mode="login"
+            googleEnabled={googleEnabled}
+            githubEnabled={githubEnabled}
+          />
         </Suspense>
       </div>
     </main>

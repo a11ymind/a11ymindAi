@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { getServerSession } from "next-auth/next";
 import bcrypt from "bcryptjs";
@@ -31,12 +32,25 @@ const providers: NextAuthOptions["providers"] = [
 export const googleEnabled = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
 );
+export const githubEnabled = Boolean(
+  process.env.GITHUB_ID && process.env.GITHUB_SECRET,
+);
 
 if (googleEnabled) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
+    }),
+  );
+}
+
+if (githubEnabled) {
+  providers.push(
+    GitHubProvider({
+      clientId: process.env.GITHUB_ID!,
+      clientSecret: process.env.GITHUB_SECRET!,
       allowDangerousEmailAccountLinking: true,
     }),
   );
@@ -53,7 +67,7 @@ export const authOptions: NextAuthOptions = {
       await sendAuthWelcomeEmail({
         to: user.email,
         name: user.name,
-        provider: "google",
+        provider: "social",
       });
     },
   },
