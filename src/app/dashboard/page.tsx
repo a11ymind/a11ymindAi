@@ -22,7 +22,7 @@ import {
 } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dashboard — a11ymind" };
+export const metadata = { title: "Dashboard — a11ymind AI" };
 
 const SERIES_COLORS = [
   "#06b6d4",
@@ -84,28 +84,33 @@ export default async function DashboardPage({
   return (
     <main className="min-h-screen">
       <BillingStateRefresh enabled={searchParams?.upgraded === "1"} />
-      <header className="container-page flex flex-wrap items-center justify-between gap-4 py-6">
-        <Link href="/">
-          <Logo />
-        </Link>
-        <div className="flex items-center gap-4">
-          <PlanBadge plan={user.plan} />
-          {user.plan === "FREE" ? (
-            <Link href="/pricing" className="text-sm text-accent hover:underline">
-              Get AI fixes
-            </Link>
-          ) : (
-            <Link
-              href="/api/stripe/portal"
-              className="text-sm text-text-muted hover:text-text"
-            >
-              Manage billing
-            </Link>
-          )}
-          <span className="hidden text-sm text-text-muted sm:inline">
-            {user.name || user.email}
-          </span>
-          <SignOutButton />
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
+        <div className="container-page flex flex-wrap items-center justify-between gap-4 py-4">
+          <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
+            <Logo />
+          </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <PlanBadge plan={user.plan} />
+            {user.plan === "FREE" ? (
+              <Link
+                href="/pricing"
+                className="hidden rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:inline-flex"
+              >
+                Upgrade for AI fixes
+              </Link>
+            ) : (
+              <Link
+                href="/api/stripe/portal"
+                className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
+              >
+                Manage billing
+              </Link>
+            )}
+            <span className="hidden text-sm text-text-muted md:inline">
+              {user.name || user.email}
+            </span>
+            <SignOutButton />
+          </div>
         </div>
       </header>
 

@@ -42,34 +42,53 @@ export function URLScanner() {
 
   return (
     <form onSubmit={onSubmit} className="w-full max-w-xl">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          type="text"
-          inputMode="url"
-          autoComplete="url"
-          spellCheck={false}
-          maxLength={2048}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://yourwebsite.com"
-          className="input flex-1"
-          disabled={loading}
-          aria-label="Website URL"
-        />
-        <button type="submit" className="btn-primary" disabled={loading || !url.trim()}>
+      <div className="group relative flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-subtle"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M10 4.5a5.5 5.5 0 1 0 3.43 9.8l4.14 4.13 1.41-1.41-4.13-4.14A5.5 5.5 0 0 0 10 4.5Zm-3.5 5.5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          <input
+            type="text"
+            inputMode="url"
+            autoComplete="url"
+            spellCheck={false}
+            maxLength={2048}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://yourwebsite.com"
+            className="input pl-10"
+            disabled={loading}
+            aria-label="Website URL"
+          />
+        </div>
+        <button type="submit" className="btn-primary whitespace-nowrap" disabled={loading || !url.trim()}>
           {loading ? (
             <>
               <Spinner />
               <span className="ml-2">Scanning…</span>
             </>
           ) : (
-            "Scan for free"
+            <>
+              <span>Scan for free</span>
+              <span aria-hidden="true" className="ml-1.5 transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
+            </>
           )}
         </button>
       </div>
       {loading && (
-        <p className="mt-3 text-sm text-text-muted">
-          Loading the page in a headless browser and running 90+ WCAG checks. This usually takes 15–45 seconds.
+        <p className="mt-3 flex items-center gap-2 text-sm text-text-muted">
+          <span className="inline-flex h-1.5 w-1.5 animate-pulse-soft rounded-full bg-accent" />
+          Loading the page in headless Chromium and running 90+ WCAG checks — usually 15–45 seconds.
         </p>
       )}
       {error && (

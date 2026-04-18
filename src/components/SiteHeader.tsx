@@ -1,0 +1,58 @@
+import Link from "next/link";
+import { Logo } from "@/components/Logo";
+import { getSession } from "@/lib/auth";
+
+export async function SiteHeader({
+  variant = "marketing",
+}: {
+  variant?: "marketing" | "minimal";
+}) {
+  const session = variant === "minimal" ? null : await getSession();
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
+      <div className="container-page flex items-center justify-between py-4">
+        <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
+          <Logo />
+        </Link>
+        {variant === "marketing" && (
+          <nav className="flex items-center gap-1 sm:gap-2">
+            <HeaderLink href="/#how-it-works">How it works</HeaderLink>
+            <HeaderLink href="/#faq">FAQ</HeaderLink>
+            <HeaderLink href="/pricing">Pricing</HeaderLink>
+            {session?.user ? (
+              <Link
+                href="/dashboard"
+                className="ml-1 rounded-md bg-bg-elevated/80 px-3 py-1.5 text-sm text-text transition-colors hover:bg-bg-elevated"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <HeaderLink href="/login">Sign in</HeaderLink>
+                <Link
+                  href="/signup"
+                  className="ml-1 inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  Get started
+                  <span aria-hidden>→</span>
+                </Link>
+              </>
+            )}
+          </nav>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function HeaderLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="hidden rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-bg-elevated/60 hover:text-text sm:inline-block"
+    >
+      {children}
+    </Link>
+  );
+}

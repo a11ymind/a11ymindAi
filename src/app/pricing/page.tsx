@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { SiteHeader } from "@/components/SiteHeader";
 import { getSession } from "@/lib/auth";
 import { PLAN_TIERS, type PlanTier } from "@/lib/plans";
 
-export const metadata = { title: "Pricing — a11ymind" };
+export const metadata = { title: "Pricing — a11ymind AI" };
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage({
@@ -17,25 +17,7 @@ export default async function PricingPage({
 
   return (
     <main className="min-h-screen">
-      <header className="container-page flex items-center justify-between py-6">
-        <Link href="/">
-          <Logo />
-        </Link>
-        <nav className="flex items-center gap-6 text-sm text-text-muted">
-          <Link href="/#how-it-works" className="hover:text-text transition-colors">
-            How it works
-          </Link>
-          {session?.user ? (
-            <Link href="/dashboard" className="hover:text-text transition-colors">
-              Dashboard
-            </Link>
-          ) : (
-            <Link href="/login" className="hover:text-text transition-colors">
-              Sign in
-            </Link>
-          )}
-        </nav>
-      </header>
+      <SiteHeader />
 
       {banner && (
         <section className="container-page pt-4">
@@ -51,18 +33,23 @@ export default async function PricingPage({
         </section>
       )}
 
-      <section className="container-page flex flex-col items-center py-16 text-center sm:py-20">
-        <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 py-1 text-xs text-text-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          Cancel anytime
-        </span>
-        <h1 className="max-w-2xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-          Pick the level of <span className="text-accent">protection</span> your site needs.
-        </h1>
-        <p className="mt-5 max-w-xl text-base text-text-muted">
-          Start free. Upgrade when you want plain-English fixes, ongoing monitoring, and reports
-          you can hand to a client.
-        </p>
+      <section className="relative overflow-hidden">
+        <div className="aurora" aria-hidden="true" />
+        <div className="grid-bg" aria-hidden="true" />
+        <div className="container-page relative flex flex-col items-center py-16 text-center sm:py-24">
+          <span className="chip mb-6">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            Cancel anytime · No lock-in
+          </span>
+          <h1 className="max-w-2xl animate-fade-in-up text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+            Pick the level of{" "}
+            <span className="gradient-text">protection</span> your site needs.
+          </h1>
+          <p className="mt-5 max-w-xl text-base text-text-muted">
+            Start free. Upgrade when you want plain-English fixes, ongoing monitoring, and reports
+            you can hand to a client.
+          </p>
+        </div>
       </section>
 
       <section className="container-page grid items-stretch gap-6 pb-12 md:grid-cols-3">

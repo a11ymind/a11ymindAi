@@ -1,27 +1,32 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { SiteHeader } from "@/components/SiteHeader";
 import { AuthForm } from "@/components/AuthForm";
 import { githubEnabled, googleEnabled } from "@/lib/auth";
 
-export const metadata = { title: "Log in — a11ymind" };
+export const metadata = { title: "Log in — a11ymind AI" };
 
 export default function LoginPage() {
   return (
     <main className="min-h-screen">
-      <header className="container-page flex items-center justify-between py-6">
-        <Link href="/">
-          <Logo />
-        </Link>
-      </header>
-      <div className="container-page flex justify-center py-16">
-        <Suspense fallback={null}>
-          <AuthForm
-            mode="login"
-            googleEnabled={googleEnabled}
-            githubEnabled={githubEnabled}
-          />
-        </Suspense>
+      <SiteHeader variant="minimal" />
+      <div className="relative overflow-hidden">
+        <div className="aurora" aria-hidden="true" />
+        <div className="container-page relative flex flex-col items-center py-16 sm:py-24">
+          <div className="w-full max-w-sm">
+            <div className="card gradient-border p-7 shadow-glow">
+              <Suspense fallback={null}>
+                <AuthForm
+                  mode="login"
+                  googleEnabled={googleEnabled}
+                  githubEnabled={githubEnabled}
+                />
+              </Suspense>
+            </div>
+            <p className="mt-5 text-center text-xs text-text-subtle">
+              Protected by standard security. We never store third-party passwords.
+            </p>
+          </div>
+        </div>
       </div>
     </main>
   );
