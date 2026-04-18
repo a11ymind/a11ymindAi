@@ -1,40 +1,60 @@
 import type { Plan } from "@prisma/client";
 
-export type AutoScan = "none" | "monthly" | "weekly";
+export type AutoScan = "none" | "monthly" | "weekly" | "daily";
 
 export type Entitlements = {
   maxSites: number;
+  monthlyScanLimit: number | null;
   aiFixes: boolean;
   aiMonthlyLimit: number | null;
   pdfExport: boolean;
+  shareableLink: boolean;
   autoScan: AutoScan;
   monitoringBadge: boolean;
+  regressionDiffs: boolean;
+  slackAlerts: boolean;
+  ciIntegration: boolean;
 };
 
 export const ENTITLEMENTS: Record<Plan, Entitlements> = {
   FREE: {
     maxSites: 1,
-    aiFixes: false,
-    aiMonthlyLimit: null,
+    monthlyScanLimit: 5,
+    aiFixes: true,
+    aiMonthlyLimit: 3,
     pdfExport: false,
+    shareableLink: false,
     autoScan: "none",
     monitoringBadge: false,
+    regressionDiffs: false,
+    slackAlerts: false,
+    ciIntegration: false,
   },
   STARTER: {
     maxSites: 1,
+    monthlyScanLimit: null,
     aiFixes: true,
-    aiMonthlyLimit: 20,
-    pdfExport: false,
-    autoScan: "monthly",
+    aiMonthlyLimit: 100,
+    pdfExport: true,
+    shareableLink: true,
+    autoScan: "weekly",
     monitoringBadge: true,
+    regressionDiffs: false,
+    slackAlerts: false,
+    ciIntegration: false,
   },
   PRO: {
     maxSites: 10,
+    monthlyScanLimit: null,
     aiFixes: true,
-    aiMonthlyLimit: 200,
+    aiMonthlyLimit: 500,
     pdfExport: true,
-    autoScan: "weekly",
+    shareableLink: true,
+    autoScan: "daily",
     monitoringBadge: true,
+    regressionDiffs: true,
+    slackAlerts: true,
+    ciIntegration: true,
   },
 };
 
@@ -59,5 +79,8 @@ export function savedSiteLimitMessage(plan: Plan): string {
 }
 
 export function autoScanLabel(value: AutoScan): string {
-  return value === "weekly" ? "Weekly" : value === "monthly" ? "Monthly" : "Not included";
+  if (value === "daily") return "Daily";
+  if (value === "weekly") return "Weekly";
+  if (value === "monthly") return "Monthly";
+  return "Not included";
 }

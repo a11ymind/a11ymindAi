@@ -1,5 +1,6 @@
 import { Prisma, type Plan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { entitlementsFor } from "@/lib/entitlements";
 
 export type AiUsageSummary = {
   aiEnabled: boolean;
@@ -12,9 +13,9 @@ export type AiUsageSummary = {
 };
 
 function aiUsageLimitForPlan(plan: Plan | null): number | null {
-  if (plan === "STARTER") return 20;
-  if (plan === "PRO") return 200;
-  return null;
+  if (!plan) return null;
+  const ent = entitlementsFor(plan);
+  return ent.aiFixes ? ent.aiMonthlyLimit : null;
 }
 
 function monthWindow(now: Date): { start: Date; end: Date } {
@@ -96,7 +97,7 @@ export async function getAiUsageSummary(
 export async function reserveAiUsageSlot(
   scanId: string,
   userId: string,
-  plan: "STARTER" | "PRO",
+  plan: Plan,
   now = new Date(),
 ): Promise<
   | { ok: false; summary: AiUsageSummary }

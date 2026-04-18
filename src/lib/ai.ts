@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { Plan } from "@prisma/client";
 import type { AxeViolation } from "./scan";
 
 export type AiFix = {
@@ -8,7 +9,12 @@ export type AiFix = {
   codeExample: string;
 };
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+const PAID_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+const FREE_MODEL = process.env.ANTHROPIC_FREE_MODEL || "claude-haiku-4-5-20251001";
+
+function modelForPlan(plan: Plan | null): string {
+  return plan === "STARTER" || plan === "PRO" ? PAID_MODEL : FREE_MODEL;
+}
 
 const SYSTEM_PROMPT = `You are an expert web accessibility consultant advising small-business owners and developers on ADA / WCAG 2.1 compliance.
 
@@ -59,12 +65,15 @@ function compactViolations(violations: AxeViolation[]) {
   }));
 }
 
-export async function generateFixes(violations: AxeViolation[]): Promise<AiFix[]> {
+export async function generateFixes(
+  violations: AxeViolation[],
+  plan: Plan | null = null,
+): Promise<AiFix[]> {
   if (!process.env.ANTHROPIC_API_KEY) return [];
   if (violations.length === 0) return [];
 
   const response = await client.messages.create({
-    model: MODEL,
+    model: modelForPlan(plan),
     max_tokens: 4096,
     system: [
       {

@@ -9,6 +9,8 @@ import {
 } from "@/lib/ai-usage";
 import { entitlementsFor, type AutoScan } from "@/lib/entitlements";
 import { scanUrl } from "@/lib/scan";
+import type { AxeViolation } from "@/lib/scan";
+import type { AiFix } from "@/lib/ai";
 import { computeScore } from "@/lib/score";
 
 const SCAN_RECORD_SELECT = {
@@ -127,19 +129,23 @@ async function maybeGenerateAiFixes(
     return { fixes: [], summary };
   }
 
-  const reservablePlan = plan === "STARTER" || plan === "PRO" ? plan : null;
-  if (!reservablePlan) {
+  if (!plan || !entitlementsFor(plan).aiFixes) {
     return { fixes: [], summary };
   }
 
-  const reservation = await reserveAiUsageSlot(scanId, userId, reservablePlan);
+  const cached = await findCachedFixesForSite(scanId, violations);
+  if (cached) {
+    return { fixes: cached, summary };
+  }
+
+  const reservation = await reserveAiUsageSlot(scanId, userId, plan);
   if (!reservation.ok) {
     return { fixes: [], summary: reservation.summary };
   }
 
   let fixes: Awaited<ReturnType<typeof generateFixes>> = [];
   try {
-    fixes = await generateFixes(violations);
+    fixes = await generateFixes(violations, plan);
   } catch {
     fixes = [];
   }
@@ -148,17 +154,78 @@ async function maybeGenerateAiFixes(
     await clearAiReservation(scanId);
     return {
       fixes: [],
-      summary: await getAiUsageSummary(userId, reservablePlan),
+      summary: await getAiUsageSummary(userId, plan),
     };
   }
 
   return { fixes, summary: reservation.summary };
 }
 
+function violationSignature(violations: Pick<AxeViolation, "id" | "nodes">[]): string {
+  return violations
+    .map((v) => `${v.id}|${v.nodes[0]?.target?.join(" ") ?? ""}`)
+    .sort()
+    .join("\n");
+}
+
+async function findCachedFixesForSite(
+  currentScanId: string,
+  violations: AxeViolation[],
+): Promise<AiFix[] | null> {
+  if (violations.length === 0) return null;
+
+  const current = await prisma.scan.findUnique({
+    where: { id: currentScanId },
+    select: { siteId: true },
+  });
+  if (!current?.siteId) return null;
+
+  const previous = await prisma.scan.findFirst({
+    where: {
+      siteId: current.siteId,
+      status: "COMPLETED",
+      id: { not: currentScanId },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      violations: {
+        select: {
+          axeId: true,
+          selector: true,
+          plainEnglishFix: true,
+          legalRationale: true,
+          codeExample: true,
+        },
+      },
+    },
+  });
+  if (!previous) return null;
+
+  const prevSig = previous.violations
+    .map((v) => `${v.axeId}|${v.selector}`)
+    .sort()
+    .join("\n");
+  if (prevSig !== violationSignature(violations)) return null;
+
+  const fixes: AiFix[] = [];
+  for (const v of previous.violations) {
+    if (!v.plainEnglishFix || !v.legalRationale || !v.codeExample) {
+      return null;
+    }
+    fixes.push({
+      axeId: v.axeId,
+      plainEnglishFix: v.plainEnglishFix,
+      legalRationale: v.legalRationale,
+      codeExample: v.codeExample,
+    });
+  }
+  return fixes;
+}
+
 export function cadenceWindowStart(cadence: AutoScan, now: Date): Date | null {
   if (cadence === "none") return null;
 
-  const windowDays = cadence === "weekly" ? 7 : 30;
+  const windowDays = cadence === "daily" ? 1 : cadence === "weekly" ? 7 : 30;
   return new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
 }
 

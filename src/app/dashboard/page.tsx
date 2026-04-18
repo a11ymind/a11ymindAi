@@ -20,6 +20,7 @@ import {
   entitlementsFor,
   isAtSiteLimit,
 } from "@/lib/entitlements";
+import { getAiUsageSummary } from "@/lib/ai-usage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard — a11ymind AI" };
@@ -80,6 +81,24 @@ export default async function DashboardPage({
   );
   const scanCadence =
     entitlements.autoScan === "none" ? "Manual only" : autoScanLabel(entitlements.autoScan);
+  const aiUsage = await getAiUsageSummary(session.user.id, user.plan);
+  const aiFixesValue = entitlements.aiFixes
+    ? aiUsage.aiUsageLimit === null
+      ? "Unlimited"
+      : `${aiUsage.aiUsageCurrent} / ${aiUsage.aiUsageLimit}`
+    : "Locked";
+  const aiFixesDetail = entitlements.aiFixes
+    ? aiUsage.aiUsageLimit === null
+      ? "AI remediation guidance on every saved scan"
+      : aiUsage.aiLimitReached
+        ? `Monthly cap reached — upgrade for more`
+        : `${aiUsage.aiUsageRemaining} AI fix${aiUsage.aiUsageRemaining === 1 ? "" : "es"} left this month`
+    : "Upgrade to Starter or Pro to unlock";
+  const aiChipLabel = entitlements.aiFixes
+    ? aiUsage.aiUsageLimit === null
+      ? "AI fixes unlimited"
+      : `AI fixes ${aiUsage.aiUsageCurrent}/${aiUsage.aiUsageLimit}`
+    : "AI fixes locked";
 
   return (
     <>
@@ -170,7 +189,7 @@ export default async function DashboardPage({
                   {scanCadence}
                 </span>
                 <span className="rounded-full border border-border px-2.5 py-1">
-                  AI fixes {entitlements.aiFixes ? "enabled" : "locked"}
+                  {aiChipLabel}
                 </span>
                 <span className="rounded-full border border-border px-2.5 py-1">
                   PDF export {entitlements.pdfExport ? "enabled" : "locked"}
@@ -212,12 +231,8 @@ export default async function DashboardPage({
           />
           <DashboardStat
             label="AI fixes"
-            value={entitlements.aiFixes ? "Enabled" : "Locked"}
-            detail={
-              entitlements.aiFixes
-                ? "Saved scan results include remediation guidance"
-                : "Upgrade to Starter or Pro to unlock"
-            }
+            value={aiFixesValue}
+            detail={aiFixesDetail}
           />
           <DashboardStat
             label="PDF export"
