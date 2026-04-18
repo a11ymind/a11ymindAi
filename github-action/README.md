@@ -20,6 +20,50 @@ It complements the main a11ymind app:
 
 This action is intentionally small and developer-facing. It is meant to help engineering teams catch accessibility risks during CI for a single deployed URL.
 
+## Quick start
+
+For another repository, use `uses: a11ymind/accesslint@v1`.
+
+```yaml
+name: Accessibility scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  accesslint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run AccessLint
+        id: accesslint
+        uses: a11ymind/accesslint@v1
+        with:
+          url: https://preview.example.com
+          fail-on: serious
+          output-json: true
+          output-markdown: true
+
+      - name: Upload AccessLint artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accesslint-report
+          path: |
+            ${{ steps.accesslint.outputs.json-path }}
+            ${{ steps.accesslint.outputs.markdown-path }}
+```
+
+This keeps the action simple in consumer repos:
+
+- scan one preview, staging, or live URL
+- fail the job only when the chosen severity threshold is exceeded
+- always upload the JSON and Markdown reports for inspection
+
 ## Runner expectation
 
 - v1 is best suited to GitHub-hosted Linux runners such as `ubuntu-latest`
@@ -102,19 +146,17 @@ By default the action writes:
 
 If you change `output-dir`, the filenames remain the same and only the directory changes.
 
-## Example workflow
+## Local workflow example
 
 For local testing inside this repository, use `uses: ./`.
-
-For another repository, use `uses: a11ymind/accesslint@v1`.
 
 ```yaml
 - name: Checkout
   uses: actions/checkout@v6
 
 - name: AccessLint scan
-  id: accessly
-  uses: a11ymind/accesslint@v1
+  id: accesslint
+  uses: ./
   with:
     url: https://preview.example.com
     fail-on: serious
@@ -127,8 +169,8 @@ For another repository, use `uses: a11ymind/accesslint@v1`.
   with:
     name: accesslint-report
     path: |
-      ${{ steps.accessly.outputs.json-path }}
-      ${{ steps.accessly.outputs.markdown-path }}
+      ${{ steps.accesslint.outputs.json-path }}
+      ${{ steps.accesslint.outputs.markdown-path }}
 ```
 
 ## Maintainer smoke test
@@ -144,6 +186,9 @@ It validates the action end to end by:
 - asserting that `json-path`, `markdown-path`, and summary outputs are set
 - checking that both report files exist
 - uploading the generated JSON and Markdown files as artifacts
+
+The workflow keeps the target URL in one place as `ACCESSLINT_SMOKE_URL` so it
+is easy to swap later if maintainers want a different stable public test page.
 
 The smoke workflow uses `fail-on: none` so it validates action behavior without
 turning expected findings on a public test page into a flaky pipeline failure.

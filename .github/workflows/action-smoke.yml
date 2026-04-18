@@ -1,4 +1,4 @@
-name: Action Smoke Test
+name: AccessLint Action Smoke Test
 
 on:
   workflow_dispatch:
@@ -24,13 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      # Stable public target for end-to-end action validation.
+      # Update this in one place if the maintainer smoke target ever changes.
       ACCESSLINT_SMOKE_URL: https://www.example.com
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Run AccessLint action
-        id: accessly
+        id: accesslint
         uses: ./
         with:
           url: ${{ env.ACCESSLINT_SMOKE_URL }}
@@ -43,23 +45,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          test -n "${{ steps.accessly.outputs.score }}"
-          test -n "${{ steps.accessly.outputs.total-risks }}"
-          test -n "${{ steps.accessly.outputs.threshold-exceeded }}"
-          test -n "${{ steps.accessly.outputs.json-path }}"
-          test -n "${{ steps.accessly.outputs.markdown-path }}"
+          test -n "${{ steps.accesslint.outputs.score }}"
+          test -n "${{ steps.accesslint.outputs.total-risks }}"
+          test -n "${{ steps.accesslint.outputs.threshold-exceeded }}"
+          test -n "${{ steps.accesslint.outputs.json-path }}"
+          test -n "${{ steps.accesslint.outputs.markdown-path }}"
 
-          test -f "${{ steps.accessly.outputs.json-path }}"
-          test -f "${{ steps.accessly.outputs.markdown-path }}"
+          test -f "${{ steps.accesslint.outputs.json-path }}"
+          test -f "${{ steps.accesslint.outputs.markdown-path }}"
 
-          grep -q '"score"' "${{ steps.accessly.outputs.json-path }}"
-          grep -q '# AccessLint scan summary' "${{ steps.accessly.outputs.markdown-path }}"
+          grep -q '"score"' "${{ steps.accesslint.outputs.json-path }}"
+          grep -q '# AccessLint scan summary' "${{ steps.accesslint.outputs.markdown-path }}"
 
       - name: Upload AccessLint smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: accesslint-smoke-report
+          if-no-files-found: error
           path: |
-            ${{ steps.accessly.outputs.json-path }}
-            ${{ steps.accessly.outputs.markdown-path }}
+            ${{ steps.accesslint.outputs.json-path }}
+            ${{ steps.accesslint.outputs.markdown-path }}

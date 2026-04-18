@@ -7,18 +7,18 @@ branding:
 
 inputs:
   url:
-    description: Preview or live URL to scan with AccessLint
+    description: Preview, staging, or live URL to scan with AccessLint
     required: true
   fail-on:
     description: "Fail the step when risks at or above this severity are found. Allowed values: none, minor, moderate, serious, critical."
     required: false
     default: serious
   output-json:
-    description: Write a machine-readable JSON report into the workspace
+    description: Write a machine-readable JSON report into the workspace as accesslint-report.json
     required: false
     default: "true"
   output-markdown:
-    description: Write a human-readable Markdown summary into the workspace
+    description: Write a human-readable Markdown summary into the workspace as accesslint-summary.md
     required: false
     default: "true"
   output-dir:
