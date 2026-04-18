@@ -157,15 +157,15 @@ export default async function LandingPage() {
       <section aria-labelledby="preview-heading" className="container-page py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <Eyebrow>What you get</Eyebrow>
-          <h2 id="preview-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 id="preview-heading" className="mt-3 text-balance text-2xl font-semibold tracking-tight sm:text-4xl">
             A report you&apos;ll actually use.
           </h2>
-          <p className="mt-4 text-base text-text-muted">
+          <p className="mt-4 text-sm text-text-muted sm:text-base">
             Not a 40-page PDF of line items. A focused view of what&apos;s risky, why it
             matters, and how to fix it.
           </p>
         </div>
-        <div className="mt-12">
+        <div className="mt-10 sm:mt-12">
           <ResultPreview />
         </div>
       </section>
@@ -460,16 +460,18 @@ function ResultPreview() {
         </span>
       </div>
 
-      <div className="grid gap-6 p-4 sm:p-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-bg-muted/60 p-5">
+      <div className="grid gap-4 p-3 sm:gap-6 sm:p-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="flex items-center gap-4 rounded-xl border border-border bg-bg-muted/60 p-4 md:flex-col md:items-center md:justify-center md:gap-0 md:p-5">
           <ScoreDial score={62} />
-          <p className="mt-3 text-xs uppercase tracking-wider text-text-subtle">
-            Compliance
-          </p>
-          <p className="text-sm font-semibold text-severity-moderate">Needs work</p>
+          <div className="flex flex-col md:mt-3 md:items-center">
+            <p className="text-[10px] uppercase tracking-wider text-text-subtle sm:text-xs">
+              Compliance
+            </p>
+            <p className="text-sm font-semibold text-severity-moderate">Needs work</p>
+          </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <p className="mb-2 text-xs uppercase tracking-wider text-text-subtle">
               Risks detected
@@ -481,9 +483,9 @@ function ResultPreview() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-bg-muted/60 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wider text-accent">
+          <div className="rounded-xl border border-border bg-bg-muted/60 p-3 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] uppercase tracking-wider text-accent sm:text-xs">
                 Recommended fix
               </p>
               <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent">
@@ -492,16 +494,15 @@ function ResultPreview() {
             </div>
             <p className="mt-3 text-sm text-text">
               <span className="font-semibold">Images missing alt text</span> — screen
-              readers skip these, blocking visually impaired users from understanding key
-              content.
+              readers skip these, blocking visually impaired users.
             </p>
-            <p className="mt-2 text-sm text-text-muted">
+            <p className="mt-2 hidden text-sm text-text-muted sm:block">
               Add a descriptive <code className="font-mono text-accent">alt</code>{" "}
-              attribute that explains what the image conveys. Decorative images should use{" "}
-              <code className="font-mono text-accent">alt=&quot;&quot;</code>.
+              attribute that explains what the image conveys.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-bg p-3 font-mono text-xs text-text">
-{`<img src="/hero.png" alt="Team celebrating product launch" />`}
+            <pre className="mt-3 whitespace-pre-wrap break-all rounded-md border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed text-text sm:text-xs">
+{`<img src="/hero.png"
+  alt="Team celebrating product launch" />`}
             </pre>
           </div>
         </div>
@@ -515,7 +516,7 @@ function ScoreDial({ score }: { score: number }) {
   const circ = 2 * Math.PI * radius;
   const offset = circ * (1 - score / 100);
   return (
-    <div className="relative h-28 w-28">
+    <div className="relative h-20 w-20 flex-shrink-0 md:h-28 md:w-28">
       <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
         <defs>
           <linearGradient id="score-grad" x1="0" y1="0" x2="1" y2="1">
@@ -537,8 +538,8 @@ function ScoreDial({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-semibold tabular-nums">{score}</span>
-        <span className="text-[9px] uppercase tracking-wider text-text-subtle">
+        <span className="text-xl font-semibold tabular-nums md:text-2xl">{score}</span>
+        <span className="text-[8px] uppercase tracking-wider text-text-subtle md:text-[9px]">
           / 100
         </span>
       </div>
