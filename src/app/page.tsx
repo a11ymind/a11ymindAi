@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { URLScanner } from "@/components/URLScanner";
 import { getSession } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "A11yMind – Accessibility Testing for CI",
+  description:
+    "AI-powered accessibility scanning, monitoring, reports, and fixes for websites and CI workflows.",
+};
 
 export default async function LandingPage() {
   const session = await getSession();
