@@ -21,7 +21,7 @@ See `CLAUDE.md` for the architecture overview and commands reference.
 
 ## AccessLint GitHub Action v1
 
-a11ymind also ships `a11ymind/accesslint`, a lightweight JavaScript GitHub
+a11ymind also ships `AliAl-nasser/a11ymind-accesslint`, a lightweight JavaScript GitHub
 Action for CI-time scans of preview or live URLs.
 
 - a11ymind app: post-deploy monitoring, reporting, alerts, dashboards
@@ -32,7 +32,7 @@ Example:
 ```yaml
 - name: AccessLint scan
   id: accesslint
-  uses: a11ymind/accesslint@v1
+  uses: AliAl-nasser/a11ymind-accesslint@v1
   with:
     url: https://preview.example.com
     fail-on: serious
@@ -54,7 +54,7 @@ summary, and can fail the CI step when risks at or above a chosen severity are
 found.
 
 Implementation details, inputs/outputs, and release notes now live in the
-standalone `a11ymind/accesslint` repository.
+standalone `AliAl-nasser/a11ymind-accesslint` repository.
 
 ---
 

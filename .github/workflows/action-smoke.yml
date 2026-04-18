@@ -17,7 +17,7 @@ jobs:
 
       - name: Run AccessLint action
         id: accesslint
-        uses: a11ymind/accesslint@v1
+        uses: AliAl-nasser/a11ymind-accesslint@v1
         with:
           url: ${{ env.ACCESSLINT_SMOKE_URL }}
           fail-on: none
