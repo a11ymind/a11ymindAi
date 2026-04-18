@@ -77,7 +77,7 @@ export default async function ScanResultPage({
           <h1 className="text-xl font-semibold">We couldn&apos;t scan that URL.</h1>
           <p className="mt-2 text-sm text-text-muted">{scan.error || "Unknown error."}</p>
           <Link href="/" className="btn-primary mt-6">
-            Try another URL
+            Scan another page
           </Link>
         </div>
       </PageShell>
@@ -172,16 +172,46 @@ export default async function ScanResultPage({
 
       <section className="container-page mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="space-y-6">
-          <div className="card p-8">
-            <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(14,17,22,0.92),rgba(14,17,22,0.72))] shadow-glow">
+            <div className="border-b border-border/70 px-6 py-4 sm:px-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                    Accessibility report
+                  </p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Generated {new Date(scan.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
+                  <span className="rounded-full border border-border px-2.5 py-1">1 page scanned</span>
+                  <span className="rounded-full border border-border px-2.5 py-1">
+                    {previousScan ? "Comparison available" : "Baseline scan"}
+                  </span>
+                  {ownedByMe && (
+                    <span className="rounded-full border border-border px-2.5 py-1">
+                      {canExportPdf ? "PDF ready" : "PDF on Pro"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-8 px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
                 <p className="text-xs uppercase tracking-wider text-text-subtle">Scanned URL</p>
-                <p className="mt-1 break-all font-mono text-sm text-text">{scan.url}</p>
-                <p className="mt-3 text-xs text-text-subtle">
-                  {new Date(scan.createdAt).toLocaleString()} · {riskCount} risk
-                  {riskCount === 1 ? "" : "s"} found
+                <p className="mt-2 break-all font-mono text-sm text-text">{scan.url}</p>
+                <h1 className="mt-5 max-w-3xl text-balance text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+                  {riskCount === 0
+                    ? "This page looks clean in automated testing."
+                    : `${riskCount} accessibility risk${riskCount === 1 ? "" : "s"} need attention on this page.`}
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
+                  This report is designed to help your team understand what changed, what
+                  matters most, and what to fix next without translating raw WCAG output by
+                  hand.
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="mt-6 flex flex-wrap items-center gap-3">
                   <RescanButton url={scan.url} label="Re-scan site" />
                   {ownedByMe && scan.status === "COMPLETED" && (
                     <ShareReportButton
@@ -192,21 +222,21 @@ export default async function ScanResultPage({
                   )}
                   {ownedByMe && (
                     <>
-                    {canExportPdf ? (
-                      <a
-                        href={`/api/scan/${scan.id}/pdf`}
-                        className="btn-ghost text-sm"
-                      >
-                        Download PDF report
-                      </a>
-                    ) : (
-                      <Link
-                        href="/pricing"
-                        className="text-xs text-text-subtle hover:text-text"
-                      >
-                        PDF report is a Pro feature →
-                      </Link>
-                    )}
+                      {canExportPdf ? (
+                        <a
+                          href={`/api/scan/${scan.id}/pdf`}
+                          className="btn-ghost text-sm"
+                        >
+                          Download PDF report
+                        </a>
+                      ) : (
+                        <Link
+                          href="/pricing"
+                          className="text-xs text-text-subtle hover:text-text"
+                        >
+                          PDF report is a Pro feature →
+                        </Link>
+                      )}
                     </>
                   )}
                 </div>
@@ -214,7 +244,7 @@ export default async function ScanResultPage({
               <ScoreDial score={scan.score} band={band} />
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-px border-t border-border/70 bg-border/60 sm:grid-cols-2 xl:grid-cols-4">
               <ResultMetric
                 label="Compliance score"
                 value={`${scan.score}/100`}
@@ -240,14 +270,14 @@ export default async function ScanResultPage({
                 detail={comparison.issueDetail}
               />
             </div>
-            <p className="mt-4 text-sm text-text-muted">
+            <p className="px-6 py-5 text-sm text-text-muted sm:px-8">
               Some of these accessibility risks may impact usability, conversions, and accessibility compliance.
             </p>
           </div>
 
-          <div className="card p-6">
+          <div className="overflow-hidden rounded-[1.5rem] border border-border bg-bg-elevated/50">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="px-6 py-6 sm:px-7">
                 <p className="text-xs uppercase tracking-wider text-text-subtle">Detected risks</p>
                 <h2 className="mt-2 text-xl font-semibold text-text">
                   {riskCount === 0
@@ -258,13 +288,25 @@ export default async function ScanResultPage({
                   Some of these may affect how people navigate, read, or complete key actions on the page.
                 </p>
               </div>
-              <span className="rounded-full border border-border px-3 py-1 text-xs text-text-subtle">
+              <span className="mr-6 mt-6 rounded-full border border-border px-3 py-1 text-xs text-text-subtle">
                 1 page scanned
               </span>
             </div>
 
             {riskCount > 0 ? (
-              <div className="mt-5 space-y-3">
+              <div className="border-t border-border/70 px-6 py-5 sm:px-7">
+                <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
+                  <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-accent">
+                    New risks: {comparison.newCount}
+                  </span>
+                  <span className="rounded-full border border-border px-2.5 py-1">
+                    Fixed risks: {comparison.fixedCount}
+                  </span>
+                  <span className="rounded-full border border-border px-2.5 py-1">
+                    Score change: {comparison.deltaLabel}
+                  </span>
+                </div>
+                <div className="space-y-3">
                 {visibleIssues.map((violation) => (
                   <RiskListItem
                     key={violation.id}
@@ -277,15 +319,16 @@ export default async function ScanResultPage({
                     hasBaseline={!!previousScan}
                   />
                 ))}
+                </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-text-muted">
+              <p className="border-t border-border/70 px-6 py-5 text-sm text-text-muted sm:px-7">
                 axe-core didn&apos;t flag any automated risks on this page. Manual testing is still recommended.
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-4">
             {IMPACT_ORDER.map((impact) => (
               <SeverityPill
                 key={impact}
@@ -389,7 +432,7 @@ function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn
             </Link>
           ) : (
             <Link href="/login" className="text-sm text-text-muted hover:text-text">
-              Sign in
+              Log in
             </Link>
           )}
           <Link href="/" className="btn-ghost">
@@ -404,15 +447,15 @@ function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn
 
 function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }) {
   const href = loggedIn ? `/claim/${scanId}` : `/signup?scanId=${scanId}`;
-  const cta = loggedIn ? "Save to dashboard" : "Sign up to save";
+  const cta = loggedIn ? "Save to dashboard" : "Create account to save";
   return (
     <section className="container-page mt-10">
       <div className="card flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-text">
             {loggedIn
-              ? "Save this scan to monitor this website over time."
-              : "Create a free account to save this scan."}
+              ? "Save this scan and turn this website into an ongoing monitoring workflow."
+              : "Create a free account to save this scan and keep working from it later."}
           </p>
           <p className="mt-1 text-xs text-text-muted">
             Re-scan on demand, track improvements over time, and keep your history in one place as the site changes.
@@ -490,7 +533,7 @@ function ScoreDial({
   const color = band.tone === "good" ? "#22c55e" : band.tone === "warn" ? "#f59e0b" : "#ef4444";
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-5 rounded-2xl border border-border/70 bg-bg-muted/20 px-4 py-4">
       <div className="relative h-32 w-32">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 128 128" aria-hidden="true">
           <circle cx="64" cy="64" r={radius} stroke="#262626" strokeWidth="8" fill="none" />
@@ -523,7 +566,7 @@ function ScoreDial({
 
 function SeverityPill({ impact, count }: { impact: Impact; count: number }) {
   return (
-    <div className="card p-4">
+    <div className="bg-bg-elevated/60 p-4">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-text-subtle">
           {IMPACT_LABELS[impact]}
@@ -548,7 +591,7 @@ function ResultMetric({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-bg-muted/50 p-4">
+    <div className="bg-bg-elevated/60 p-4">
       <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-text">{value}</p>
       <p className="mt-1 text-xs text-text-muted">{detail}</p>
@@ -571,7 +614,7 @@ function RiskListItem({
   hasBaseline: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
+    <div className="rounded-xl border border-border bg-bg-muted/30 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -616,7 +659,7 @@ function ViolationCard({
   hasBaseline: boolean;
 }) {
   return (
-    <article className="card p-6">
+    <article className="rounded-[1.25rem] border border-border bg-bg-elevated/45 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -710,17 +753,19 @@ function RecommendedFixesPanel({
       : null;
 
   return (
-    <aside className="card h-fit p-6 lg:sticky lg:top-6">
-      <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
-      <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
-      <div className="mt-4 space-y-2 text-sm text-text-muted">
+    <aside className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(16,20,26,0.95),rgba(14,17,22,0.82))] lg:sticky lg:top-6">
+      <div className="border-b border-border/70 px-6 py-5">
+        <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
+        <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
+        <div className="mt-4 space-y-2 text-sm text-text-muted">
         <p>New accessibility risks can appear anytime.</p>
         <p>You scanned 1 page — more pages may have accessibility risks.</p>
+        </div>
       </div>
       {usage && <AiUsagePanel usage={usage} />}
 
       {state.mode === "visible" ? (
-        <div className="mt-6 space-y-4">
+        <div className="space-y-4 px-6 py-6">
           {fixes.length > 0 ? (
             fixes.map((fix) => <VisibleFixCard key={fix.id} fix={fix} />)
           ) : (
@@ -756,7 +801,7 @@ function VisibleFixCard({
   const timeToFix = estimateFixTime(fix.help, fix.codeExample, fix.plainEnglishFix);
 
   return (
-    <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
+    <div className="rounded-[1.15rem] border border-border bg-bg-muted/30 p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-text">{fix.help}</p>
         {copyText ? <CopyFixButton text={copyText} /> : null}
@@ -847,10 +892,10 @@ function LockedAiPreview({
   fallbackViolations: { id: string; help: string; impact: string }[];
 }) {
   return (
-    <div className="relative mt-5 overflow-hidden rounded-xl border border-accent-muted/40 bg-bg-muted/70">
-      <div className="space-y-4 p-4">
+    <div className="relative border-t border-border/70 px-6 py-6">
+      <div className="space-y-4">
         {fallbackViolations.map((violation) => (
-          <div key={violation.id} className="rounded-xl border border-border bg-bg p-4">
+          <div key={violation.id} className="rounded-[1.15rem] border border-border bg-bg p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-semibold text-text">{violation.help}</p>
               <span className="rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-wider text-text-subtle">
@@ -868,7 +913,7 @@ function LockedAiPreview({
           </div>
         ))}
       </div>
-      <div className="absolute inset-0 flex flex-col items-start justify-center bg-bg/55 p-5">
+      <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.2),rgba(11,13,17,0.88)_30%,rgba(11,13,17,0.94))] p-6">
         <p className="text-sm font-semibold text-text">
           <LockIcon /> AI fix suggestions are locked
         </p>

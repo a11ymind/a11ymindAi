@@ -40,16 +40,38 @@ export default async function PricingPage({
         <div className="container-page relative flex flex-col items-center py-16 text-center sm:py-24">
           <span className="chip mb-6">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            Cancel anytime · No lock-in
+            Start free · upgrade when the workflow justifies it
           </span>
-          <h1 className="max-w-2xl animate-fade-in-up text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-            Pick the level of{" "}
-            <span className="gradient-text">protection</span> your site needs.
+          <h1 className="max-w-3xl animate-fade-in-up text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+            Choose the workflow that matches{" "}
+            <span className="gradient-text">how seriously you manage risk.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base text-text-muted">
-            Start free. Upgrade when you want plain-English fixes, ongoing monitoring, and reports
-            you can hand to a client.
+            Free is for fast visibility. Starter is for one site you care about. Pro is for
+            teams and agencies that need monitoring, AI remediation, and reports worth
+            sending onward.
           </p>
+        </div>
+      </section>
+
+      <section className="container-page pb-10">
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-3">
+          <PlanModeCard
+            title="Free"
+            eyebrow="See the risk"
+            body="Run scans on any page and get a credible first pass before you commit budget."
+          />
+          <PlanModeCard
+            title="Starter"
+            eyebrow="Fix and monitor"
+            body="Turn one important website into an ongoing workflow with AI fixes and scheduled rescans."
+          />
+          <PlanModeCard
+            title="Pro"
+            eyebrow="Operate at scale"
+            body="Monitor multiple sites, generate reports, and give clients or stakeholders proof you are staying on top of changes."
+            highlight
+          />
         </div>
       </section>
 
@@ -141,24 +163,45 @@ type PlanCopy = {
 
 const PLAN_COPY: Record<string, PlanCopy> = {
   FREE: {
-    pitch: "Scan any page on demand, then monitor one website for free.",
-    bestFor: "Best for a quick gut-check before you commit.",
-    primaryCta: "Start scanning",
+    pitch: "Run scans on any public page and keep one important site on your radar.",
+    bestFor: "Best for operators who need visibility before they need a workflow.",
+    primaryCta: "Run a free scan",
   },
   STARTER: {
-    pitch: "Scan any page, with AI fixes and monthly monitoring for one website.",
-    bestFor: "Best for small sites and solo operators.",
+    pitch: "Turn one live website into a recurring accessibility workflow with AI help.",
+    bestFor: "Best for small sites, solo operators, and focused teams.",
     primaryCta: "Fix my site",
   },
   PRO: {
-    pitch: "Scan any page and monitor multiple websites weekly, plus PDF reports.",
-    bestFor: "Best for agencies and serious site owners.",
+    pitch: "Manage accessibility across multiple sites with reporting that is ready to share.",
+    bestFor: "Best for agencies, product teams, and serious site owners.",
     primaryCta: "Get full protection",
   },
 };
 
+const PLAN_OUTCOMES: Record<
+  string,
+  { outcome: string; rhythm: string; proof: string }
+> = {
+  FREE: {
+    outcome: "Know what is risky before you ship blind.",
+    rhythm: "Manual scans whenever you need a gut-check.",
+    proof: "Good for early discovery and quick validation.",
+  },
+  STARTER: {
+    outcome: "Keep one site under active accessibility watch.",
+    rhythm: "Monthly monitoring plus AI fixes when issues matter.",
+    proof: "Best first paid step when one website drives revenue or reputation.",
+  },
+  PRO: {
+    outcome: "Run accessibility like an operating discipline, not a one-off task.",
+    rhythm: "Weekly monitoring, AI remediation, and shareable reporting.",
+    proof: "Best for agencies, multi-site teams, and customer-facing operations.",
+  },
+};
+
 function planCopy(id: string): PlanCopy {
-  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Start scanning" };
+  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Run a free scan" };
 }
 
 function PricingCard({
@@ -172,6 +215,11 @@ function PricingCard({
 }) {
   const isCurrent = currentPlan === tier.id;
   const copy = planCopy(tier.id);
+  const outcome = PLAN_OUTCOMES[tier.id] ?? {
+    outcome: "",
+    rhythm: "",
+    proof: "",
+  };
   const highlightCls = tier.highlight
     ? "border-accent shadow-glow md:-translate-y-2"
     : "border-border";
@@ -199,6 +247,13 @@ function PricingCard({
 
       <p className="mt-2 text-xs text-text-subtle">{copy.bestFor}</p>
 
+      <div className="mt-6 rounded-xl border border-border bg-bg-muted/40 p-4">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-accent">Outcome</p>
+        <p className="mt-2 text-sm font-medium text-text">{outcome.outcome}</p>
+        <p className="mt-3 text-sm text-text-muted">{outcome.rhythm}</p>
+        <p className="mt-2 text-xs leading-relaxed text-text-subtle">{outcome.proof}</p>
+      </div>
+
       <div className="mt-6">
         <PricingCTA
           tier={tier}
@@ -209,6 +264,11 @@ function PricingCard({
         />
       </div>
 
+      <div className="mt-6 border-t border-border/70 pt-5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+          What you actually unlock
+        </p>
+      </div>
       <ul className="mt-6 space-y-2.5 text-sm">
         {tier.features.map((f) => (
           <li
@@ -247,7 +307,7 @@ function PricingCTA({
   if (tier.id === "FREE") {
     return (
       <Link href={signedIn ? "/dashboard" : "/signup"} className="btn-ghost w-full">
-        {signedIn ? "Go to dashboard" : primaryCta}
+        {signedIn ? "Open dashboard" : primaryCta}
       </Link>
     );
   }
@@ -290,6 +350,28 @@ function CheckOrDash({ included }: { included: boolean }) {
     <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-text-subtle" viewBox="0 0 20 20" fill="none" aria-hidden="true">
       <path d="M5 10h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function PlanModeCard({
+  title,
+  eyebrow,
+  body,
+  highlight = false,
+}: {
+  title: string;
+  eyebrow: string;
+  body: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`bg-bg-elevated/60 px-5 py-6 ${highlight ? "relative" : ""}`}>
+      <p className={`text-[10px] uppercase tracking-[0.18em] ${highlight ? "text-accent" : "text-text-subtle"}`}>
+        {eyebrow}
+      </p>
+      <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">{title}</h2>
+      <p className="mt-3 text-sm leading-relaxed text-text-muted">{body}</p>
+    </div>
   );
 }
 

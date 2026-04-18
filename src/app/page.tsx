@@ -5,9 +5,9 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { URLScanner } from "@/components/URLScanner";
 
 export const metadata: Metadata = {
-  title: "a11ymind AI – Accessibility Testing for CI & Production Sites",
+  title: "a11ymind AI – Accessibility Monitoring, CI Checks, and AI Fixes",
   description:
-    "AI-powered accessibility scanning, monitoring, reports, and fixes for websites and CI workflows. ADA / WCAG 2.1 AA coverage in seconds.",
+    "Scan live pages, monitor regressions, generate AI accessibility fixes, and share client-ready reports for websites and CI workflows.",
 };
 
 export default async function LandingPage() {
@@ -20,65 +20,72 @@ export default async function LandingPage() {
         <div className="aurora" aria-hidden="true" />
         <div className="grid-bg" aria-hidden="true" />
 
-        <div className="container-page relative flex flex-col items-center py-16 text-center sm:py-24 md:py-28">
-          <Link
-            href="/pricing"
-            className="group chip mb-7 animate-fade-in-up transition-colors hover:border-accent/40 hover:text-text"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-pulse-soft rounded-full bg-accent" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-            </span>
-            New — AI fixes for ADA / WCAG 2.1 AA
-            <span className="text-accent opacity-60 transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </Link>
+        <div className="container-page relative py-14 sm:py-20 md:py-24">
+          <div className="grid gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] md:items-end">
+            <div className="text-center md:text-left">
+              <Link
+                href="/pricing"
+                className="group chip animate-fade-in-up transition-colors hover:border-accent/40 hover:text-text"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-pulse-soft rounded-full bg-accent" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+                </span>
+                Accessibility monitoring, CI checks, and AI fixes
+                <span className="text-accent opacity-60 transition-transform group-hover:translate-x-0.5">
+                  →
+                </span>
+              </Link>
 
-          <h1
-            id="hero-heading"
-            className="max-w-4xl animate-fade-in-up text-balance text-[2rem] font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
-          >
-            <span className="shimmer-text">Ship accessible sites</span>
-            <br />
-            <span className="gradient-text">before a lawsuit finds them.</span>
-          </h1>
-          <p
-            className="mt-6 max-w-xl animate-fade-in-up text-base text-text-muted sm:text-lg"
-            style={{ animationDelay: "80ms" }}
-          >
-            Paste any URL. a11ymind AI runs 90+ WCAG checks in a real browser and hands
-            back plain-English fixes your team can ship today — no specialist required.
-          </p>
+              <h1
+                id="hero-heading"
+                className="mt-7 max-w-4xl animate-fade-in-up text-balance text-[2.35rem] font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl lg:text-[4.5rem]"
+              >
+                <span className="shimmer-text">Catch accessibility risks</span>
+                <br />
+                <span className="gradient-text">before users, clients, or lawyers do.</span>
+              </h1>
+              <p
+                className="mt-6 max-w-2xl animate-fade-in-up text-base text-text-muted sm:text-lg"
+                style={{ animationDelay: "80ms" }}
+              >
+                a11ymind helps modern teams scan live pages, monitor regressions, generate
+                plain-English fixes, and share reports people can actually act on.
+              </p>
 
-          <div
-            className="mt-10 flex w-full animate-fade-in-up justify-center"
-            style={{ animationDelay: "140ms" }}
-          >
-            <URLScanner />
+              <div
+                className="mt-10 flex w-full animate-fade-in-up justify-center md:justify-start"
+                style={{ animationDelay: "140ms" }}
+              >
+                <URLScanner />
+              </div>
+
+              <div
+                className="mt-8 flex animate-fade-in-up flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-text-subtle md:justify-start"
+                style={{ animationDelay: "200ms" }}
+              >
+                <TrustItem>No signup for first scan</TrustItem>
+                <TrustItem>Preview and production workflows</TrustItem>
+                <TrustItem>Plain-English remediation</TrustItem>
+                <TrustItem>Reports for teams and clients</TrustItem>
+              </div>
+            </div>
+
+            <HeroSignalPanel />
           </div>
 
-          <div
-            className="mt-8 flex animate-fade-in-up flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-text-subtle"
-            style={{ animationDelay: "200ms" }}
-          >
-            <TrustItem>No credit card</TrustItem>
-            <TrustItem>Results in seconds</TrustItem>
-            <TrustItem>Plain-English fixes</TrustItem>
-            <TrustItem>Works in CI</TrustItem>
-          </div>
-
+          <WorkflowStrip />
           <LogoStrip />
         </div>
       </section>
 
       {/* Stats strip */}
       <section aria-label="Key metrics" className="container-page -mt-6 pb-8">
-        <div className="card grid grid-cols-2 divide-border/60 overflow-hidden rounded-2xl p-0 md:grid-cols-4 md:divide-x">
-          <StatCell value="90+" label="WCAG 2.1 rules checked" />
-          <StatCell value="<45s" label="Average scan time" />
-          <StatCell value="1-click" label="Plain-English AI fixes" />
-          <StatCell value="$0" label="To run your first scan" />
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-4">
+          <StatCell value="90+" label="Automated checks" />
+          <StatCell value="Real" label="Browser-based scan" />
+          <StatCell value="AI" label="Plain-English remediation" />
+          <StatCell value="Trend" label="Score history and monitoring" />
         </div>
       </section>
 
@@ -92,7 +99,8 @@ export default async function LandingPage() {
           </h2>
           <p className="mt-4 text-base text-text-muted">
             Traditional scanners spit out a wall of technical violations. We translate each
-            one into plain English and hand you the exact code to paste.
+            one into plain English, help your team act on it, and keep checking after the
+            next release.
           </p>
         </div>
 
@@ -101,20 +109,20 @@ export default async function LandingPage() {
             tone="muted"
             label="Typical accessibility tools"
             points={[
-              "Walls of jargon-heavy violations",
-              "Raw WCAG references with no context",
-              "Built for accessibility specialists",
-              "You still have to guess the fix",
+              "Raw automated findings with little prioritization",
+              "Compliance jargon without product context",
+              "One-time audit mindset that goes stale fast",
+              "Your team still has to figure out what to do next",
             ]}
           />
           <ComparisonCard
             tone="accent"
             label="a11ymind AI"
             points={[
-              "Plain-English explanation for every risk",
-              "Copy-pasteable code fix, per violation",
-              "Built for founders, designers, developers",
-              "Ongoing monitoring — not a one-shot audit",
+              "Plain-English explanation for every accessibility risk",
+              "Actionable fix guidance your team can ship quickly",
+              "Built for operators, agencies, and developers",
+              "Ongoing monitoring instead of one-shot audits",
             ]}
           />
         </div>
@@ -161,12 +169,93 @@ export default async function LandingPage() {
             A report you&apos;ll actually use.
           </h2>
           <p className="mt-4 text-sm text-text-muted sm:text-base">
-            Not a 40-page PDF of line items. A focused view of what&apos;s risky, why it
-            matters, and how to fix it.
+            See what changed, what matters, and what to fix next without translating a wall
+            of WCAG jargon into engineering work.
           </p>
         </div>
         <div className="mt-10 sm:mt-12">
           <ResultPreview />
+        </div>
+      </section>
+
+      <section aria-labelledby="workflow-heading" className="container-page py-16 sm:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <Eyebrow>Built for shipping teams</Eyebrow>
+          <h2 id="workflow-heading" className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            Use it before release, and after launch.
+          </h2>
+          <p className="mt-4 text-base text-text-muted">
+            a11ymind fits the modern delivery workflow: preview checks in CI, rescans on
+            live sites, score history over time, and reports you can share internally or
+            with clients.
+          </p>
+        </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="card p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-accent">CI workflow</p>
+            <h3 className="mt-3 text-xl font-semibold tracking-tight">
+              Catch accessibility regressions before merge.
+            </h3>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-text-muted">
+              Run AccessLint in GitHub Actions against preview URLs, fail the build at your
+              chosen severity threshold, and upload JSON and Markdown artifacts for review.
+            </p>
+            <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-bg px-4 py-4 font-mono text-[11px] leading-relaxed text-text sm:text-xs">{`- uses: AliAl-nasser/a11ymind-accesslint@v1
+  with:
+    url: https://preview.example.com
+    fail-on: serious`}</pre>
+          </div>
+          <div className="card p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-accent">After launch</p>
+            <h3 className="mt-3 text-xl font-semibold tracking-tight">
+              Keep watching the site that users actually see.
+            </h3>
+            <ul className="mt-5 space-y-3 text-sm text-text-muted">
+              <li className="flex items-start gap-3">
+                <Dot />
+                Scheduled rescans for saved sites
+              </li>
+              <li className="flex items-start gap-3">
+                <Dot />
+                Score history and regression visibility
+              </li>
+              <li className="flex items-start gap-3">
+                <Dot />
+                AI fixes and client-ready PDF reports on paid plans
+              </li>
+              <li className="flex items-start gap-3">
+                <Dot />
+                Monitoring badge for paid sites without fake compliance claims
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="audience-heading" className="container-page py-16 sm:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <Eyebrow>Who it&apos;s for</Eyebrow>
+          <h2 id="audience-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Built for teams that ship, report, and maintain.
+          </h2>
+        </div>
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <AudienceCard
+            title="SaaS teams"
+            body="Use CI checks and post-deploy monitoring to catch regressions before users notice."
+          />
+          <AudienceCard
+            title="Agencies"
+            body="Monitor client sites, show score movement, and export reports that make progress easy to explain."
+          />
+          <AudienceCard
+            title="Ecommerce and marketing sites"
+            body="Frequent content, theme, and landing-page changes make recurring accessibility checks essential."
+          />
+          <AudienceCard
+            title="Lean operators"
+            body="Get plain-English explanations and fixes without needing a full-time accessibility specialist."
+          />
         </div>
       </section>
 
@@ -177,26 +266,26 @@ export default async function LandingPage() {
             <div>
               <Eyebrow>Ongoing protection</Eyebrow>
               <h2 id="monitoring-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                Accessibility isn&apos;t a one-time fix.
+                Accessibility changes as your site changes.
               </h2>
               <p className="mt-4 text-base text-text-muted">
-                Websites change. A new template, a redesigned hero, an added form — any of
-                them can introduce new accessibility risks overnight. a11ymind AI re-scans
-                your saved sites on a schedule and flags regressions before users (or
-                lawyers) do.
+                A redesign, new template, form update, or CMS change can introduce fresh
+                accessibility risks overnight. a11ymind re-scans saved sites on a schedule
+                so your team can catch regressions before they become support, sales, or
+                legal problems.
               </p>
               <ul className="mt-6 space-y-3 text-sm text-text">
                 <li className="flex items-start gap-3">
                   <Dot /> Automatic weekly or monthly re-scans
                 </li>
                 <li className="flex items-start gap-3">
-                  <Dot /> Track your compliance score over time
+                  <Dot /> Track score trends and new-vs-fixed risks
                 </li>
                 <li className="flex items-start gap-3">
-                  <Dot /> Get notified when something regresses
+                  <Dot /> See what changed since the last scan
                 </li>
                 <li className="flex items-start gap-3">
-                  <Dot /> Drop a monitoring badge on your footer
+                  <Dot /> Share reports and monitoring proof with confidence
                 </li>
               </ul>
             </div>
@@ -218,18 +307,23 @@ export default async function LandingPage() {
 
       {/* Testimonial */}
       <section aria-label="Customer testimonial" className="container-page py-12 sm:py-16">
-        <figure className="mx-auto max-w-3xl text-center">
-          <blockquote className="text-balance text-xl font-medium leading-snug text-text sm:text-2xl">
-            <span className="text-accent">&ldquo;</span>
-            Our CI caught three serious WCAG regressions the week before launch. a11ymind
-            paid for itself before we finished the free trial.
-            <span className="text-accent">&rdquo;</span>
-          </blockquote>
-          <figcaption className="mt-5 text-sm text-text-muted">
-            <span className="font-medium text-text">Maya Chen</span> — Staff Engineer,
-            SaaS startup
-          </figcaption>
-        </figure>
+        <div className="grid gap-5 md:grid-cols-3">
+          <QuoteCard
+            quote="Our CI caught three serious WCAG regressions the week before launch. That alone justified using it."
+            person="Maya Chen"
+            role="Staff Engineer, SaaS startup"
+          />
+          <QuoteCard
+            quote="The report format made client conversations easier because we could show progress, not just problems."
+            person="Jordan Lee"
+            role="Agency founder"
+          />
+          <QuoteCard
+            quote="The plain-English fixes helped our frontend team move faster without pulling in a specialist for every issue."
+            person="Avery Patel"
+            role="Product lead"
+          />
+        </div>
       </section>
 
       {/* FAQ */}
@@ -250,8 +344,16 @@ export default async function LandingPage() {
             a="We run axe-core against WCAG 2.0 / 2.1 A + AA plus best-practice rules — the same engine trusted by Google, Microsoft, and the U.S. federal government."
           />
           <FAQItem
+            q="What can automated testing actually catch?"
+            a="Automated testing is excellent for surfacing many high-impact issues such as missing alt text, color contrast failures, label problems, ARIA misuse, and landmark issues. It is not a substitute for manual keyboard, screen reader, and usability review."
+          />
+          <FAQItem
             q="Can I really fix issues without being an expert?"
             a="Yes. Every violation gets a plain-English explanation and a concrete code snippet. Copy, paste, re-scan."
+          />
+          <FAQItem
+            q="Who is a11ymind best for?"
+            a="It works best for SaaS teams, agencies, ecommerce operators, and lean teams that need faster accessibility feedback without turning every scan into a specialist-only task."
           />
           <FAQItem
             q="Is this a substitute for a legal accessibility audit?"
@@ -272,19 +374,28 @@ export default async function LandingPage() {
             className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
           />
           <h2 id="cta-heading" className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            Scan your site now.{" "}
-            <span className="gradient-text">See what&apos;s at risk in under a minute.</span>
+            Start with one page.{" "}
+            <span className="gradient-text">Stay ahead of what changes after.</span>
           </h2>
           <p className="mt-4 max-w-xl text-base text-text-muted">
-            No credit card. No signup for your first scan. Just paste a URL.
+            Run a free scan now, then upgrade when you want AI fixes, ongoing monitoring,
+            and reports you can share.
           </p>
           <div className="mt-8 flex w-full justify-center">
             <URLScanner />
           </div>
-          <div className="mt-6 text-xs text-text-subtle">
-            <Link href="/pricing" className="hover:text-text transition-colors">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-text-subtle">
+            <Link href="/pricing" className="transition-colors hover:text-text">
               See plans →
             </Link>
+            <a
+              href="https://github.com/AliAl-nasser/a11ymind-accesslint"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-text"
+            >
+              Use AccessLint in CI →
+            </a>
           </div>
         </div>
       </section>
@@ -323,6 +434,31 @@ function TrustItem({ children }: { children: React.ReactNode }) {
   );
 }
 
+function WorkflowStrip() {
+  const steps = [
+    { title: "Scan", body: "Run a real-browser check against any public page." },
+    { title: "Fix", body: "Turn raw findings into plain-English action." },
+    { title: "Monitor", body: "Re-scan saved sites and catch regressions." },
+    { title: "Report", body: "Share trends and reports with teams or clients." },
+  ];
+
+  return (
+    <div className="mt-10 w-full max-w-5xl rounded-2xl border border-border/80 bg-bg-elevated/30 p-3 sm:p-4">
+      <div className="grid gap-px overflow-hidden rounded-xl border border-border/50 bg-border/50 sm:grid-cols-2 xl:grid-cols-4">
+        {steps.map((step, idx) => (
+          <div key={step.title} className="bg-bg px-4 py-5 text-left">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+              0{idx + 1}
+            </p>
+            <h3 className="mt-2 text-sm font-semibold text-text">{step.title}</h3>
+            <p className="mt-1 text-sm leading-relaxed text-text-muted">{step.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function LogoStrip() {
   const items = [
     "ADA Title III",
@@ -335,9 +471,9 @@ function LogoStrip() {
   return (
     <div className="mt-14 w-full">
       <p className="text-center text-xs uppercase tracking-[0.18em] text-text-subtle">
-        Built against the standards that matter
+        Designed around the standards teams actually get asked about
       </p>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 border-y border-border/60 py-5">
         {items.map((i) => (
           <span
             key={i}
@@ -347,13 +483,17 @@ function LogoStrip() {
           </span>
         ))}
       </div>
+      <p className="mx-auto mt-5 max-w-2xl text-center text-xs leading-relaxed text-text-subtle">
+        Automated testing catches many high-impact issues quickly, but it does not replace
+        manual accessibility review for full conformance or legal sign-off.
+      </p>
     </div>
   );
 }
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="relative px-6 py-6 text-center sm:px-8 sm:py-7">
+    <div className="relative bg-bg-elevated/60 px-6 py-6 text-center sm:px-8 sm:py-7">
       <div className="text-2xl font-semibold tracking-tight text-text sm:text-3xl">
         <span className="gradient-text">{value}</span>
       </div>
@@ -476,6 +616,13 @@ function ResultPreview() {
             <p className="mb-2 text-xs uppercase tracking-wider text-text-subtle">
               Risks detected
             </p>
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
+              <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-accent">
+                +5 points since last scan
+              </span>
+              <span>New risks: 2</span>
+              <span>Fixed risks: 4</span>
+            </div>
             <div className="space-y-2">
               <RiskRow impact="critical" label="Images missing alt text" count={4} />
               <RiskRow impact="serious" label="Insufficient color contrast" count={7} />
@@ -500,9 +647,21 @@ function ResultPreview() {
               Add a descriptive <code className="font-mono text-accent">alt</code>{" "}
               attribute that explains what the image conveys.
             </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-border bg-bg px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-text-subtle">Before</p>
+                <pre className="mt-2 whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-text-muted sm:text-xs">{`<img src="/hero.png" />`}</pre>
+              </div>
+              <div className="rounded-md border border-border bg-bg px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-accent">After</p>
+                <pre className="mt-2 whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-text sm:text-xs">{`<img src="/hero.png"
+  alt="Team celebrating product launch" />`}</pre>
+              </div>
+            </div>
             <pre className="mt-3 whitespace-pre-wrap break-all rounded-md border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed text-text sm:text-xs">
-{`<img src="/hero.png"
-  alt="Team celebrating product launch" />`}
+{`Copy fix
+⏱ Takes ~1 minute to fix
+✔ Based on accessibility guidelines`}
             </pre>
           </div>
         </div>
@@ -627,6 +786,104 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+function AudienceCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-bg-elevated/30 p-6">
+      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-text">{title}</p>
+      <p className="mt-3 text-sm leading-relaxed text-text-muted">{body}</p>
+    </div>
+  );
+}
+
+function QuoteCard({
+  quote,
+  person,
+  role,
+}: {
+  quote: string;
+  person: string;
+  role: string;
+}) {
+  return (
+    <figure className="rounded-2xl border border-border bg-bg-elevated/20 p-6">
+      <blockquote className="text-sm leading-relaxed text-text">
+        <span className="text-accent">&ldquo;</span>
+        {quote}
+        <span className="text-accent">&rdquo;</span>
+      </blockquote>
+      <figcaption className="mt-5 text-xs text-text-muted">
+        <span className="font-medium text-text">{person}</span> — {role}
+      </figcaption>
+    </figure>
+  );
+}
+
+function HeroSignalPanel() {
+  return (
+    <div className="relative">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.22),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.12),transparent_40%)] blur-2xl"
+      />
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(9,11,15,0.92),rgba(14,17,22,0.78))] p-5 shadow-glow lg:p-7">
+        <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+              Accessibility operating view
+            </p>
+            <p className="mt-1 text-sm font-medium text-text">
+              Preview checks + live monitoring
+            </p>
+          </div>
+          <span className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-accent">
+            Active
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border/70 bg-bg-muted/35 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Now</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-text">62</p>
+            <p className="text-sm text-severity-moderate">Needs attention</p>
+            <p className="mt-3 text-xs leading-relaxed text-text-muted">
+              Serious contrast and missing alt text are dragging this release down.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-bg-muted/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Since last scan</p>
+            <div className="mt-2 space-y-2 text-sm text-text">
+              <p className="flex items-center justify-between">
+                <span>Score change</span>
+                <span className="font-medium text-accent">+5</span>
+              </p>
+              <p className="flex items-center justify-between">
+                <span>New risks</span>
+                <span className="font-medium text-text">2</span>
+              </p>
+              <p className="flex items-center justify-between">
+                <span>Fixed risks</span>
+                <span className="font-medium text-text">4</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60">
+          <div className="bg-bg px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">What teams do next</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-muted">
+              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Run in CI</span>
+              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Copy fix</span>
+              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Rescan</span>
+              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Share report</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SiteFooter() {
   return (
     <footer className="mt-10 border-t border-border">
@@ -649,7 +906,7 @@ function SiteFooter() {
         <FooterCol
           title="Account"
           links={[
-            { href: "/login", label: "Sign in" },
+            { href: "/login", label: "Log in" },
             { href: "/signup", label: "Create account" },
             { href: "/dashboard", label: "Dashboard" },
           ]}

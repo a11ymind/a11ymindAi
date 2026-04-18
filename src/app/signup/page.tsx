@@ -28,10 +28,10 @@ export default function SignupPage() {
                 <Check /> Free plan, no credit card required
               </li>
               <li className="flex items-center gap-2">
-                <Check /> Scan any URL and keep the history
+                <Check /> Save scans and keep a running history
               </li>
               <li className="flex items-center gap-2">
-                <Check /> Upgrade any time for AI fixes & monitoring
+                <Check /> Upgrade any time for AI fixes, monitoring, and reports
               </li>
             </ul>
           </div>

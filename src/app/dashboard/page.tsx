@@ -96,7 +96,7 @@ export default async function DashboardPage({
                 href="/pricing"
                 className="hidden rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:inline-flex"
               >
-                Upgrade for AI fixes
+                Unlock AI fixes
               </Link>
             ) : (
               <Link
@@ -119,13 +119,13 @@ export default async function DashboardPage({
         <section className="container-page">
           <div className="card flex flex-col gap-2 border-accent-muted bg-accent-muted/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-text">Your subscription is active.</p>
+              <p className="text-sm font-medium text-text">Your plan is active.</p>
               <p className="text-xs text-text-muted">
                 a11ymind refreshed your billing state so your latest plan and entitlements are available now.
               </p>
             </div>
             <Link href="/pricing" className="text-sm text-accent hover:underline">
-              Start monitoring
+              Review plan details
             </Link>
           </div>
         </section>
@@ -148,21 +148,50 @@ export default async function DashboardPage({
       )}
 
       <section className="container-page mt-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Scan any page. Monitor saved sites.</h1>
-            <p className="mt-1 text-sm text-text-muted">
-              {sites.length === 0
-                ? "Run a manual scan on any URL, then save the sites you want a11ymind to keep monitoring."
-                : `${sites.length} website${sites.length === 1 ? "" : "s"} currently being monitored.`}
-            </p>
+        <div className="overflow-hidden rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,rgba(14,17,22,0.92),rgba(14,17,22,0.76))] shadow-glow">
+          <div className="grid gap-8 px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:items-end">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                Accessibility operations
+              </p>
+              <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+                Scan any page. Keep the sites that matter under watch.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
+                {sites.length === 0
+                  ? "Run a manual scan on any public URL, then save the websites you want a11ymind to keep monitoring over time."
+                  : `You currently have ${sites.length} monitored website${sites.length === 1 ? "" : "s"}. Use manual scans for fast checks, then turn important sites into an ongoing workflow.`}
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
+                <span className="rounded-full border border-border px-2.5 py-1">
+                  {entitlements.maxSites === 1 ? "Monitor 1 website" : "Monitor up to 10 websites"}
+                </span>
+                <span className="rounded-full border border-border px-2.5 py-1">
+                  {scanCadence}
+                </span>
+                <span className="rounded-full border border-border px-2.5 py-1">
+                  AI fixes {entitlements.aiFixes ? "enabled" : "locked"}
+                </span>
+                <span className="rounded-full border border-border px-2.5 py-1">
+                  PDF export {entitlements.pdfExport ? "enabled" : "locked"}
+                </span>
+              </div>
+            </div>
+            <div className="rounded-[1.25rem] border border-border/70 bg-bg-muted/25 p-4 sm:p-5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                Run a fresh scan
+              </p>
+              <p className="mt-2 text-sm text-text-muted">
+                Use manual scans for launch checks, client reviews, and fast validation on
+                any public page.
+              </p>
+              <div className="mt-5">
+                <URLScanner />
+              </div>
+            </div>
           </div>
-          <div className="w-full sm:w-auto sm:min-w-[22rem] lg:min-w-[28rem]">
-            <URLScanner />
-          </div>
-        </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="grid gap-px border-t border-border/70 bg-border/60 md:grid-cols-4">
           <DashboardStat
             label="Saved sites"
             value={`${sites.length}/${entitlements.maxSites}`}
@@ -199,6 +228,7 @@ export default async function DashboardPage({
                 : "Upgrade to Pro to unlock"
             }
           />
+          </div>
         </div>
 
         <p className="mt-4 text-sm text-text-muted">
@@ -216,7 +246,7 @@ export default async function DashboardPage({
               </p>
             </div>
             <Link href="/pricing" className="btn-primary whitespace-nowrap">
-              Start monitoring
+              Upgrade to monitor more sites
             </Link>
           </div>
         )}
@@ -236,7 +266,7 @@ export default async function DashboardPage({
       {sites.length > 0 && (
         <>
           <section className="container-page mt-8">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-4">
               <DashboardStat
                 label="Scans this week"
                 value={`${weekly.scanCount}`}
@@ -268,20 +298,37 @@ export default async function DashboardPage({
             </div>
           </section>
           <section className="container-page mt-10">
-            <div className="card p-6">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="overflow-hidden rounded-[1.4rem] border border-border bg-bg-elevated/45">
+              <div className="flex items-center justify-between border-b border-border/70 px-6 py-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-text-subtle">
                   Score history
                 </h2>
                 <span className="text-xs text-text-subtle">0–100, higher is better</span>
               </div>
-              <ScoreHistoryChart data={chartData} series={series} />
+              <div className="p-6">
+                <ScoreHistoryChart data={chartData} series={series} />
+              </div>
             </div>
           </section>
         </>
       )}
 
       <section className="container-page mt-10 space-y-4 pb-24">
+        {sites.length > 0 && (
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                Monitored sites
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-text">
+                The websites you&apos;re actively watching
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-text-muted">
+                Re-scan on demand, review score movement, and open the latest report for any monitored site.
+              </p>
+            </div>
+          </div>
+        )}
         {sites.map((site) => {
           const latest = site.scans[site.scans.length - 1];
           const previous = site.scans[site.scans.length - 2];
@@ -293,9 +340,12 @@ export default async function DashboardPage({
             badgeUrl,
           });
           return (
-            <div key={site.id} className="card p-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            <div key={site.id} className="overflow-hidden rounded-[1.35rem] border border-border bg-bg-elevated/35">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
                 <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                    {hostOf(site.url)}
+                  </p>
                   <p className="truncate font-mono text-sm text-text">{site.url}</p>
                   <p className="mt-1 text-xs text-text-subtle">
                     {latest
@@ -323,18 +373,52 @@ export default async function DashboardPage({
                 <div className="flex items-center gap-2">
                   {latest && (
                     <Link href={`/scan/${latest.id}`} className="btn-ghost text-sm">
-                      View
+                      Open report
                     </Link>
                   )}
                   <RescanButton url={site.url} />
                 </div>
               </div>
+              <div className="grid gap-px bg-border/60 md:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="bg-bg px-5 py-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <SiteMiniMetric
+                      label="Status"
+                      value={latest && band ? band.label : "Waiting"}
+                      tone={band?.tone}
+                    />
+                    <SiteMiniMetric
+                      label="Latest score"
+                      value={latest ? `${latest.score}/100` : "—"}
+                    />
+                    <SiteMiniMetric
+                      label="Trend"
+                      value={
+                        delta === null
+                          ? "Need 2 scans"
+                          : `${delta > 0 ? "+" : ""}${delta} points`
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="bg-bg px-5 py-4 md:min-w-[220px]">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                    Monitoring cadence
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-text">{scanCadence}</p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Websites change constantly, so this site stays in your monitoring loop.
+                  </p>
+                </div>
+              </div>
               {entitlements.monitoringBadge && (
-                <BadgeEmbedCard
-                  siteUrl={site.url}
-                  badgeUrl={badgeUrl}
-                  snippet={badgeSnippet}
-                />
+                <div className="border-t border-border/70 px-5 py-4">
+                  <BadgeEmbedCard
+                    siteUrl={site.url}
+                    badgeUrl={badgeUrl}
+                    snippet={badgeSnippet}
+                  />
+                </div>
               )}
             </div>
           );
@@ -355,7 +439,7 @@ function DashboardStat({
   detail: string;
 }) {
   return (
-    <div className="card p-4">
+    <div className="bg-bg-elevated/60 p-4">
       <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
       <p className="mt-2 text-lg font-semibold text-text">{value}</p>
       <p className="mt-1 text-xs text-text-muted">{detail}</p>
@@ -498,4 +582,26 @@ function buildBadgeSnippet({
   return `<a href="${homeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Accessibility monitored by a11ymind">
   <img src="${badgeUrl}" alt="Accessibility monitored by a11ymind" style="height:36px;width:auto;border:0" />
 </a>`;
+}
+
+function SiteMiniMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "good" | "warn" | "bad";
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-bg-elevated/35 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">{label}</p>
+      <p
+        className="mt-2 text-sm font-medium"
+        style={tone ? { color: bandColor(tone) } : undefined}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }

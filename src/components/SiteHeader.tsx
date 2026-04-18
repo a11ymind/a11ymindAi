@@ -36,12 +36,12 @@ export async function SiteHeader({
                 </Link>
               ) : (
                 <>
-                  <HeaderLink href="/login">Sign in</HeaderLink>
+                  <HeaderLink href="/login">Log in</HeaderLink>
                   <Link
                     href="/signup"
                     className="inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
                   >
-                    Get started
+                    Run a free scan
                     <span aria-hidden>→</span>
                   </Link>
                 </>

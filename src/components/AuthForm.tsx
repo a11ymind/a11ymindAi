@@ -84,15 +84,15 @@ export function AuthForm({
   return (
     <div className="w-full max-w-sm">
       <h1 className="text-2xl font-semibold tracking-tight">
-        {mode === "login" ? "Welcome back" : "Create your account"}
+        {mode === "login" ? "Welcome back" : "Create your a11ymind account"}
       </h1>
       <p className="mt-1 text-sm text-text-muted">
         {mode === "login"
-          ? "Log in to view your scan history and manage sites."
-          : "Save your scans and track compliance over time."}
+          ? "Log in to review reports, monitor saved sites, and manage billing."
+          : "Save scans, track accessibility changes over time, and unlock paid workflows when you need them."}
         {scanId && (
           <span className="mt-2 block rounded-md border border-accent-muted bg-accent-muted/20 px-3 py-2 text-xs text-accent">
-            Your recent scan will be attached to your account.
+            Your recent scan will be attached to your account so you can keep working from that result.
           </span>
         )}
       </p>
@@ -180,10 +180,10 @@ export function AuthForm({
         <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading
             ? mode === "login"
-              ? "Signing in…"
+              ? "Logging in…"
               : "Creating account…"
             : mode === "login"
-              ? "Sign in"
+              ? "Log in"
               : "Create account"}
         </button>
       </form>
