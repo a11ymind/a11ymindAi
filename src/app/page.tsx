@@ -69,6 +69,8 @@ export default async function LandingPage() {
                 <TrustItem>Plain-English remediation</TrustItem>
                 <TrustItem>Reports for teams and clients</TrustItem>
               </div>
+
+              <PricingAnchor className="mt-5 justify-center md:justify-start" />
             </div>
 
             <HeroSignalPanel />
@@ -88,6 +90,9 @@ export default async function LandingPage() {
           <StatCell value="Trend" label="Score history and monitoring" />
         </div>
       </section>
+
+      {/* Stack row */}
+      <StackRow />
 
       {/* Problem / differentiation */}
       <section aria-labelledby="why-heading" className="container-page py-16 sm:py-20">
@@ -160,6 +165,9 @@ export default async function LandingPage() {
           />
         </div>
       </section>
+
+      {/* CI / DX showcase */}
+      <CIShowcase />
 
       {/* Demo / value preview */}
       <section aria-labelledby="preview-heading" className="container-page py-16 sm:py-20">
@@ -258,6 +266,9 @@ export default async function LandingPage() {
           />
         </div>
       </section>
+
+      {/* Real product surfaces */}
+      <ProductTour />
 
       {/* Monitoring */}
       <section aria-labelledby="monitoring-heading" className="container-page py-16 sm:py-20">
@@ -384,6 +395,7 @@ export default async function LandingPage() {
           <div className="mt-8 flex w-full justify-center">
             <URLScanner />
           </div>
+          <PricingAnchor className="mt-5 justify-center" />
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-text-subtle">
             <Link href="/pricing" className="transition-colors hover:text-text">
               See plans →
@@ -1054,5 +1066,397 @@ function CodeIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+/* ---------------- Pricing anchor ---------------- */
+
+function PricingAnchor({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted ${className}`}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-text-subtle" />
+        <span className="text-text">Free</span> forever
+      </span>
+      <span className="text-text-subtle">·</span>
+      <span>
+        Starter <span className="tabular-nums text-text">$19</span>/mo
+      </span>
+      <span className="text-text-subtle">·</span>
+      <span>
+        Pro <span className="tabular-nums text-text">$49</span>/mo
+      </span>
+      <Link
+        href="/pricing"
+        className="inline-flex items-center gap-1 text-accent transition-colors hover:text-accent-glow"
+      >
+        Compare plans
+        <span aria-hidden>→</span>
+      </Link>
+    </div>
+  );
+}
+
+/* ---------------- Stack row ---------------- */
+
+function StackRow() {
+  const stacks = [
+    "GitHub Actions",
+    "Next.js",
+    "Vercel",
+    "Netlify",
+    "React",
+    "Vue",
+    "Shopify",
+    "Webflow",
+    "WordPress",
+    "Cloudflare",
+  ];
+  return (
+    <section aria-label="Supported stacks" className="container-page pb-12 pt-4 sm:pt-6">
+      <p className="text-center text-xs uppercase tracking-[0.18em] text-text-subtle">
+        Works with any stack — we scan what you ship
+      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:gap-x-8">
+        {stacks.map((s) => (
+          <span
+            key={s}
+            className="font-mono text-xs text-text-muted/80 transition-colors hover:text-text"
+          >
+            {s}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- CI / DX showcase ---------------- */
+
+function CIShowcase() {
+  return (
+    <section
+      aria-labelledby="ci-heading"
+      className="container-page py-16 sm:py-20"
+    >
+      <div className="mx-auto max-w-3xl text-center">
+        <Eyebrow>Built for CI</Eyebrow>
+        <h2
+          id="ci-heading"
+          className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl"
+        >
+          Catch regressions{" "}
+          <span className="gradient-text">before they merge.</span>
+        </h2>
+        <p className="mt-4 text-sm text-text-muted sm:text-base">
+          The AccessLint GitHub Action runs on every PR. Fail the build on new
+          serious issues, upload reports as artifacts, and review AI fixes next to
+          the diff that introduced the regression.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <TerminalCard />
+        <DiffCard />
+      </div>
+
+      <GitHubCheckBar />
+    </section>
+  );
+}
+
+function TerminalCard() {
+  return (
+    <div className="card overflow-hidden p-0">
+      <div className="flex items-center gap-2 border-b border-border bg-bg-muted/60 px-4 py-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-severity-critical/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-severity-moderate/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-accent/80" />
+        <span className="ml-2 font-mono text-[11px] text-text-subtle">
+          .github/workflows/a11ymind.yml
+        </span>
+      </div>
+      <pre className="overflow-x-auto px-4 py-4 font-mono text-[12px] leading-relaxed text-text sm:text-[13px]">
+{`$ gh run view --log
+`}<span className="text-text-subtle">{`▸ `}</span>{`Launching headless Chromium…
+`}<span className="text-text-subtle">{`▸ `}</span>{`Loading https://preview-42.vercel.app
+`}<span className="text-text-subtle">{`▸ `}</span>{`Running 90+ WCAG 2.1 AA checks…
+`}<span className="text-severity-moderate">{`⚠`}</span>{` 2 moderate risks found
+`}<span className="text-accent">{`✓`}</span>{` AccessLint scan complete`}
+        <br />
+        <span className="text-accent">
+{`  score 96/100  ·  crit 0 · serious 0 · mod 2 · minor 0`}
+        </span>
+        <br />
+        <span className="text-text-muted">{`  report → .accesslint/accesslint-report.json`}</span>
+      </pre>
+    </div>
+  );
+}
+
+function DiffCard() {
+  return (
+    <div className="card overflow-hidden p-0">
+      <div className="flex items-center justify-between border-b border-border bg-bg-muted/60 px-4 py-2">
+        <span className="font-mono text-[11px] text-text-subtle">
+          src/components/Hero.tsx
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent">
+          <LockIcon /> AI fix
+        </span>
+      </div>
+      <pre className="overflow-x-auto px-4 py-4 font-mono text-[12px] leading-relaxed sm:text-[13px]">
+        <span className="text-severity-critical">
+{`- <img src="/hero.png" />`}
+        </span>
+        <br />
+        <span className="text-accent">
+{`+ <img src="/hero.png"
++      alt="Team celebrating product launch" />`}
+        </span>
+        <br />
+        <br />
+        <span className="text-text-subtle">
+{`// WCAG 1.1.1 · rule: image-alt
+// screen readers skip unlabeled images`}
+        </span>
+      </pre>
+    </div>
+  );
+}
+
+function GitHubCheckBar() {
+  return (
+    <div className="mx-auto mt-5 max-w-5xl">
+      <div className="card flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="m4 10 4 4 8-8"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text">
+              All checks have passed ·{" "}
+              <span className="font-mono text-text-muted">AccessLint / scan</span>
+            </p>
+            <p className="text-xs text-text-subtle">
+              score 96/100 · 2 moderate · no blockers on this PR
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 font-mono text-[11px] font-medium text-emerald-400">
+          ✓ Ready to merge
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Product tour ---------------- */
+
+function ProductTour() {
+  return (
+    <section
+      aria-labelledby="tour-heading"
+      className="container-page py-16 sm:py-20"
+    >
+      <div className="mx-auto max-w-3xl text-center">
+        <Eyebrow>Real product surfaces</Eyebrow>
+        <h2
+          id="tour-heading"
+          className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl"
+        >
+          One scan feeds every view your team needs.
+        </h2>
+        <p className="mt-4 text-sm text-text-muted sm:text-base">
+          Same data, different surfaces — a dashboard for engineering, a shareable
+          report for clients, a monitoring badge for your public site.
+        </p>
+      </div>
+
+      <div className="mt-12 grid gap-5 lg:grid-cols-3">
+        <TourCard label="Dashboard · score history" caption="Track every monitored site over time, with deltas on every scan.">
+          <DashboardPreview />
+        </TourCard>
+        <TourCard label="PDF · client-ready report" caption="One-click export with your score, risk breakdown, and recommended fixes.">
+          <PdfPreview />
+        </TourCard>
+        <TourCard label="Badge · monitoring proof" caption="Drop a live compliance badge on your footer once you start monitoring.">
+          <BadgePreview />
+        </TourCard>
+      </div>
+    </section>
+  );
+}
+
+function TourCard({
+  label,
+  caption,
+  children,
+}: {
+  label: string;
+  caption: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="card card-hover overflow-hidden p-0">
+      <div className="border-b border-border bg-bg-muted/60 px-4 py-2.5">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-text-subtle">
+          {label}
+        </p>
+      </div>
+      <div className="p-5">{children}</div>
+      <div className="border-t border-border bg-bg/40 px-5 py-3">
+        <p className="text-xs text-text-muted">{caption}</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardPreview() {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-text-subtle">
+            Current score
+          </p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-accent">88</p>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent">
+          +10 wk
+        </span>
+      </div>
+      <SparkTrend />
+      <div className="mt-3 space-y-1.5 text-[11px]">
+        <MiniSiteRow host="acme.com" score={88} tone="good" />
+        <MiniSiteRow host="blog.acme.com" score={74} tone="warn" />
+        <MiniSiteRow host="shop.acme.com" score={92} tone="good" />
+      </div>
+    </div>
+  );
+}
+
+function MiniSiteRow({
+  host,
+  score,
+  tone,
+}: {
+  host: string;
+  score: number;
+  tone: "good" | "warn" | "bad";
+}) {
+  const color =
+    tone === "good"
+      ? "text-accent"
+      : tone === "warn"
+        ? "text-severity-moderate"
+        : "text-severity-critical";
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-bg-muted/40 px-2.5 py-1.5">
+      <span className="truncate font-mono text-text">{host}</span>
+      <span className={`tabular-nums font-semibold ${color}`}>{score}</span>
+    </div>
+  );
+}
+
+function PdfPreview() {
+  return (
+    <div className="rounded-md border border-border bg-bg/60 p-4">
+      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-accent">
+          a11ymind AI · audit report
+        </p>
+        <p className="font-mono text-[10px] text-text-subtle">PDF</p>
+      </div>
+      <p className="mt-3 text-sm font-semibold text-text">acme.com / home</p>
+      <p className="text-[11px] text-text-subtle">Generated · scan #147</p>
+      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+        <PdfStat label="Score" value="88" tone="accent" />
+        <PdfStat label="Crit" value="0" tone="muted" />
+        <PdfStat label="Ser" value="1" tone="warn" />
+        <PdfStat label="Mod" value="3" tone="muted" />
+      </div>
+      <div className="mt-4 space-y-1.5">
+        <div className="h-1.5 w-full rounded-full bg-border/60" />
+        <div className="h-1.5 w-[82%] rounded-full bg-border/60" />
+        <div className="h-1.5 w-[65%] rounded-full bg-border/60" />
+        <div className="h-1.5 w-[90%] rounded-full bg-border/60" />
+      </div>
+    </div>
+  );
+}
+
+function PdfStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "accent" | "warn" | "muted";
+}) {
+  const color =
+    tone === "accent"
+      ? "text-accent"
+      : tone === "warn"
+        ? "text-severity-serious"
+        : "text-text";
+  return (
+    <div className="rounded-md border border-border bg-bg-muted/40 px-1.5 py-1.5">
+      <p className={`text-base font-semibold tabular-nums ${color}`}>{value}</p>
+      <p className="text-[9px] uppercase tracking-wider text-text-subtle">{label}</p>
+    </div>
+  );
+}
+
+function BadgePreview() {
+  return (
+    <div className="flex h-full flex-col justify-between gap-5">
+      <div className="rounded-md border border-accent/30 bg-bg/60 p-4 shadow-glow">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent/15 text-accent">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 2 4 5v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5l-8-3Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path
+                d="m8.5 12 2.5 2.5L16 9"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+              Accessibility monitored
+            </p>
+            <p className="text-sm font-semibold text-text">a11ymind AI · 88/100</p>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-md border border-border bg-bg-muted/40 p-3">
+        <p className="font-mono text-[10px] text-text-subtle">embed.html</p>
+        <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-text-muted">
+{`<a href="https://www.a11ymind.ai">
+  <img src=".../badge/abc" alt="…" />
+</a>`}
+        </pre>
+      </div>
+    </div>
   );
 }
