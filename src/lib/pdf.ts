@@ -17,125 +17,438 @@ type PdfScan = {
   violations: PdfViolation[];
 };
 
+type PdfComparison = {
+  delta: number;
+  newRisks: number;
+  fixedRisks: number;
+} | null;
+
+export type RenderScanPdfOptions = {
+  comparison?: PdfComparison;
+  title?: string;
+  subtitle?: string;
+  showBranding?: boolean;
+};
+
+type Page = {
+  ops: string[];
+  cursorY: number;
+};
+
+type Rgb = [number, number, number];
+type FontName = "F1" | "F2";
+
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
-const FONT_SIZE = 10;
-const LINE_HEIGHT = 14;
-const MAX_LINES_PER_PAGE = 44;
-const WRAP_WIDTH = 92;
+const MARGIN_X = 48;
+const TOP_BAR_HEIGHT = 28;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+const BOTTOM_MARGIN = 46;
 
-export function renderScanPdf(scan: PdfScan): Buffer {
-  const lines = buildLines(scan);
-  const pageChunks = chunk(lines, MAX_LINES_PER_PAGE);
-  const pages = pageChunks.map((pageLines, index) =>
-    buildPageStream(pageLines, index + 1, pageChunks.length),
-  );
-  return buildPdfDocument(pages);
-}
+const COLORS = {
+  text: [0.09, 0.1, 0.12] as Rgb,
+  muted: [0.39, 0.41, 0.46] as Rgb,
+  subtle: [0.56, 0.58, 0.62] as Rgb,
+  border: [0.84, 0.86, 0.89] as Rgb,
+  soft: [0.96, 0.97, 0.98] as Rgb,
+  white: [1, 1, 1] as Rgb,
+  accent: [0.02, 0.72, 0.78] as Rgb,
+  accentSoft: [0.88, 0.97, 0.98] as Rgb,
+  critical: [0.91, 0.29, 0.28] as Rgb,
+  serious: [0.96, 0.48, 0.18] as Rgb,
+  moderate: [0.9, 0.7, 0.15] as Rgb,
+  minor: [0.27, 0.52, 0.96] as Rgb,
+};
 
-function buildLines(scan: PdfScan): string[] {
-  const counts = summarizeViolations(scan.violations);
-  const lines: string[] = [
-    "Accessly accessibility report",
-    "",
-    `Scan ID: ${scan.id}`,
-    `Scanned URL: ${scan.url}`,
-    `Generated: ${scan.createdAt.toISOString()}`,
-    `Accessibility score: ${scan.score}/100`,
-    `Violations found: ${scan.violations.length}`,
-    `Critical: ${counts.critical} | Serious: ${counts.serious} | Moderate: ${counts.moderate} | Minor: ${counts.minor}`,
-    "",
-  ];
+const IMPACT_ORDER = ["critical", "serious", "moderate", "minor"] as const;
 
-  if (scan.violations.length === 0) {
-    lines.push("No automated WCAG violations were detected in this scan.");
-    return wrapAll(lines);
-  }
+export function renderScanPdf(scan: PdfScan, options: RenderScanPdfOptions = {}): Buffer {
+  const pages: Page[] = [createPage()];
+  const showBranding = options.showBranding ?? true;
+  const title = options.title ?? "Accessibility monitoring report";
+  const subtitle =
+    options.subtitle ??
+    "Accessibility risks detected by Accessly on the scanned page. This report is not a legal certification or guarantee of compliance.";
+  const summary = summarizeViolations(scan.violations);
+  const comparison = options.comparison ?? null;
+  const topIssues = sortViolations(scan.violations).slice(0, 5);
+  const fixes = scan.violations
+    .filter((violation) =>
+      Boolean(violation.plainEnglishFix || violation.legalRationale || violation.codeExample),
+    )
+    .slice(0, 4);
 
-  scan.violations.forEach((violation, index) => {
-    lines.push(`Violation ${index + 1}: ${violation.help}`);
-    lines.push(`Rule: ${violation.axeId}`);
-    lines.push(`Severity: ${violation.impact}`);
-    lines.push(`Selector: ${violation.selector || "(no selector captured)"}`);
-    lines.push(`Description: ${violation.description}`);
-    if (violation.legalRationale) {
-      lines.push(`Legal rationale: ${violation.legalRationale}`);
-    }
-    if (violation.plainEnglishFix) {
-      lines.push(`Recommended fix: ${violation.plainEnglishFix}`);
-    }
-    if (violation.codeExample) {
-      lines.push("Code example:");
-      lines.push(stripFences(violation.codeExample));
-    }
-    lines.push("");
+  drawCoverHeader(pages[0], {
+    title,
+    subtitle,
+    url: scan.url,
+    createdAt: scan.createdAt,
+    showBranding,
   });
 
-  return wrapAll(lines);
-}
+  addOverviewCard(pages[0], scan, summary, comparison);
+  addMetricRow(pages[0], [
+    {
+      label: "Total risks",
+      value: `${scan.violations.length}`,
+      detail: "Automated accessibility risks found on this page",
+    },
+    {
+      label: "Score change",
+      value:
+        comparison === null
+          ? "No baseline"
+          : `${comparison.delta > 0 ? "+" : ""}${comparison.delta} points`,
+      detail:
+        comparison === null
+          ? "Run another scan to compare progress"
+          : `${Math.abs(comparison.delta)} point${Math.abs(comparison.delta) === 1 ? "" : "s"} ${comparison.delta >= 0 ? "better" : "lower"} than the previous scan`,
+    },
+    {
+      label: "New risks",
+      value: comparison === null ? "-" : `${comparison.newRisks}`,
+      detail: comparison === null ? "No previous scan available" : "Rules that were not present in the previous scan",
+    },
+    {
+      label: "Fixed risks",
+      value: comparison === null ? "-" : `${comparison.fixedRisks}`,
+      detail: comparison === null ? "No previous scan available" : "Rules present before but not detected now",
+    },
+  ]);
 
-function wrapAll(lines: string[]): string[] {
-  return lines.flatMap((line) => wrapLine(sanitize(line), WRAP_WIDTH));
-}
+  addSeverityRow(pages[0], summary);
+  addCallout(
+    pages[0],
+    "Use this report to prioritize fixes, communicate progress, and monitor how the site changes over time. Accessibility risks can reappear when content, templates, or components change.",
+  );
 
-function wrapLine(line: string, width: number): string[] {
-  if (!line) return [""];
-
-  const words = line.split(/\s+/);
-  const wrapped: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    if (!current) {
-      current = word;
-      continue;
+  addSectionHeading(pages, "Top accessibility risks", "Highest-priority findings from this scan");
+  if (topIssues.length === 0) {
+    addParagraphCard(
+      pages,
+      "No automated accessibility risks were detected on this page. Manual QA is still recommended for keyboard, screen reader, and end-to-end flow coverage.",
+    );
+  } else {
+    for (const [index, issue] of topIssues.entries()) {
+      addIssueCard(pages, issue, index + 1);
     }
-
-    if (`${current} ${word}`.length <= width) {
-      current = `${current} ${word}`;
-      continue;
-    }
-
-    wrapped.push(current);
-    current = word;
   }
 
-  if (current) wrapped.push(current);
-  return wrapped.length > 0 ? wrapped : [""];
+  if (fixes.length > 0) {
+    addSectionHeading(
+      pages,
+      "Recommended fixes",
+      "Client-ready remediation notes generated from the saved scan data",
+    );
+    for (const [index, fix] of fixes.entries()) {
+      addFixCard(pages, fix, index + 1);
+    }
+  }
+
+  addSectionHeading(pages, "Report notes");
+  addParagraphCard(
+    pages,
+    "This report summarizes automated accessibility risks found on the scanned page only. It does not represent a full manual audit or a legal guarantee of WCAG or ADA compliance. Use it as a practical monitoring and remediation report generated by Accessly.",
+  );
+
+  const pageStreams = pages.map((page, index) =>
+    buildPageStream(page.ops.join("\n"), index + 1, pages.length, showBranding),
+  );
+
+  return buildPdfDocument(pageStreams);
 }
 
-function buildPageStream(lines: string[], pageNumber: number, totalPages: number): string {
-  const startY = PAGE_HEIGHT - 48;
-  const pdfLines = lines.map((line) => `(${escapePdfText(line)}) Tj T*`).join("\n");
-  const footer = `BT
-/F1 9 Tf
-40 24 Td
-(${escapePdfText(`Accessly report | Page ${pageNumber} of ${totalPages}`)}) Tj
-ET`;
-  return `BT
-/F1 ${FONT_SIZE} Tf
-40 ${startY} Td
-${LINE_HEIGHT} TL
-${pdfLines}
-ET
-${footer}`;
+function createPage(): Page {
+  return { ops: [], cursorY: PAGE_HEIGHT - 60 };
+}
+
+function currentPage(pages: Page[]) {
+  return pages[pages.length - 1];
+}
+
+function startNewPage(pages: Page[], showBranding = true) {
+  const page = createPage();
+  page.ops.push(fillRect(0, PAGE_HEIGHT - TOP_BAR_HEIGHT, PAGE_WIDTH, TOP_BAR_HEIGHT, COLORS.soft));
+  page.ops.push(
+    drawLine(MARGIN_X, PAGE_HEIGHT - TOP_BAR_HEIGHT - 10, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - TOP_BAR_HEIGHT - 10, COLORS.border, 1),
+  );
+  if (showBranding) {
+    page.ops.push(textOp(MARGIN_X, PAGE_HEIGHT - 18, "Accessly", 11, "F2", COLORS.text));
+  }
+  page.cursorY = PAGE_HEIGHT - 56;
+  pages.push(page);
+  return page;
+}
+
+function ensureSpace(pages: Page[], height: number, showBranding = true) {
+  const page = currentPage(pages);
+  if (page.cursorY - height < BOTTOM_MARGIN) {
+    return startNewPage(pages, showBranding);
+  }
+  return page;
+}
+
+function drawCoverHeader(
+  page: Page,
+  input: {
+    title: string;
+    subtitle: string;
+    url: string;
+    createdAt: Date;
+    showBranding: boolean;
+  },
+) {
+  page.ops.push(fillRect(0, PAGE_HEIGHT - TOP_BAR_HEIGHT, PAGE_WIDTH, TOP_BAR_HEIGHT, COLORS.accent));
+  if (input.showBranding) {
+    page.ops.push(textOp(MARGIN_X, PAGE_HEIGHT - 18, "Accessly", 12, "F2", COLORS.white));
+  }
+
+  page.ops.push(textOp(MARGIN_X, PAGE_HEIGHT - 64, input.title, 23, "F2", COLORS.text));
+  page.ops.push(...wrappedTextOps(MARGIN_X, PAGE_HEIGHT - 84, CONTENT_WIDTH, input.subtitle, 10, "F1", COLORS.muted, 13));
+  page.ops.push(textOp(MARGIN_X, PAGE_HEIGHT - 126, "Website URL", 9, "F2", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X, PAGE_HEIGHT - 141, CONTENT_WIDTH - 120, input.url, 11, "F1", COLORS.text, 14));
+  page.ops.push(textOp(MARGIN_X, PAGE_HEIGHT - 172, "Report generated", 9, "F2", COLORS.subtle));
+  page.ops.push(
+    textOp(
+      MARGIN_X,
+      PAGE_HEIGHT - 187,
+      formatTimestamp(input.createdAt),
+      11,
+      "F1",
+      COLORS.text,
+    ),
+  );
+
+  page.cursorY = PAGE_HEIGHT - 220;
+}
+
+function addOverviewCard(
+  page: Page,
+  scan: PdfScan,
+  summary: ReturnType<typeof summarizeViolations>,
+  comparison: PdfComparison,
+) {
+  const cardHeight = 118;
+  const y = page.cursorY - cardHeight;
+  page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, cardHeight, COLORS.soft));
+  page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, cardHeight, COLORS.border, 1));
+  page.ops.push(textOp(MARGIN_X + 18, y + 92, "Accessly monitoring snapshot", 11, "F2", COLORS.subtle));
+  page.ops.push(textOp(MARGIN_X + 18, y + 58, `${scan.score}/100`, 30, "F2", scoreColor(scan.score)));
+  page.ops.push(textOp(MARGIN_X + 18, y + 36, "Accessibility score", 10, "F1", COLORS.muted));
+  page.ops.push(
+    textOp(
+      MARGIN_X + 210,
+      y + 92,
+      `${scan.violations.length} total risks`,
+      15,
+      "F2",
+      COLORS.text,
+    ),
+  );
+  page.ops.push(
+    ...wrappedTextOps(
+      MARGIN_X + 210,
+      y + 72,
+      270,
+      comparison === null
+        ? "This is the first comparable report for this site or URL. Future reports will show score change and issue movement."
+        : `${comparison.delta > 0 ? "+" : ""}${comparison.delta} points since the previous scan. New risks: ${comparison.newRisks}. Fixed risks: ${comparison.fixedRisks}.`,
+      10,
+      "F1",
+      COLORS.muted,
+      13,
+    ),
+  );
+  page.ops.push(
+    textOp(
+      MARGIN_X + 210,
+      y + 24,
+      `Critical ${summary.critical}  |  Serious ${summary.serious}  |  Moderate ${summary.moderate}  |  Minor ${summary.minor}`,
+      10,
+      "F1",
+      COLORS.text,
+    ),
+  );
+  page.cursorY = y - 18;
+}
+
+function addMetricRow(
+  page: Page,
+  metrics: { label: string; value: string; detail: string }[],
+) {
+  const gap = 12;
+  const width = (CONTENT_WIDTH - gap * (metrics.length - 1)) / metrics.length;
+  const height = 74;
+  const y = page.cursorY - height;
+
+  metrics.forEach((metric, index) => {
+    const x = MARGIN_X + index * (width + gap);
+    page.ops.push(fillRect(x, y, width, height, COLORS.white));
+    page.ops.push(strokeRect(x, y, width, height, COLORS.border, 1));
+    page.ops.push(textOp(x + 12, y + 56, metric.label, 9, "F2", COLORS.subtle));
+    page.ops.push(textOp(x + 12, y + 34, metric.value, 16, "F2", COLORS.text));
+    page.ops.push(...wrappedTextOps(x + 12, y + 18, width - 24, metric.detail, 8, "F1", COLORS.muted, 10));
+  });
+
+  page.cursorY = y - 18;
+}
+
+function addSeverityRow(page: Page, summary: ReturnType<typeof summarizeViolations>) {
+  const gap = 12;
+  const width = (CONTENT_WIDTH - gap * 3) / 4;
+  const height = 56;
+  const y = page.cursorY - height;
+  const items = [
+    { label: "Critical", value: summary.critical, color: COLORS.critical },
+    { label: "Serious", value: summary.serious, color: COLORS.serious },
+    { label: "Moderate", value: summary.moderate, color: COLORS.moderate },
+    { label: "Minor", value: summary.minor, color: COLORS.minor },
+  ];
+
+  items.forEach((item, index) => {
+    const x = MARGIN_X + index * (width + gap);
+    page.ops.push(fillRect(x, y, width, height, COLORS.white));
+    page.ops.push(strokeRect(x, y, width, height, COLORS.border, 1));
+    page.ops.push(fillRect(x, y + height - 5, width, 5, item.color));
+    page.ops.push(textOp(x + 12, y + 30, `${item.value}`, 16, "F2", COLORS.text));
+    page.ops.push(textOp(x + 12, y + 15, item.label, 9, "F1", COLORS.muted));
+  });
+
+  page.cursorY = y - 18;
+}
+
+function addCallout(page: Page, text: string) {
+  const height = 58;
+  const y = page.cursorY - height;
+  page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.accentSoft));
+  page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.border, 1));
+  page.ops.push(
+    ...wrappedTextOps(MARGIN_X + 16, y + 35, CONTENT_WIDTH - 32, text, 10, "F1", COLORS.text, 13),
+  );
+  page.cursorY = y - 22;
+}
+
+function addSectionHeading(pages: Page[], title: string, subtitle?: string) {
+  const page = ensureSpace(pages, subtitle ? 50 : 32);
+  page.ops.push(textOp(MARGIN_X, page.cursorY, title, 16, "F2", COLORS.text));
+  if (subtitle) {
+    page.ops.push(...wrappedTextOps(MARGIN_X, page.cursorY - 16, CONTENT_WIDTH, subtitle, 9, "F1", COLORS.muted, 12));
+    page.cursorY -= 34;
+  } else {
+    page.cursorY -= 18;
+  }
+  page.ops.push(drawLine(MARGIN_X, page.cursorY, PAGE_WIDTH - MARGIN_X, page.cursorY, COLORS.border, 1));
+  page.cursorY -= 18;
+}
+
+function addParagraphCard(pages: Page[], text: string) {
+  const lines = wrapText(text, charsForWidth(CONTENT_WIDTH - 28, 10));
+  const height = 26 + lines.length * 13;
+  const page = ensureSpace(pages, height + 14);
+  const y = page.cursorY - height;
+  page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.soft));
+  page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.border, 1));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 14, y + height - 20, CONTENT_WIDTH - 28, text, 10, "F1", COLORS.text, 13));
+  page.cursorY = y - 14;
+}
+
+function addIssueCard(pages: Page[], issue: PdfViolation, index: number) {
+  const descLines = wrapText(issue.description, charsForWidth(CONTENT_WIDTH - 36, 10));
+  const meaningLines = wrapText(plainEnglishRiskMeaning(issue.help, issue.description), charsForWidth(CONTENT_WIDTH - 36, 9));
+  const impactLines = wrapText(plainEnglishRiskImpact(issue.help, issue.impact), charsForWidth(CONTENT_WIDTH - 36, 9));
+  const selector = issue.selector || "(no selector captured)";
+  const selectorLines = wrapText(`Affected selector: ${selector}`, charsForWidth(CONTENT_WIDTH - 36, 8));
+  const height =
+    54 +
+    descLines.length * 13 +
+    meaningLines.length * 12 +
+    impactLines.length * 12 +
+    selectorLines.length * 10;
+  const page = ensureSpace(pages, height + 14);
+  const y = page.cursorY - height;
+  const severity = normalizeImpact(issue.impact);
+
+  page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.white));
+  page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.border, 1));
+  page.ops.push(fillRect(MARGIN_X, y + height - 5, CONTENT_WIDTH, 5, impactColor(severity)));
+  page.ops.push(textOp(MARGIN_X + 16, y + height - 22, `Issue ${index}. ${issue.help}`, 12, "F2", COLORS.text));
+  page.ops.push(textOp(MARGIN_X + 16, y + height - 38, `${severity.toUpperCase()}  |  Rule ${issue.axeId}`, 8, "F1", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, y + height - 56, CONTENT_WIDTH - 32, issue.description, 10, "F1", COLORS.text, 13));
+  const meaningY = y + height - 56 - descLines.length * 13 - 8;
+  page.ops.push(textOp(MARGIN_X + 16, meaningY, "What this means", 8, "F2", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, meaningY - 12, CONTENT_WIDTH - 32, plainEnglishRiskMeaning(issue.help, issue.description), 9, "F1", COLORS.muted, 12));
+  const impactY = meaningY - 12 - meaningLines.length * 12 - 8;
+  page.ops.push(textOp(MARGIN_X + 16, impactY, "Why it matters", 8, "F2", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, impactY - 12, CONTENT_WIDTH - 32, plainEnglishRiskImpact(issue.help, issue.impact), 9, "F1", COLORS.muted, 12));
+  const selectorY = impactY - 12 - impactLines.length * 12 - 8;
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, selectorY, CONTENT_WIDTH - 32, `Affected selector: ${selector}`, 8, "F1", COLORS.subtle, 10));
+  page.cursorY = y - 14;
+}
+
+function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
+  const recommendedFix = fix.plainEnglishFix || "No plain-English remediation note was stored for this issue.";
+  const rationale = fix.legalRationale || "Based on accessibility guidelines and saved scan context.";
+  const codeExample = stripFences(fix.codeExample || "").slice(0, 500);
+  const fixLines = wrapText(recommendedFix, charsForWidth(CONTENT_WIDTH - 36, 10));
+  const rationaleLines = wrapText(rationale, charsForWidth(CONTENT_WIDTH - 36, 9));
+  const codeLines = codeExample
+    ? wrapText(codeExample, charsForWidth(CONTENT_WIDTH - 48, 8), true).slice(0, 8)
+    : [];
+  const height =
+    64 +
+    fixLines.length * 13 +
+    rationaleLines.length * 12 +
+    (codeLines.length > 0 ? codeLines.length * 10 + 26 : 0);
+  const page = ensureSpace(pages, height + 14);
+  const y = page.cursorY - height;
+
+  page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.soft));
+  page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.border, 1));
+  page.ops.push(textOp(MARGIN_X + 16, y + height - 22, `Fix ${index}. ${fix.help}`, 12, "F2", COLORS.text));
+  page.ops.push(textOp(MARGIN_X + 16, y + height - 38, `Estimated effort: ${estimateFixTime(fix.help, fix.codeExample, fix.plainEnglishFix)}`, 8, "F1", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, y + height - 56, CONTENT_WIDTH - 32, recommendedFix, 10, "F1", COLORS.text, 13));
+  const rationaleY = y + height - 56 - fixLines.length * 13 - 8;
+  page.ops.push(textOp(MARGIN_X + 16, rationaleY, "Based on accessibility guidelines", 8, "F2", COLORS.subtle));
+  page.ops.push(...wrappedTextOps(MARGIN_X + 16, rationaleY - 12, CONTENT_WIDTH - 32, rationale, 9, "F1", COLORS.muted, 12));
+  if (codeLines.length > 0) {
+    const codeY = rationaleY - 12 - rationaleLines.length * 12 - 10;
+    const codeHeight = codeLines.length * 10 + 18;
+    page.ops.push(fillRect(MARGIN_X + 16, codeY - codeHeight + 10, CONTENT_WIDTH - 32, codeHeight, COLORS.white));
+    page.ops.push(strokeRect(MARGIN_X + 16, codeY - codeHeight + 10, CONTENT_WIDTH - 32, codeHeight, COLORS.border, 1));
+    page.ops.push(textOp(MARGIN_X + 26, codeY, "Recommended code example", 8, "F2", COLORS.subtle));
+    page.ops.push(...drawWrappedText(MARGIN_X + 26, codeY - 12, CONTENT_WIDTH - 52, codeLines, 8, "F1", COLORS.text, 10));
+  }
+  page.cursorY = y - 14;
+}
+
+function buildPageStream(content: string, pageNumber: number, totalPages: number, showBranding: boolean) {
+  const footerLabel = showBranding
+    ? `Accessly report | Page ${pageNumber} of ${totalPages}`
+    : `Accessibility report | Page ${pageNumber} of ${totalPages}`;
+  const footer = [
+    drawLine(MARGIN_X, 32, PAGE_WIDTH - MARGIN_X, 32, COLORS.border, 1),
+    textOp(MARGIN_X, 18, footerLabel, 9, "F1", COLORS.muted),
+  ].join("\n");
+
+  return `${content}\n${footer}`;
 }
 
 function buildPdfDocument(pageStreams: string[]): Buffer {
   const objects: string[] = [];
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
 
-  const pageObjectIds = pageStreams.map((_, index) => 4 + index * 2);
+  const pageObjectIds = pageStreams.map((_, index) => 5 + index * 2);
   objects.push(
     `<< /Type /Pages /Count ${pageStreams.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(" ")}] >>`,
   );
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
 
   pageStreams.forEach((stream, index) => {
-    const pageObjectId = 4 + index * 2;
+    const pageObjectId = 5 + index * 2;
     const contentObjectId = pageObjectId + 1;
     objects[pageObjectId - 1] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectId} 0 R >>`;
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectId} 0 R >>`;
     objects[contentObjectId - 1] =
       `<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`;
   });
@@ -165,35 +478,242 @@ ${xrefOffset}
   return Buffer.from(body, "utf8");
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const pages: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    pages.push(items.slice(index, index + size));
-  }
-  return pages.length > 0 ? pages : [[]];
+function wrappedTextOps(
+  x: number,
+  y: number,
+  width: number,
+  text: string,
+  size: number,
+  font: FontName,
+  color: Rgb,
+  leading: number,
+) {
+  return drawWrappedText(x, y, width, wrapText(text, charsForWidth(width, size)), size, font, color, leading);
 }
 
-function stripFences(text: string): string {
-  return text.replace(/^```[a-zA-Z0-9]*\n?/, "").replace(/```\s*$/, "").trim();
+function drawWrappedText(
+  x: number,
+  y: number,
+  width: number,
+  lines: string[],
+  size: number,
+  font: FontName,
+  color: Rgb,
+  leading: number,
+) {
+  return lines.map((line, index) => textOp(x, y - index * leading, line, size, font, color));
+}
+
+function wrapText(text: string, maxChars: number, preserveWhitespace = false): string[] {
+  const paragraphs = sanitize(text).split(/\r?\n/);
+  const lines: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) {
+      lines.push("");
+      continue;
+    }
+
+    if (preserveWhitespace) {
+      let remaining = paragraph;
+      while (remaining.length > maxChars) {
+        lines.push(remaining.slice(0, maxChars));
+        remaining = remaining.slice(maxChars);
+      }
+      lines.push(remaining);
+      continue;
+    }
+
+    const words = paragraph.split(/\s+/);
+    let current = "";
+
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length <= maxChars) {
+        current = next;
+        continue;
+      }
+
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+
+      if (word.length <= maxChars) {
+        current = word;
+      } else {
+        let remaining = word;
+        while (remaining.length > maxChars) {
+          lines.push(remaining.slice(0, maxChars));
+          remaining = remaining.slice(maxChars);
+        }
+        current = remaining;
+      }
+    }
+
+    if (current) lines.push(current);
+  }
+
+  return lines.length > 0 ? lines : [""];
+}
+
+function charsForWidth(width: number, fontSize: number) {
+  return Math.max(10, Math.floor(width / (fontSize * 0.54)));
 }
 
 function summarizeViolations(violations: PdfViolation[]) {
   return violations.reduce(
     (summary, violation) => {
-      if (violation.impact === "critical") summary.critical += 1;
-      else if (violation.impact === "serious") summary.serious += 1;
-      else if (violation.impact === "moderate") summary.moderate += 1;
-      else summary.minor += 1;
+      const impact = normalizeImpact(violation.impact);
+      summary[impact] += 1;
       return summary;
     },
     { critical: 0, serious: 0, moderate: 0, minor: 0 },
   );
 }
 
-function sanitize(text: string): string {
+function normalizeImpact(impact: string): typeof IMPACT_ORDER[number] {
+  return IMPACT_ORDER.includes(impact as (typeof IMPACT_ORDER)[number])
+    ? (impact as (typeof IMPACT_ORDER)[number])
+    : "minor";
+}
+
+function sortViolations(violations: PdfViolation[]) {
+  const order = new Map(IMPACT_ORDER.map((impact, index) => [impact, index]));
+  return [...violations].sort((a, b) => {
+    const impactDiff =
+      (order.get(normalizeImpact(a.impact)) ?? IMPACT_ORDER.length) -
+      (order.get(normalizeImpact(b.impact)) ?? IMPACT_ORDER.length);
+    if (impactDiff !== 0) return impactDiff;
+    return a.help.localeCompare(b.help);
+  });
+}
+
+function formatTimestamp(value: Date) {
+  return value.toISOString().replace("T", " ").replace(".000Z", " UTC");
+}
+
+function estimateFixTime(
+  help: string,
+  codeExample: string | null,
+  plainEnglishFix: string | null,
+) {
+  const text = `${help} ${codeExample ?? ""} ${plainEnglishFix ?? ""}`.toLowerCase();
+
+  if (text.includes("contrast") || text.includes("alt") || text.includes("label")) {
+    return "1 minute";
+  }
+  if (text.includes("heading") || text.includes("button") || text.includes("link")) {
+    return "3 minutes";
+  }
+  if (text.includes("form") || text.includes("keyboard") || text.includes("focus")) {
+    return "5 minutes";
+  }
+  return "2 minutes";
+}
+
+function plainEnglishRiskMeaning(help: string, description: string): string {
+  const text = `${help} ${description}`.toLowerCase();
+
+  if (text.includes("contrast")) {
+    return "Important text or controls may be hard to read in real-world conditions.";
+  }
+  if (text.includes("label")) {
+    return "A form field or action may not have a clear accessible name.";
+  }
+  if (text.includes("heading")) {
+    return "The page structure may be harder to navigate for assistive technology users.";
+  }
+  if (text.includes("link")) {
+    return "A link may not clearly communicate where it goes or what it does.";
+  }
+  if (text.includes("image") || text.includes("alt")) {
+    return "An image may be missing text that explains its purpose to non-visual users.";
+  }
+
+  return "People using keyboards, screen readers, or magnification may not get the same information or feedback as other users.";
+}
+
+function plainEnglishRiskImpact(help: string, impact: string): string {
+  const level = normalizeImpact(impact);
+  const base =
+    level === "critical"
+      ? "This can block someone from completing a key task."
+      : level === "serious"
+        ? "This can create major friction for people relying on assistive technology."
+        : level === "moderate"
+          ? "This can make the page confusing or unreliable for some users."
+          : "This can still add unnecessary friction and reduce confidence in the experience.";
+
+  const text = help.toLowerCase();
+  if (text.includes("form") || text.includes("label")) {
+    return `${base} It often affects signups, checkouts, and contact flows.`;
+  }
+  if (text.includes("link") || text.includes("button")) {
+    return `${base} It can make navigation and next steps harder to understand.`;
+  }
+  if (text.includes("contrast")) {
+    return `${base} It usually hurts readability and increases missed content.`;
+  }
+
+  return base;
+}
+
+function scoreColor(score: number): Rgb {
+  if (score >= 85) return [0.13, 0.72, 0.32];
+  if (score >= 60) return [0.9, 0.69, 0.04];
+  return COLORS.critical;
+}
+
+function impactColor(impact: typeof IMPACT_ORDER[number]): Rgb {
+  if (impact === "critical") return COLORS.critical;
+  if (impact === "serious") return COLORS.serious;
+  if (impact === "moderate") return COLORS.moderate;
+  return COLORS.minor;
+}
+
+function stripFences(text: string) {
+  return text.replace(/^```[a-zA-Z0-9]*\n?/, "").replace(/```\s*$/, "").trim();
+}
+
+function sanitize(text: string) {
   return text.replace(/[^\x20-\x7E]/g, "?");
 }
 
-function escapePdfText(text: string): string {
+function textOp(x: number, y: number, text: string, size: number, font: FontName, color: Rgb) {
+  return `BT
+/${font} ${size} Tf
+${fmt(color[0])} ${fmt(color[1])} ${fmt(color[2])} rg
+1 0 0 1 ${fmt(x)} ${fmt(y)} Tm
+(${escapePdfText(sanitize(text))}) Tj
+ET`;
+}
+
+function fillRect(x: number, y: number, width: number, height: number, color: Rgb) {
+  return `${fmt(color[0])} ${fmt(color[1])} ${fmt(color[2])} rg
+${fmt(x)} ${fmt(y)} ${fmt(width)} ${fmt(height)} re
+f`;
+}
+
+function strokeRect(x: number, y: number, width: number, height: number, color: Rgb, lineWidth: number) {
+  return `${fmt(color[0])} ${fmt(color[1])} ${fmt(color[2])} RG
+${fmt(lineWidth)} w
+${fmt(x)} ${fmt(y)} ${fmt(width)} ${fmt(height)} re
+S`;
+}
+
+function drawLine(x1: number, y1: number, x2: number, y2: number, color: Rgb, lineWidth: number) {
+  return `${fmt(color[0])} ${fmt(color[1])} ${fmt(color[2])} RG
+${fmt(lineWidth)} w
+${fmt(x1)} ${fmt(y1)} m
+${fmt(x2)} ${fmt(y2)} l
+S`;
+}
+
+function escapePdfText(text: string) {
   return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function fmt(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }

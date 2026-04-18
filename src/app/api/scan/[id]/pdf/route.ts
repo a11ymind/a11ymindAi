@@ -53,7 +53,18 @@ export async function GET(
   }
 
   try {
-    const pdf = renderScanPdf(scan);
+    const comparison = buildPdfComparison(
+      scan,
+      await findPreviousComparableScan({
+        id: scan.id,
+        createdAt: scan.createdAt,
+        siteId: scan.siteId,
+        userId: scan.userId,
+        url: scan.url,
+      }),
+    );
+
+    const pdf = renderScanPdf(scan, { comparison });
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
@@ -86,4 +97,84 @@ function hostFromUrl(url: string): string {
   } catch {
     return "report";
   }
+}
+
+async function findPreviousComparableScan(scan: {
+  id: string;
+  createdAt: Date;
+  siteId: string | null;
+  userId: string | null;
+  url: string;
+}) {
+  const select = {
+    score: true,
+    createdAt: true,
+    violations: { select: { axeId: true } },
+  } as const;
+
+  if (scan.siteId) {
+    return prisma.scan.findFirst({
+      where: {
+        siteId: scan.siteId,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
+
+  if (scan.userId) {
+    return prisma.scan.findFirst({
+      where: {
+        userId: scan.userId,
+        url: scan.url,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
+
+  return null;
+}
+
+function buildPdfComparison(
+  current: {
+    score: number;
+    violations: { axeId: string }[];
+  },
+  previous:
+    | {
+        score: number;
+        createdAt: Date;
+        violations: { axeId: string }[];
+      }
+    | null,
+) {
+  if (!previous) {
+    return null;
+  }
+
+  const currentIssues = new Set(current.violations.map((violation) => violation.axeId));
+  const previousIssues = new Set(previous.violations.map((violation) => violation.axeId));
+  let newRisks = 0;
+  let fixedRisks = 0;
+
+  for (const axeId of currentIssues) {
+    if (!previousIssues.has(axeId)) newRisks += 1;
+  }
+
+  for (const axeId of previousIssues) {
+    if (!currentIssues.has(axeId)) fixedRisks += 1;
+  }
+
+  return {
+    delta: current.score - previous.score,
+    newRisks,
+    fixedRisks,
+  };
 }

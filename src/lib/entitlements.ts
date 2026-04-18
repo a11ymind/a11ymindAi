@@ -8,6 +8,7 @@ export type Entitlements = {
   aiMonthlyLimit: number | null;
   pdfExport: boolean;
   autoScan: AutoScan;
+  monitoringBadge: boolean;
 };
 
 export const ENTITLEMENTS: Record<Plan, Entitlements> = {
@@ -17,6 +18,7 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     aiMonthlyLimit: null,
     pdfExport: false,
     autoScan: "none",
+    monitoringBadge: false,
   },
   STARTER: {
     maxSites: 1,
@@ -24,6 +26,7 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     aiMonthlyLimit: 20,
     pdfExport: false,
     autoScan: "monthly",
+    monitoringBadge: true,
   },
   PRO: {
     maxSites: 10,
@@ -31,6 +34,7 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     aiMonthlyLimit: 200,
     pdfExport: true,
     autoScan: "weekly",
+    monitoringBadge: true,
   },
 };
 

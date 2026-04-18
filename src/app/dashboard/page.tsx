@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { Logo } from "@/components/Logo";
 import { PlanBadge } from "@/components/PlanBadge";
@@ -71,6 +72,11 @@ export default async function DashboardPage({
   const chartData = buildChartData(sites);
   const entitlements = entitlementsFor(user.plan);
   const atSiteLimit = isAtSiteLimit(user.plan, sites.length);
+  const baseUrl = normalizeBaseUrl(
+    process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.NEXTAUTH_URL ??
+      "http://localhost:3000",
+  );
   const scanCadence =
     entitlements.autoScan === "none" ? "Manual only" : autoScanLabel(entitlements.autoScan);
 
@@ -240,6 +246,11 @@ export default async function DashboardPage({
           const previous = site.scans[site.scans.length - 2];
           const band = latest ? scoreBand(latest.score) : null;
           const delta = latest && previous ? latest.score - previous.score : null;
+          const badgeUrl = `${baseUrl}/badge/${site.id}`;
+          const badgeSnippet = buildBadgeSnippet({
+            homeUrl: baseUrl,
+            badgeUrl,
+          });
           return (
             <div key={site.id} className="card p-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -277,6 +288,13 @@ export default async function DashboardPage({
                   <RescanButton url={site.url} />
                 </div>
               </div>
+              {entitlements.monitoringBadge && (
+                <BadgeEmbedCard
+                  siteUrl={site.url}
+                  badgeUrl={badgeUrl}
+                  snippet={badgeSnippet}
+                />
+              )}
             </div>
           );
         })}
@@ -353,4 +371,20 @@ function buildChartData(
     }
     return point;
   });
+}
+
+function normalizeBaseUrl(url: string) {
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+function buildBadgeSnippet({
+  homeUrl,
+  badgeUrl,
+}: {
+  homeUrl: string;
+  badgeUrl: string;
+}) {
+  return `<a href="${homeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Accessibility monitored by Accessly">
+  <img src="${badgeUrl}" alt="Accessibility monitored by Accessly" style="height:36px;width:auto;border:0" />
+</a>`;
 }
