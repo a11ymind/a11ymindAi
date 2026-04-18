@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimitHeaders, rateLimitUserAction } from "@/lib/rate-limit";
+import { entitlementsFor } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,20 @@ export async function POST(
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { plan: true },
+  });
+  if (!user || !entitlementsFor(user.plan).shareableLink) {
+    return NextResponse.json(
+      {
+        error: "upgrade_required",
+        message: "Shareable links are included on Starter and Pro. Upgrade to enable sharing.",
+      },
+      { status: 402 },
+    );
   }
 
   const limit = await rateLimitUserAction({

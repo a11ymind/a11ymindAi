@@ -25,9 +25,10 @@ test("paid plans expose the expected entitlements", () => {
   assert.equal(pro.pdfExport, true);
   assert.equal(pro.monitoringBadge, true);
   assert.equal(pro.autoScan, "daily");
-  assert.equal(pro.regressionDiffs, true);
-  assert.equal(pro.slackAlerts, true);
-  assert.equal(pro.ciIntegration, true);
+  // Coming-soon flags — intentionally false until features ship.
+  assert.equal(pro.regressionDiffs, false);
+  assert.equal(pro.slackAlerts, false);
+  assert.equal(pro.ciIntegration, false);
 });
 
 test("site-limit helpers match current plan rules", () => {

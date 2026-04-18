@@ -52,9 +52,9 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     shareableLink: true,
     autoScan: "daily",
     monitoringBadge: true,
-    regressionDiffs: true,
-    slackAlerts: true,
-    ciIntegration: true,
+    regressionDiffs: false,
+    slackAlerts: false,
+    ciIntegration: false,
   },
 };
 

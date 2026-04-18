@@ -13,6 +13,7 @@ import {
   executeScanRecord,
   reapStaleRunningScans,
 } from "@/lib/scan-jobs";
+import { entitlementsFor } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,29 @@ export async function POST(req: Request) {
     // Release any of this user's prior scans that got stuck in RUNNING.
     // Protects the AI reservation slot + gives an accurate in-flight count.
     await reapStaleRunningScans(userId);
+
+    const monthlyLimit = entitlementsFor(userPlan).monthlyScanLimit;
+    if (monthlyLimit !== null) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const used = await prisma.scan.count({
+        where: { userId, createdAt: { gte: monthStart } },
+      });
+      if (used >= monthlyLimit) {
+        return NextResponse.json(
+          {
+            code: "MONTHLY_LIMIT_REACHED",
+            error: `You've used all ${monthlyLimit} scans on the Free plan this month.`,
+            message: `You've used all ${monthlyLimit} scans on the Free plan this month. Upgrade to Starter for unlimited manual scans.`,
+            plan: userPlan,
+            limit: monthlyLimit,
+            used,
+          },
+          { status: 429 },
+        );
+      }
+    }
 
     const authLimit = await rateLimitAuthenticatedScan(userId, userPlan);
     if (!authLimit.allowed) {
