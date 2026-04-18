@@ -179,6 +179,63 @@ export async function sendScheduledScanAlertEmail(input: {
   return sendEmail({ to, subject, text, html });
 }
 
+export async function sendWeeklyDigestEmail(input: {
+  to: string;
+  siteUrl: string;
+  scanCount: number;
+  latestScore: number;
+  bestScore: number;
+  worstScore: number;
+  newIssues: number;
+  fixedIssues: number;
+  reportUrl: string;
+}): Promise<SendEmailResult> {
+  const {
+    to,
+    siteUrl,
+    scanCount,
+    latestScore,
+    bestScore,
+    worstScore,
+    newIssues,
+    fixedIssues,
+    reportUrl,
+  } = input;
+
+  const subject = `Weekly accessibility digest · ${siteUrl}`;
+
+  const text = [
+    `Here's your week on ${siteUrl}.`,
+    "",
+    `Scans completed: ${scanCount}`,
+    `Current score: ${latestScore}`,
+    `Best/worst this week: ${bestScore} / ${worstScore}`,
+    `New issues: ${newIssues}`,
+    `Fixed issues: ${fixedIssues}`,
+    "",
+    `View the latest report: ${reportUrl}`,
+  ].join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h1 style="font-size: 18px; margin-bottom: 12px;">Weekly accessibility digest</h1>
+      <p style="margin: 0 0 12px;">Here's your week on <strong>${escapeHtml(siteUrl)}</strong>.</p>
+      <ul style="margin: 0 0 16px; padding-left: 18px;">
+        <li>Scans completed: <strong>${scanCount}</strong></li>
+        <li>Current score: <strong>${latestScore}</strong></li>
+        <li>Best / worst this week: <strong>${bestScore} / ${worstScore}</strong></li>
+        <li>New issues: <strong>${newIssues}</strong></li>
+        <li>Fixed issues: <strong>${fixedIssues}</strong></li>
+      </ul>
+      <p style="margin: 0 0 12px;">
+        <a href="${escapeHtml(reportUrl)}" style="color: #06b6d4;">View the latest report →</a>
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, text, html });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")

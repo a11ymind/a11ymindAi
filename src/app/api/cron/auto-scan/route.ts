@@ -7,6 +7,7 @@ import {
   reserveScheduledScan,
 } from "@/lib/scan-jobs";
 import { maybeSendScheduledScanAlert, type AlertOutcome } from "@/lib/scan-alert";
+import { maybeSendWeeklyDigest, type DigestOutcome } from "@/lib/scan-digest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -122,6 +123,37 @@ export async function GET(req: Request) {
     }
   }
 
+  // Weekly digest pass — PRO users get a summary email roughly once a week
+  // regardless of whether today's scheduled scan fired. Independent of the
+  // regression-alert pass above; cooldowns keep it from double-sending.
+  const digestResults: {
+    siteId: string;
+    url: string;
+    outcome: DigestOutcome;
+  }[] = [];
+  const proSites = await prisma.site.findMany({
+    where: { user: { plan: "PRO" } },
+    select: { id: true, url: true },
+  });
+  for (const site of proSites) {
+    try {
+      const outcome = await maybeSendWeeklyDigest({
+        siteId: site.id,
+        now: startedAt,
+      });
+      digestResults.push({ siteId: site.id, url: site.url, outcome });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown digest failure";
+      console.error(`[cron] digest failure for site ${site.id}:`, error);
+      digestResults.push({
+        siteId: site.id,
+        url: site.url,
+        outcome: { status: "failed", error: message },
+      });
+    }
+  }
+
   const finishedAt = new Date();
 
   return NextResponse.json({
@@ -135,6 +167,8 @@ export async function GET(req: Request) {
     alertsSent: results.filter(
       (result) => result.status === "completed" && result.alert.status === "sent",
     ).length,
+    digestsSent: digestResults.filter((d) => d.outcome.status === "sent").length,
     results,
+    digestResults,
   });
 }

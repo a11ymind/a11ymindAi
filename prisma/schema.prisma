@@ -67,6 +67,7 @@ model Site {
   createdAt        DateTime  @default(now())
   lastAlertSentAt  DateTime?
   lastAlertScanId  String?
+  lastDigestSentAt DateTime?
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   scans Scan[]
@@ -82,6 +83,7 @@ model Scan {
   status          ScanStatus  @default(COMPLETED)
   error           String?
   aiReservedMonth String?
+  shareToken      String?     @unique
   createdAt       DateTime    @default(now())
   userId          String?
   siteId          String?

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyFixButton } from "@/components/CopyFixButton";
+import { CopyButton } from "@/components/CopyButton";
 import { Logo } from "@/components/Logo";
 import { RescanButton } from "@/components/RescanButton";
+import { ShareReportButton } from "@/components/ShareReportButton";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { getSession } from "@/lib/auth";
@@ -59,6 +61,14 @@ export default async function ScanResultPage({
   if (!scan) notFound();
 
   const previousScan = await findPreviousComparableScan(scan);
+  const previousAxeIds = new Set(
+    (previousScan?.violations ?? []).map((v) => v.axeId),
+  );
+  const baseUrl = normalizeBaseUrl(
+    process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.NEXTAUTH_URL ??
+      "http://localhost:3000",
+  );
 
   if (scan.status === "FAILED") {
     return (
@@ -173,6 +183,13 @@ export default async function ScanResultPage({
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <RescanButton url={scan.url} label="Re-scan site" />
+                  {ownedByMe && scan.status === "COMPLETED" && (
+                    <ShareReportButton
+                      scanId={scan.id}
+                      baseUrl={baseUrl}
+                      initialToken={scan.shareToken ?? null}
+                    />
+                  )}
                   {ownedByMe && (
                     <>
                     {canExportPdf ? (
@@ -249,7 +266,16 @@ export default async function ScanResultPage({
             {riskCount > 0 ? (
               <div className="mt-5 space-y-3">
                 {visibleIssues.map((violation) => (
-                  <RiskListItem key={violation.id} violation={violation} />
+                  <RiskListItem
+                    key={violation.id}
+                    violation={violation}
+                    isNew={
+                      previousScan
+                        ? !previousAxeIds.has(violation.axeId)
+                        : false
+                    }
+                    hasBaseline={!!previousScan}
+                  />
                 ))}
               </div>
             ) : (
@@ -277,12 +303,37 @@ export default async function ScanResultPage({
         />
       </section>
 
-      <section className="container-page mt-12 space-y-10 pb-24">
+      {riskCount > 0 && (
+        <section className="container-page mt-10">
+          <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 bg-bg/85 px-1 py-3 backdrop-blur">
+            {IMPACT_ORDER.map((impact) => {
+              const count = grouped.get(impact)?.length ?? 0;
+              if (count === 0) return null;
+              return (
+                <a
+                  key={impact}
+                  href={`#impact-${impact}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-muted/60 px-3 py-1 text-xs text-text hover:border-accent-muted"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: severityColor(impact) }}
+                  />
+                  {IMPACT_LABELS[impact]}
+                  <span className="tabular-nums text-text-subtle">{count}</span>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="container-page mt-6 space-y-10 pb-24">
         {IMPACT_ORDER.map((impact) => {
           const items = grouped.get(impact) ?? [];
           if (items.length === 0) return null;
           return (
-            <div key={impact}>
+            <div key={impact} id={`impact-${impact}`}>
               <div className="mb-4 flex items-baseline justify-between">
                 <h2 className="text-xl font-semibold">
                   <span
@@ -298,7 +349,12 @@ export default async function ScanResultPage({
               </div>
               <div className="space-y-4">
                 {items.map((v) => (
-                  <ViolationCard key={v.id} violation={v} />
+                  <ViolationCard
+                    key={v.id}
+                    violation={v}
+                    isNew={previousScan ? !previousAxeIds.has(v.axeId) : false}
+                    hasBaseline={!!previousScan}
+                  />
                 ))}
               </div>
             </div>
@@ -502,6 +558,8 @@ function ResultMetric({
 
 function RiskListItem({
   violation,
+  isNew,
+  hasBaseline,
 }: {
   violation: {
     id: string;
@@ -509,12 +567,17 @@ function RiskListItem({
     impact: string;
     description: string;
   };
+  isNew: boolean;
+  hasBaseline: boolean;
 }) {
   return (
     <div className="rounded-xl border border-border bg-bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-text">{violation.help}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-text">{violation.help}</p>
+            <DiffBadge isNew={isNew} hasBaseline={hasBaseline} />
+          </div>
           <p className="mt-1 text-sm text-text-muted">{violation.description}</p>
           <p className="mt-2 text-xs text-text-subtle">
             <span className="font-medium text-text">What this means:</span> {plainEnglishRiskMeaning(violation.help, violation.description)}
@@ -533,6 +596,8 @@ function RiskListItem({
 
 function ViolationCard({
   violation,
+  isNew,
+  hasBaseline,
 }: {
   violation: {
     id: string;
@@ -547,12 +612,17 @@ function ViolationCard({
     plainEnglishFix: string | null;
     codeExample: string | null;
   };
+  isNew: boolean;
+  hasBaseline: boolean;
 }) {
   return (
     <article className="card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold">{violation.help}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-semibold">{violation.help}</h3>
+            <DiffBadge isNew={isNew} hasBaseline={hasBaseline} />
+          </div>
           <p className="mt-1 font-mono text-xs text-text-subtle">{violation.axeId}</p>
         </div>
         <a
@@ -586,13 +656,21 @@ function ViolationCard({
       </div>
 
       <Section label="Affected element">
-        <code className="block overflow-x-auto rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text">
-          {violation.selector || "(no selector)"}
-        </code>
+        <div className="flex items-center justify-between gap-2">
+          <code className="block flex-1 overflow-x-auto rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text">
+            {violation.selector || "(no selector)"}
+          </code>
+          {violation.selector && (
+            <CopyButton text={violation.selector} label="Copy selector" />
+          )}
+        </div>
         {violation.element && (
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text-muted">
-            {violation.element}
-          </pre>
+          <div className="mt-2 flex items-start justify-between gap-2">
+            <pre className="flex-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text-muted">
+              {violation.element}
+            </pre>
+            <CopyButton text={violation.element} label="Copy HTML" />
+          </div>
         )}
       </Section>
     </article>
@@ -842,6 +920,32 @@ function Section({ label, children }: { label: string; children: React.ReactNode
       {children}
     </div>
   );
+}
+
+function DiffBadge({
+  isNew,
+  hasBaseline,
+}: {
+  isNew: boolean;
+  hasBaseline: boolean;
+}) {
+  if (!hasBaseline) return null;
+  if (isNew) {
+    return (
+      <span className="rounded-full border border-severity-critical/60 bg-severity-critical/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-severity-critical">
+        New
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full border border-border bg-bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-subtle">
+      Recurring
+    </span>
+  );
+}
+
+function normalizeBaseUrl(url: string) {
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
 function severityColor(impact: Impact): string {

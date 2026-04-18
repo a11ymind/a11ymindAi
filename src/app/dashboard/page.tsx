@@ -70,6 +70,7 @@ export default async function DashboardPage({
   }));
 
   const chartData = buildChartData(sites);
+  const weekly = await buildWeeklySummary(session.user.id);
   const entitlements = entitlementsFor(user.plan);
   const atSiteLimit = isAtSiteLimit(user.plan, sites.length);
   const baseUrl = normalizeBaseUrl(
@@ -227,17 +228,51 @@ export default async function DashboardPage({
       </section>
 
       {sites.length > 0 && (
-        <section className="container-page mt-10">
-          <div className="card p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-subtle">
-                Score history
-              </h2>
-              <span className="text-xs text-text-subtle">0–100, higher is better</span>
+        <>
+          <section className="container-page mt-8">
+            <div className="grid gap-4 md:grid-cols-4">
+              <DashboardStat
+                label="Scans this week"
+                value={`${weekly.scanCount}`}
+                detail={
+                  weekly.scanCount === 0
+                    ? "No scans yet this week"
+                    : "Completed scheduled or manual scans"
+                }
+              />
+              <DashboardStat
+                label="Issues fixed"
+                value={`${weekly.fixedIssues}`}
+                detail="Resolved since last week's baseline"
+              />
+              <DashboardStat
+                label="New issues"
+                value={`${weekly.newIssues}`}
+                detail={
+                  weekly.newIssues === 0
+                    ? "Nothing new appeared this week"
+                    : "Regressions flagged since last week"
+                }
+              />
+              <DashboardStat
+                label="Avg score change"
+                value={weekly.deltaLabel}
+                detail={weekly.deltaDetail}
+              />
             </div>
-            <ScoreHistoryChart data={chartData} series={series} />
-          </div>
-        </section>
+          </section>
+          <section className="container-page mt-10">
+            <div className="card p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-subtle">
+                  Score history
+                </h2>
+                <span className="text-xs text-text-subtle">0–100, higher is better</span>
+              </div>
+              <ScoreHistoryChart data={chartData} series={series} />
+            </div>
+          </section>
+        </>
       )}
 
       <section className="container-page mt-10 space-y-4 pb-24">
@@ -375,6 +410,75 @@ function buildChartData(
 
 function normalizeBaseUrl(url: string) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+async function buildWeeklySummary(userId: string) {
+  const now = Date.now();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const weekStart = new Date(now - weekMs);
+  const previousWeekStart = new Date(now - 2 * weekMs);
+
+  const scans = await prisma.scan.findMany({
+    where: {
+      userId,
+      status: "COMPLETED",
+      createdAt: { gte: previousWeekStart },
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      score: true,
+      createdAt: true,
+      siteId: true,
+      violations: { select: { axeId: true } },
+    },
+  });
+
+  const thisWeek = scans.filter((s) => s.createdAt >= weekStart);
+  const scanCount = thisWeek.length;
+
+  // Per-site diff: first in-window scan vs latest in-window scan.
+  const bySite = new Map<string, typeof scans>();
+  for (const s of scans) {
+    if (!s.siteId) continue;
+    const arr = bySite.get(s.siteId) ?? [];
+    arr.push(s);
+    bySite.set(s.siteId, arr);
+  }
+
+  let newIssues = 0;
+  let fixedIssues = 0;
+  const deltas: number[] = [];
+  for (const [, siteScans] of bySite) {
+    const latest = siteScans[siteScans.length - 1];
+    const baseline = siteScans.find((s) => s.createdAt < weekStart) ?? siteScans[0];
+    if (!latest || latest === baseline) continue;
+    const latestSet = new Set(latest.violations.map((v) => v.axeId));
+    const baseSet = new Set(baseline.violations.map((v) => v.axeId));
+    for (const id of latestSet) if (!baseSet.has(id)) newIssues += 1;
+    for (const id of baseSet) if (!latestSet.has(id)) fixedIssues += 1;
+    deltas.push(latest.score - baseline.score);
+  }
+
+  const avgDelta = deltas.length
+    ? Math.round(deltas.reduce((a, b) => a + b, 0) / deltas.length)
+    : 0;
+  const deltaLabel =
+    deltas.length === 0
+      ? "—"
+      : avgDelta === 0
+        ? "No change"
+        : `${avgDelta > 0 ? "+" : ""}${avgDelta}`;
+  const deltaDetail =
+    deltas.length === 0
+      ? "Needs two scans to compare"
+      : avgDelta > 0
+        ? "Average improvement across monitored sites"
+        : avgDelta < 0
+          ? "Average regression across monitored sites"
+          : "Scores held steady";
+
+  return { scanCount, newIssues, fixedIssues, deltaLabel, deltaDetail };
 }
 
 function buildBadgeSnippet({
