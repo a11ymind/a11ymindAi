@@ -4,7 +4,10 @@ import { Logo } from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 
-export const dynamic = "force-dynamic";
+// A shared scan's content is effectively immutable once the scan completes,
+// so let Vercel's CDN cache the rendered page for 5 minutes. On revoke we
+// render 404; worst-case a revoked token stays viewable for up to 5 min.
+export const revalidate = 300;
 export const metadata = {
   title: "Shared accessibility report — Accessly",
   robots: { index: false, follow: false },

@@ -131,8 +131,20 @@ export async function GET(req: Request) {
     url: string;
     outcome: DigestOutcome;
   }[] = [];
+  // Only pull sites whose digest cooldown has elapsed. Mirrors the
+  // cooldown constant inside scan-digest.ts (~6.5d) so the SQL filter
+  // and the in-function guard agree.
+  const digestCooldownCutoff = new Date(
+    startedAt.getTime() - (6 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000),
+  );
   const proSites = await prisma.site.findMany({
-    where: { user: { plan: "PRO" } },
+    where: {
+      user: { plan: "PRO" },
+      OR: [
+        { lastDigestSentAt: null },
+        { lastDigestSentAt: { lt: digestCooldownCutoff } },
+      ],
+    },
     select: { id: true, url: true },
   });
   for (const site of proSites) {

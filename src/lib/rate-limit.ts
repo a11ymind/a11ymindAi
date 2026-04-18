@@ -57,6 +57,23 @@ export async function rateLimitAuthenticatedScan(
   });
 }
 
+// Generic per-user rate limiter for lightweight actions like minting share
+// tokens. Uses the same DB-backed bucket as scan limiting so it survives
+// cold starts and scales across instances.
+export async function rateLimitUserAction(input: {
+  userId: string;
+  action: string;
+  limit: number;
+  windowMs: number;
+}): Promise<RateLimitResult> {
+  return consumeBucket({
+    key: `${input.action}:${input.userId}`,
+    limit: input.limit,
+    windowMs: input.windowMs,
+    ip: null,
+  });
+}
+
 async function consumeBucket(input: {
   key: string;
   limit: number;

@@ -2,9 +2,13 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimitHeaders, rateLimitUserAction } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const SHARE_MINT_LIMIT = 30;
+const SHARE_MINT_WINDOW_MS = 60 * 60 * 1000;
 
 function generateToken(): string {
   // 24 bytes → 32 chars base64url — opaque, unguessable.
@@ -18,6 +22,24 @@ export async function POST(
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const limit = await rateLimitUserAction({
+    userId: session.user.id,
+    action: "share-mint",
+    limit: SHARE_MINT_LIMIT,
+    windowMs: SHARE_MINT_WINDOW_MS,
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        message:
+          "You're creating share links too quickly. Try again in a little bit.",
+        retryAfterSec: limit.retryAfterSec,
+      },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
   }
 
   const scan = await prisma.scan.findUnique({
