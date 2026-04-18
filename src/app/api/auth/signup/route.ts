@@ -8,6 +8,7 @@ import {
   rateLimitHeaders,
   rateLimitUserAction,
 } from "@/lib/rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ const Body = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().trim().max(80).optional(),
+  turnstileToken: z.string().optional(),
 });
 
 // Disposable-email domains. Not exhaustive — catches the common scripts
@@ -81,6 +83,17 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     const msg = parsed.error.issues[0]?.message || "Invalid input";
     return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
+  const turnstile = await verifyTurnstileToken(parsed.data.turnstileToken, ip);
+  if (!turnstile.ok) {
+    return NextResponse.json(
+      {
+        error:
+          "Bot-check failed. Refresh the page and try again, or contact support.",
+      },
+      { status: 400 },
+    );
   }
 
   const email = parsed.data.email.trim().toLowerCase();

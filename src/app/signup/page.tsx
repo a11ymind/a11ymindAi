@@ -20,6 +20,7 @@ export default function SignupPage() {
                   mode="signup"
                   googleEnabled={googleEnabled}
                   githubEnabled={githubEnabled}
+                  turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null}
                 />
               </Suspense>
             </div>

@@ -1,21 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import Script from "next/script";
 import { safeAppRedirectPath } from "@/lib/redirects";
 
 type Mode = "login" | "signup";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        el: HTMLElement,
+        opts: {
+          sitekey: string;
+          theme?: "light" | "dark" | "auto";
+          callback?: (token: string) => void;
+          "error-callback"?: () => void;
+          "expired-callback"?: () => void;
+        },
+      ) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
 
 export function AuthForm({
   mode,
   googleEnabled,
   githubEnabled,
+  turnstileSiteKey,
 }: {
   mode: Mode;
   googleEnabled: boolean;
   githubEnabled: boolean;
+  turnstileSiteKey: string | null;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -35,9 +57,55 @@ export function AuthForm({
   const [error, setError] = useState<string | null>(null);
   const socialEnabled = googleEnabled || githubEnabled;
 
+  const turnstileRequired = mode === "signup" && Boolean(turnstileSiteKey);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!turnstileRequired || !turnstileReady || !turnstileSiteKey) return;
+    const el = turnstileContainerRef.current;
+    const api = window.turnstile;
+    if (!el || !api) return;
+    if (turnstileWidgetIdRef.current) return;
+    turnstileWidgetIdRef.current = api.render(el, {
+      sitekey: turnstileSiteKey,
+      theme: "dark",
+      callback: (token) => setTurnstileToken(token),
+      "expired-callback": () => setTurnstileToken(null),
+      "error-callback": () => setTurnstileToken(null),
+    });
+    return () => {
+      if (turnstileWidgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetIdRef.current);
+        } catch {
+          // Widget may already be gone on fast nav.
+        }
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [turnstileRequired, turnstileReady, turnstileSiteKey]);
+
+  function resetTurnstile() {
+    setTurnstileToken(null);
+    if (turnstileWidgetIdRef.current && window.turnstile) {
+      try {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+      } catch {
+        // Ignore reset races.
+      }
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the bot check below before continuing.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -45,10 +113,16 @@ export function AuthForm({
         const res = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, password, name: name || undefined }),
+          body: JSON.stringify({
+            email,
+            password,
+            name: name || undefined,
+            turnstileToken: turnstileToken || undefined,
+          }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
+          resetTurnstile();
           throw new Error(data.error || "Could not create account");
         }
       }
@@ -83,6 +157,14 @@ export function AuthForm({
 
   return (
     <div className="w-full max-w-sm">
+      {turnstileRequired && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={() => setTurnstileReady(true)}
+          onReady={() => setTurnstileReady(true)}
+        />
+      )}
       <h1 className="text-2xl font-semibold tracking-tight">
         {mode === "login" ? "Welcome back" : "Create your a11ymind account"}
       </h1>
@@ -171,13 +253,25 @@ export function AuthForm({
           )}
         </Field>
 
+        {turnstileRequired && (
+          <div
+            ref={turnstileContainerRef}
+            className="flex justify-center"
+            aria-label="Bot verification"
+          />
+        )}
+
         {error && (
           <p className="text-sm text-severity-critical" role="alert">
             {error}
           </p>
         )}
 
-        <button type="submit" className="btn-primary w-full" disabled={loading}>
+        <button
+          type="submit"
+          className="btn-primary w-full"
+          disabled={loading || (turnstileRequired && !turnstileToken)}
+        >
           {loading
             ? mode === "login"
               ? "Logging in…"

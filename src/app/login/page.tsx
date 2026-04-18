@@ -20,6 +20,7 @@ export default function LoginPage() {
                   mode="login"
                   googleEnabled={googleEnabled}
                   githubEnabled={githubEnabled}
+                  turnstileSiteKey={null}
                 />
               </Suspense>
             </div>
