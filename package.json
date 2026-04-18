@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "action:build": "node github-action/build.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

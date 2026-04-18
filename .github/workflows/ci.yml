@@ -46,9 +46,6 @@ jobs:
       - name: Run tests
         run: npm run test
 
-      - name: Build action bundle
-        run: npm run action:build
-
       - name: Build
         run: npm run build
 

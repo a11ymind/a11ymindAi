@@ -53,8 +53,8 @@ The action writes Markdown and JSON artifacts into the workspace, adds a job
 summary, and can fail the CI step when risks at or above a chosen severity are
 found.
 
-Implementation details and inputs/outputs live in
-[github-action/README.md](github-action/README.md) and [action.yml](action.yml).
+Implementation details, inputs/outputs, and release notes now live in the
+standalone `a11ymind/accesslint` repository.
 
 ---
 

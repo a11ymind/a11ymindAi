@@ -1,23 +1,7 @@
-name: AccessLint Action Smoke Test
+name: AccessLint Published Action Smoke Test
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - action.yml
-      - github-action/**
-      - src/lib/scan.ts
-      - src/lib/score.ts
-      - .github/workflows/action-smoke.yml
-  pull_request:
-    paths:
-      - action.yml
-      - github-action/**
-      - src/lib/scan.ts
-      - src/lib/score.ts
-      - .github/workflows/action-smoke.yml
 
 jobs:
   smoke:
@@ -33,7 +17,7 @@ jobs:
 
       - name: Run AccessLint action
         id: accesslint
-        uses: ./
+        uses: a11ymind/accesslint@v1
         with:
           url: ${{ env.ACCESSLINT_SMOKE_URL }}
           fail-on: none
