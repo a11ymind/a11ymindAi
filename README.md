@@ -19,6 +19,45 @@ See `CLAUDE.md` for the architecture overview and commands reference.
 
 ---
 
+## Accessly GitHub Action v1
+
+Accessly also ships a lightweight JavaScript GitHub Action for CI-time scans of
+preview or live URLs.
+
+- Accessly app: post-deploy monitoring, reporting, alerts, dashboards
+- Accessly Action v1: pre-deploy scan helper for preview URLs in CI
+
+Example:
+
+```yaml
+- name: Accessly scan
+  id: accessly
+  uses: <owner>/<repo>@v1
+  with:
+    url: https://preview.example.com
+    fail-on: serious
+    output-json: true
+    output-markdown: true
+
+- name: Upload Accessly artifacts
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: accessly-report
+    path: |
+      ${{ steps.accessly.outputs.json-path }}
+      ${{ steps.accessly.outputs.markdown-path }}
+```
+
+The action writes Markdown and JSON artifacts into the workspace, adds a job
+summary, and can fail the CI step when risks at or above a chosen severity are
+found.
+
+Implementation details and inputs/outputs live in
+[github-action/README.md](github-action/README.md) and [action.yml](action.yml).
+
+---
+
 ## Production readiness
 
 This section is the launch checklist for the current MVP. The app is deployable,

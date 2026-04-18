@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { lookup } from "node:dns/promises";
+import { existsSync } from "node:fs";
 import { isIP } from "node:net";
-import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { AxePuppeteer } from "@axe-core/puppeteer";
 
@@ -158,7 +159,22 @@ export async function scanUrl(url: string): Promise<ScanResult> {
 }
 
 async function launchBrowser() {
+  if (process.env.GITHUB_ACTIONS === "true") {
+    return puppeteer.launch({
+      executablePath: githubActionsChromePath(),
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+      defaultViewport: DEFAULT_VIEWPORT,
+    });
+  }
+
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    const { default: chromium } = await import("@sparticuz/chromium");
     return puppeteer.launch({
       args: chromium.args,
       defaultViewport: DEFAULT_VIEWPORT,
@@ -178,6 +194,43 @@ async function launchBrowser() {
     ],
     defaultViewport: DEFAULT_VIEWPORT,
   });
+}
+
+function githubActionsChromePath() {
+  const candidates = [
+    process.env.CHROME_BIN,
+    process.env.GOOGLE_CHROME_BIN,
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "google-chrome",
+    "google-chrome-stable",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "chromium-browser",
+    "chromium",
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    const resolved = resolveExecutable(candidate);
+    if (resolved) return resolved;
+  }
+
+  throw new Error(
+    "Could not find Chrome on the GitHub Actions runner. Use ubuntu-latest or set CHROME_BIN.",
+  );
+}
+
+function resolveExecutable(candidate: string): string | null {
+  if (candidate.startsWith("/")) {
+    return existsSync(candidate) ? candidate : null;
+  }
+
+  try {
+    const resolved = execFileSync("which", [candidate], { encoding: "utf8" }).trim();
+    return resolved || null;
+  } catch {
+    return null;
+  }
 }
 
 async function assertPublicHostname(hostname: string) {

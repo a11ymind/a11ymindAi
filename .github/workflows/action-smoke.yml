@@ -1,0 +1,65 @@
+name: Action Smoke Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - action.yml
+      - github-action/**
+      - src/lib/scan.ts
+      - src/lib/score.ts
+      - .github/workflows/action-smoke.yml
+  pull_request:
+    paths:
+      - action.yml
+      - github-action/**
+      - src/lib/scan.ts
+      - src/lib/score.ts
+      - .github/workflows/action-smoke.yml
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      ACCESSLY_SMOKE_URL: https://www.example.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Accessly action
+        id: accessly
+        uses: ./
+        with:
+          url: ${{ env.ACCESSLY_SMOKE_URL }}
+          fail-on: none
+          output-json: true
+          output-markdown: true
+
+      - name: Verify action outputs and report files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "${{ steps.accessly.outputs.score }}"
+          test -n "${{ steps.accessly.outputs.total-risks }}"
+          test -n "${{ steps.accessly.outputs.threshold-exceeded }}"
+          test -n "${{ steps.accessly.outputs.json-path }}"
+          test -n "${{ steps.accessly.outputs.markdown-path }}"
+
+          test -f "${{ steps.accessly.outputs.json-path }}"
+          test -f "${{ steps.accessly.outputs.markdown-path }}"
+
+          grep -q '"score"' "${{ steps.accessly.outputs.json-path }}"
+          grep -q '# Accessly scan summary' "${{ steps.accessly.outputs.markdown-path }}"
+
+      - name: Upload Accessly smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessly-action-smoke-report
+          path: |
+            ${{ steps.accessly.outputs.json-path }}
+            ${{ steps.accessly.outputs.markdown-path }}

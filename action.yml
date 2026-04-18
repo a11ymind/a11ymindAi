@@ -1,0 +1,51 @@
+name: Accessly Scan
+description: Scan a preview or live URL in CI for accessibility risks with Accessly.
+author: Accessly
+branding:
+  icon: eye
+  color: blue
+
+inputs:
+  url:
+    description: Preview or live URL to scan with Accessly
+    required: true
+  fail-on:
+    description: Fail the step when risks at or above this severity are found. Allowed values: none, minor, moderate, serious, critical.
+    required: false
+    default: serious
+  output-json:
+    description: Write a machine-readable JSON report into the workspace
+    required: false
+    default: "true"
+  output-markdown:
+    description: Write a human-readable Markdown summary into the workspace
+    required: false
+    default: "true"
+  output-dir:
+    description: Directory where report artifacts are written. Files are named accessly-report.json and accessly-summary.md.
+    required: false
+    default: .accessly-action
+
+outputs:
+  score:
+    description: Accessibility score from 0 to 100 for the scanned page
+  total-risks:
+    description: Total number of detected accessibility risks
+  critical-count:
+    description: Count of critical accessibility risks
+  serious-count:
+    description: Count of serious accessibility risks
+  moderate-count:
+    description: Count of moderate accessibility risks
+  minor-count:
+    description: Count of minor accessibility risks
+  json-path:
+    description: Relative path to accessly-report.json, or an empty string when JSON output is disabled
+  markdown-path:
+    description: Relative path to accessly-summary.md, or an empty string when Markdown output is disabled
+  threshold-exceeded:
+    description: true when the configured fail-on threshold was exceeded, otherwise false
+
+runs:
+  using: node24
+  main: github-action/dist/index.js
