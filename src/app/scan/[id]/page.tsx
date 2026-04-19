@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyFixButton } from "@/components/CopyFixButton";
 import { CopyButton } from "@/components/CopyButton";
+import { EmailReportForm } from "@/components/EmailReportForm";
 import { Logo } from "@/components/Logo";
 import { RescanButton } from "@/components/RescanButton";
 import { ShareReportButton } from "@/components/ShareReportButton";
@@ -477,20 +478,30 @@ function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }
   const cta = loggedIn ? "Start monitoring this page" : "Create free account";
   return (
     <section className="container-page mt-10">
-      <div className="card flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
-        <div>
-          <p className="text-sm font-medium text-text">
-            {loggedIn
-              ? "Save this scan and turn this page into an ongoing monitoring workflow (one URL per saved entry)."
-              : "Create a free account to save this scan and keep working from it later."}
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            Re-scan on demand, track improvements over time, and keep your history in one place as the site changes.
-          </p>
+      <div className="card flex flex-col gap-4 border-accent-muted bg-accent-muted/10 p-5">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-medium text-text">
+              {loggedIn
+                ? "Save this scan and turn this page into an ongoing monitoring workflow (one URL per saved entry)."
+                : "Create a free account to save this scan and keep working from it later."}
+            </p>
+            <p className="mt-1 text-xs text-text-muted">
+              Re-scan on demand, track improvements over time, and keep your history in one place as the site changes.
+            </p>
+          </div>
+          <Link href={href} className="btn-primary whitespace-nowrap">
+            {cta}
+          </Link>
         </div>
-        <Link href={href} className="btn-primary whitespace-nowrap">
-          {cta}
-        </Link>
+        {!loggedIn && (
+          <div className="border-t border-border/60 pt-4">
+            <p className="text-xs text-text-subtle">
+              Not ready to sign up? Email yourself this report so you can revisit it later.
+            </p>
+            <EmailReportForm scanId={scanId} />
+          </div>
+        )}
       </div>
     </section>
   );

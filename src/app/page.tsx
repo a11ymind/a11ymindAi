@@ -1095,11 +1095,11 @@ function PricingAnchor({ className = "" }: { className?: string }) {
       </span>
       <span className="text-text-subtle">·</span>
       <span>
-        Starter <span className="tabular-nums text-text">$19</span>/mo
+        Starter <span className="tabular-nums text-text">$25</span>/mo
       </span>
       <span className="text-text-subtle">·</span>
       <span>
-        Pro <span className="tabular-nums text-text">$49</span>/mo
+        Pro <span className="tabular-nums text-text">$65</span>/mo
       </span>
       <Link
         href="/pricing"

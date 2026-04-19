@@ -236,6 +236,53 @@ export async function sendWeeklyDigestEmail(input: {
   return sendEmail({ to, subject, text, html });
 }
 
+export async function sendScanReportEmail(input: {
+  to: string;
+  scannedUrl: string;
+  score: number;
+  reportUrl: string;
+  criticalCount: number;
+  seriousCount: number;
+}): Promise<SendEmailResult> {
+  const { to, scannedUrl, score, reportUrl, criticalCount, seriousCount } = input;
+  const subject = `Your a11ymind report for ${scannedUrl}`;
+
+  const text = [
+    `Here's the accessibility report you requested for ${scannedUrl}.`,
+    "",
+    `Score: ${score}/100`,
+    `Critical issues: ${criticalCount}`,
+    `Serious issues: ${seriousCount}`,
+    "",
+    `Open the full report: ${reportUrl}`,
+    "",
+    "Create a free account to save this scan, track the page over time, and unlock AI-powered fixes: https://www.a11ymind.ai/signup",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h1 style="font-size: 18px; margin-bottom: 12px;">Your a11ymind report</h1>
+      <p style="margin: 0 0 12px;">Here's the accessibility report you requested for <strong>${escapeHtml(scannedUrl)}</strong>.</p>
+      <ul style="margin: 0 0 16px; padding-left: 18px;">
+        <li>Score: <strong>${score}/100</strong></li>
+        <li>Critical issues: <strong>${criticalCount}</strong></li>
+        <li>Serious issues: <strong>${seriousCount}</strong></li>
+      </ul>
+      <p style="margin: 0 0 16px;">
+        <a href="${escapeHtml(reportUrl)}" style="color: #06b6d4; font-weight: 600;">Open the full report →</a>
+      </p>
+      <p style="margin: 0 0 12px; color: #4b5563;">
+        Create a free account to save this scan, track the page over time, and unlock AI-powered fixes.
+      </p>
+      <p style="margin: 0 0 12px;">
+        <a href="https://www.a11ymind.ai/signup" style="color: #06b6d4;">Create your free account →</a>
+      </p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, text, html });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
