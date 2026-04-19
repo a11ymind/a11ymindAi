@@ -1,8 +1,22 @@
-# a11ymind
+<p align="center">
+  <img src="./public/logo.png" alt="a11ymind logo" width="96" height="96" />
+</p>
 
-An AI-powered ADA/WCAG accessibility compliance tool.
+<h1 align="center">a11ymind</h1>
 
-Marketing tagline: *"Know your accessibility risk before a lawsuit does."*
+<p align="center">
+  AI-powered accessibility monitoring for websites, releases, and CI.
+</p>
+
+<p align="center">
+  <a href="https://www.a11ymind.ai">Live product</a> ·
+  <a href="https://www.a11ymind.ai/pricing">Pricing</a> ·
+  <a href="https://github.com/AliAl-nasser/a11ymind-accesslint">AccessLint GitHub Action</a>
+</p>
+
+<p align="center">
+  <em>Know your accessibility risk before a lawsuit does.</em>
+</p>
 
 This repository is public and source-available under the Business Source
 License 1.1 (`BUSL-1.1`). The code converts to `Apache-2.0` on `2029-04-19`.
@@ -10,7 +24,49 @@ See [LICENSE](LICENSE) for the exact terms, including the current production
 use grant and the restriction on offering a competing hosted service before the
 change date.
 
-## Getting started
+## About
+
+a11ymind is an accessibility product for teams that need actionable ADA / WCAG
+risk visibility without commissioning a specialist audit for every release.
+It combines browser-based scanning, plain-English remediation guidance,
+regression tracking, scheduled monitoring, and developer-facing CI workflows in
+one product surface.
+
+## Why It Exists
+
+Most teams only discover accessibility problems after a redesign, a rushed
+release, or a client complaint. a11ymind is built to make accessibility review
+faster, easier to understand, and easier to repeat over time.
+
+## Core Product Value
+
+a11ymind combines:
+
+- fast page scans powered by headless Chromium + axe-core
+- plain-English remediation guidance with AI-generated fixes
+- saved-site monitoring, regression tracking, and scheduled rescans
+- PDF reports, shareable results, and CI / Slack alerting for higher tiers
+- a companion GitHub Action for pre-deploy preview checks in CI
+
+It is designed for:
+
+- small teams that need a credible accessibility workflow quickly
+- agencies managing client websites
+- product and engineering teams that want continuous visibility instead of
+  one-off audits
+
+## What The Product Includes
+
+- Anonymous scanning from the landing page with no login required
+- Email/password, Google, and GitHub sign-in via NextAuth
+- Free, Starter, and Pro plans with feature gating
+- Protected dashboard with saved sites, scan history, and plan-aware upsells
+- Scheduled monitoring with email alerts and Pro Slack alerts
+- Pro PDF export and shareable scan reports
+- AccessLint CI ingestion for pushing external scan summaries back into the
+  dashboard
+
+## Quick Start
 
 ```bash
 cp .env.example .env
@@ -20,6 +76,9 @@ npm install
 npx prisma db push
 npm run dev
 ```
+
+Then open `http://localhost:3000`, run a scan, and create a test account when
+you want to save results to the dashboard.
 
 ---
 
