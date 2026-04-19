@@ -25,7 +25,16 @@ For every axe-core violation the user provides, produce:
 
 Respond via the report_fixes tool. Preserve the order and axeId of the input.`;
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let cachedClient: Anthropic | null = null;
+
+function getClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  if (!cachedClient) {
+    cachedClient = new Anthropic({ apiKey });
+  }
+  return cachedClient;
+}
 
 const TOOL = {
   name: "report_fixes",
@@ -88,7 +97,8 @@ export async function generateFixes(
   violations: AxeViolation[],
   plan: Plan | null = null,
 ): Promise<AiFix[]> {
-  if (!process.env.ANTHROPIC_API_KEY) return [];
+  const client = getClient();
+  if (!client) return [];
   if (violations.length === 0) return [];
 
   const controller = new AbortController();
