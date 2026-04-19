@@ -285,6 +285,61 @@ Production:
   `src/lib/email.ts`. The report link uses `NEXT_PUBLIC_APP_URL` (falls back to
   `APP_URL`) + `/scan/<id>`, so set one of those in production.
 
+##### Slack alerts
+
+- Pro users can add a per-site Slack incoming webhook URL from the dashboard.
+- Slack alerts use the same scheduled-scan signal as email alerts:
+  - at least one **new** issue appeared, or
+  - the accessibility **score dropped**
+- Incoming webhook URLs are validated to `https://hooks.slack.com/services/...`
+  or `https://hooks.slack-gov.com/services/...` before they are stored.
+- Slack delivery is best-effort. A Slack failure is logged but does not abort
+  the scheduled scan batch.
+- If either email or Slack is delivered successfully, the alert cooldown is
+  updated for that site.
+
+### CI check history
+
+- Pro sites now include a per-site CI ingest token and CI history panel in the
+  dashboard.
+- POST CI summaries to `/api/ci/report` with the site token. No extra global
+  env var is required.
+- The endpoint stores a lightweight history of:
+  - source
+  - pass/fail status
+  - score
+  - severity counts
+  - branch / commit / environment
+  - optional run/report URLs
+- This is designed for AccessLint or any external pipeline that wants to push
+  result summaries into a11ymind.
+
+Example payload:
+
+```json
+{
+  "token": "site-token-from-dashboard",
+  "source": "accesslint",
+  "status": "passed",
+  "score": 88,
+  "criticalCount": 0,
+  "seriousCount": 2,
+  "moderateCount": 4,
+  "minorCount": 3,
+  "branch": "main",
+  "commitSha": "abc1234",
+  "environment": "preview"
+}
+```
+
+Notes:
+
+- Tokens are per-site, so CI history is attached to the correct monitored site
+  without requiring user auth in the pipeline.
+- If a site's owner is not on Pro, the ingest endpoint returns `403`.
+- The dashboard shows the latest CI checks per site and includes a copyable
+  snippet for wiring pipelines into the endpoint.
+
 #### Cron authentication
 
 - The cron route is protected with `CRON_SECRET`.

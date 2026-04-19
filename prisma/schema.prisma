@@ -64,16 +64,41 @@ model Site {
   id               String    @id @default(cuid())
   userId           String
   url              String
+  ciIngestToken    String    @unique @default(cuid())
+  slackWebhookUrl  String?   @db.Text
   createdAt        DateTime  @default(now())
   lastAlertSentAt  DateTime?
   lastAlertScanId  String?
   lastDigestSentAt DateTime?
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  scans Scan[]
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scans    Scan[]
+  ciChecks CiCheck[]
 
   @@unique([userId, url])
   @@index([userId])
+}
+
+model CiCheck {
+  id            String   @id @default(cuid())
+  siteId        String
+  source        String
+  status        String
+  score         Int?
+  criticalCount Int      @default(0)
+  seriousCount  Int      @default(0)
+  moderateCount Int      @default(0)
+  minorCount    Int      @default(0)
+  branch        String?
+  commitSha     String?
+  environment   String?
+  runUrl        String?  @db.Text
+  reportUrl     String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, createdAt])
 }
 
 model Scan {

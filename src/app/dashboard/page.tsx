@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
+import { CiHistoryCard } from "@/components/CiHistoryCard";
 import { Logo } from "@/components/Logo";
 import { PlanBadge } from "@/components/PlanBadge";
 import { SignOutButton } from "@/components/UserMenu";
 import { RescanButton } from "@/components/RescanButton";
+import { SlackWebhookCard } from "@/components/SlackWebhookCard";
 import { URLScanner } from "@/components/URLScanner";
 import {
   ScoreHistoryChart,
@@ -56,7 +58,11 @@ export default async function DashboardPage({
   const sites = await prisma.site.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "asc" },
-    include: {
+    select: {
+      id: true,
+      url: true,
+      ciIngestToken: true,
+      slackWebhookUrl: true,
       scans: {
         where: { status: "COMPLETED" },
         orderBy: { createdAt: "asc" },
@@ -65,6 +71,26 @@ export default async function DashboardPage({
           score: true,
           createdAt: true,
           violations: { select: { axeId: true } },
+        },
+      },
+      ciChecks: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          source: true,
+          status: true,
+          score: true,
+          criticalCount: true,
+          seriousCount: true,
+          moderateCount: true,
+          minorCount: true,
+          branch: true,
+          commitSha: true,
+          environment: true,
+          runUrl: true,
+          reportUrl: true,
+          createdAt: true,
         },
       },
     },
@@ -491,6 +517,24 @@ export default async function DashboardPage({
                     siteUrl={site.url}
                     badgeUrl={badgeUrl}
                     snippet={badgeSnippet}
+                  />
+                </div>
+              )}
+              {entitlements.ciIntegration && (
+                <div className="border-t border-border/70 px-5 py-4">
+                  <CiHistoryCard
+                    siteUrl={site.url}
+                    endpoint={`${baseUrl}/api/ci/report`}
+                    token={site.ciIngestToken}
+                    checks={site.ciChecks}
+                  />
+                </div>
+              )}
+              {entitlements.slackAlerts && (
+                <div className="border-t border-border/70 px-5 py-4">
+                  <SlackWebhookCard
+                    siteId={site.id}
+                    configured={Boolean(site.slackWebhookUrl)}
                   />
                 </div>
               )}

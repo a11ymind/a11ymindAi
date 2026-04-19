@@ -53,8 +53,8 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     autoScan: "daily",
     monitoringBadge: true,
     regressionDiffs: true,
-    slackAlerts: false,
-    ciIntegration: false,
+    slackAlerts: true,
+    ciIntegration: true,
   },
 };
 

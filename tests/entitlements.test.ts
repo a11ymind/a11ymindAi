@@ -27,8 +27,8 @@ test("paid plans expose the expected entitlements", () => {
   assert.equal(pro.autoScan, "daily");
   // Shipped flags should stay aligned with product surfaces.
   assert.equal(pro.regressionDiffs, true);
-  assert.equal(pro.slackAlerts, false);
-  assert.equal(pro.ciIntegration, false);
+  assert.equal(pro.slackAlerts, true);
+  assert.equal(pro.ciIntegration, true);
 });
 
 test("site-limit helpers match current plan rules", () => {

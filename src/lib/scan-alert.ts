@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendScheduledScanAlertEmail } from "@/lib/email";
+import { sendSlackRegressionAlert } from "@/lib/slack";
 
 // Minimum interval between scheduled-scan alerts for the same site. Weekly/
 // monthly cadence already gates this, but we add a belt-and-braces cooldown
@@ -7,7 +8,7 @@ import { sendScheduledScanAlertEmail } from "@/lib/email";
 const ALERT_COOLDOWN_MS = 23 * 60 * 60 * 1000;
 
 export type AlertOutcome =
-  | { status: "sent"; emailId: string | null }
+  | { status: "sent"; emailId: string | null; slackSent: boolean }
   | { status: "skipped"; reason: string }
   | { status: "failed"; error: string };
 
@@ -30,6 +31,7 @@ export async function maybeSendScheduledScanAlert(input: {
       id: true,
       url: true,
       lastAlertSentAt: true,
+      slackWebhookUrl: true,
       user: { select: { email: true, plan: true } },
     },
   });
@@ -37,7 +39,10 @@ export async function maybeSendScheduledScanAlert(input: {
   if (site.user.plan === "FREE") {
     return { status: "skipped", reason: "plan_ineligible" };
   }
-  if (!site.user.email) return { status: "skipped", reason: "no_email" };
+  const shouldSendSlack = site.user.plan === "PRO" && Boolean(site.slackWebhookUrl);
+  if (!site.user.email && !shouldSendSlack) {
+    return { status: "skipped", reason: "no_destination" };
+  }
 
   if (
     site.lastAlertSentAt &&
@@ -89,22 +94,56 @@ export async function maybeSendScheduledScanAlert(input: {
 
   const reportUrl = `${baseUrl.replace(/\/$/, "")}/scan/${currentScan.id}`;
 
-  try {
-    const result = await sendScheduledScanAlertEmail({
-      to: site.user.email,
-      siteUrl: site.url,
-      previousScore,
-      currentScore: currentScan.score,
-      newIssues,
-      fixedIssues,
-      reportUrl,
-    });
+  let emailId: string | null = null;
+  let emailSent = false;
+  let slackSent = false;
+  const channelErrors: string[] = [];
 
-    if (!result.ok) {
-      console.error(
-        `[scan-alert] send failed for site ${site.id}: ${result.error}`,
-      );
-      return { status: "failed", error: result.error };
+  try {
+    if (site.user.email) {
+      const result = await sendScheduledScanAlertEmail({
+        to: site.user.email,
+        siteUrl: site.url,
+        previousScore,
+        currentScore: currentScan.score,
+        newIssues,
+        fixedIssues,
+        reportUrl,
+      });
+
+      if (!result.ok) {
+        channelErrors.push(`email: ${result.error}`);
+        console.error(`[scan-alert] email send failed for site ${site.id}: ${result.error}`);
+      } else {
+        emailId = result.id;
+        emailSent = true;
+      }
+    }
+
+    if (shouldSendSlack && site.slackWebhookUrl) {
+      const slack = await sendSlackRegressionAlert({
+        webhookUrl: site.slackWebhookUrl,
+        siteUrl: site.url,
+        previousScore,
+        currentScore: currentScan.score,
+        newIssues,
+        fixedIssues,
+        reportUrl,
+      });
+
+      if (!slack.ok) {
+        channelErrors.push(`slack: ${slack.error}`);
+        console.error(`[scan-alert] slack send failed for site ${site.id}: ${slack.error}`);
+      } else {
+        slackSent = true;
+      }
+    }
+
+    if (!emailSent && !slackSent) {
+      if (channelErrors.length > 0) {
+        return { status: "failed", error: channelErrors.join(" | ") };
+      }
+      return { status: "skipped", reason: "no_destination" };
     }
 
     await prisma.site.update({
@@ -115,7 +154,7 @@ export async function maybeSendScheduledScanAlert(input: {
       },
     });
 
-    return { status: "sent", emailId: result.id };
+    return { status: "sent", emailId, slackSent };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown alert failure";
