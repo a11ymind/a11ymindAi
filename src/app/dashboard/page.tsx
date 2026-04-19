@@ -519,6 +519,7 @@ export default async function DashboardPage({
               {entitlements.ciIntegration && (
                 <div className="border-t border-border/70 px-5 py-4">
                   <CiHistoryCard
+                    siteId={site.id}
                     siteUrl={site.url}
                     endpoint={`${baseUrl}/api/ci/report`}
                     token={site.ciIngestToken}

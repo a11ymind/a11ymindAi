@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { entitlementsFor } from "@/lib/entitlements";
+import { rateLimitHeaders, rateLimitUserAction } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,22 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Invalid input" },
       { status: 400 },
+    );
+  }
+
+  // Cap reports per token so a leaked token can't be used to flood the
+  // CiCheck table until the user rotates. Real CI pipelines post at most
+  // a few times per commit, so 120/hour leaves generous headroom.
+  const tokenLimit = await rateLimitUserAction({
+    userId: `ci-token:${parsed.data.token}`,
+    action: "ci-report",
+    limit: 120,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!tokenLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many CI reports for this token in the last hour." },
+      { status: 429, headers: rateLimitHeaders(tokenLimit) },
     );
   }
 

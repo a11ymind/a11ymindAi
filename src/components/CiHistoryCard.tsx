@@ -1,4 +1,4 @@
-import { CopyButton } from "@/components/CopyButton";
+import { CiTokenSnippet } from "@/components/CiTokenSnippet";
 
 type CiCheckItem = {
   id: string;
@@ -18,18 +18,18 @@ type CiCheckItem = {
 };
 
 export function CiHistoryCard({
+  siteId,
   siteUrl,
   endpoint,
   token,
   checks,
 }: {
+  siteId: string;
   siteUrl: string;
   endpoint: string;
   token: string;
   checks: CiCheckItem[];
 }) {
-  const snippet = buildCiSnippet({ endpoint, token });
-
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -42,14 +42,14 @@ export function CiHistoryCard({
           </p>
           <p className="mt-1 text-xs text-text-muted">
             Use the per-site ingest token below from GitHub Actions or any CI job.
+            If it ever leaks, rotate it — the old value stops working immediately.
           </p>
         </div>
-        <CopyButton text={snippet} label="Copy CI snippet" className="btn-ghost text-sm" />
       </div>
 
-      <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
-        <code>{snippet}</code>
-      </pre>
+      <div className="mt-4">
+        <CiTokenSnippet siteId={siteId} endpoint={endpoint} initialToken={token} />
+      </div>
 
       <div className="mt-4 space-y-3">
         {checks.length > 0 ? (
@@ -110,30 +110,6 @@ export function CiHistoryCard({
       </div>
     </div>
   );
-}
-
-function buildCiSnippet({
-  endpoint,
-  token,
-}: {
-  endpoint: string;
-  token: string;
-}) {
-  return `curl -X POST "${endpoint}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "token": "${token}",
-    "source": "accesslint",
-    "status": "passed",
-    "score": 88,
-    "criticalCount": 0,
-    "seriousCount": 2,
-    "moderateCount": 4,
-    "minorCount": 3,
-    "branch": "main",
-    "commitSha": "abc1234",
-    "environment": "preview"
-  }'`;
 }
 
 function formatRelative(date: Date) {
