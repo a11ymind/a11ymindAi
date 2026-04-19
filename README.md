@@ -109,7 +109,7 @@ Notes:
   ms (1 hour) unless you override the optional env vars above.
 - `RESEND_FROM_EMAIL` should be a sender string Resend accepts, such as
   `a11ymind <onboarding@resend.dev>` for initial testing or
-  `a11ymind <hello@a11ymind.ai>` after you verify a domain.
+  `a11ymind <noreply@a11ymind.ai>` after you verify a domain.
 
 ### Local setup
 
@@ -156,14 +156,14 @@ npm run dev
 
 ```bash
 RESEND_API_KEY=
-RESEND_FROM_EMAIL="a11ymind <hello@a11ymind.ai>"
+RESEND_FROM_EMAIL="a11ymind <noreply@a11ymind.ai>"
 ```
 
 4. For initial testing, you can use Resend's default `resend.dev` sender, but
    it is only suitable for sending to your own email address.
 5. Before production rollout, verify a domain in Resend and switch
    `RESEND_FROM_EMAIL` to an address on that verified domain, such as
-   `a11ymind <hello@a11ymind.ai>`.
+   `a11ymind <noreply@a11ymind.ai>`.
 6. Redeploy after adding or changing email settings.
 
 Notes:

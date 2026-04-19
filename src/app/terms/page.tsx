@@ -78,7 +78,7 @@ export default function TermsPage() {
             You can cancel any time from the billing portal. Cancellation takes
             effect at the end of the current billing period and we do not issue
             pro-rated refunds for partial months. If you believe you were charged
-            in error, email <a href="mailto:hello@a11ymind.ai">hello@a11ymind.ai</a>
+            in error, email <a href="mailto:support@a11ymind.ai">support@a11ymind.ai</a>
             {" "}within 30 days of the charge and we will review it in good faith.
           </p>
           <p>
@@ -174,7 +174,7 @@ export default function TermsPage() {
 
           <h2>14. Contact</h2>
           <p>
-            Questions about these Terms: <a href="mailto:hello@a11ymind.ai">hello@a11ymind.ai</a>.
+            Questions about these Terms: <a href="mailto:support@a11ymind.ai">support@a11ymind.ai</a>.
           </p>
 
           <p className="mt-10 text-sm text-text-subtle">
