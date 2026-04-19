@@ -6,6 +6,7 @@ const nextConfig = {
       "puppeteer-core",
       "@sparticuz/chromium",
       "@axe-core/puppeteer",
+      "axe-core",
     ],
   },
 };
