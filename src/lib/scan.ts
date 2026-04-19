@@ -140,7 +140,10 @@ export async function scanUrl(url: string): Promise<ScanResult> {
       );
     }
 
-    await page.evaluate(axe.source);
+    // Inject axe through a script tag instead of direct evaluation.
+    // This is more reliable in production Chromium runtimes and avoids
+    // minified reference errors while bootstrapping axe in-page.
+    await page.addScriptTag({ content: axe.source });
     const results = await page.evaluate(async () => {
       const runtimeAxe = (globalThis as { axe?: typeof axe }).axe;
       if (!runtimeAxe) {
@@ -185,10 +188,16 @@ async function launchBrowser(): Promise<Browser> {
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     const { default: chromium } = await import("@sparticuz/chromium");
     return puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
       defaultViewport: DEFAULT_VIEWPORT,
       executablePath: await chromium.executablePath(),
-      headless: "shell",
+      headless: true,
     });
   }
 
