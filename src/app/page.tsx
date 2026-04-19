@@ -219,7 +219,7 @@ export default async function LandingPage() {
               Run AccessLint in GitHub Actions against preview URLs, fail the build at your
               chosen severity threshold, and upload JSON and Markdown artifacts for review.
             </p>
-            <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-bg px-4 py-4 font-mono text-[11px] leading-relaxed text-text sm:text-xs">{`- uses: AliAl-nasser/a11ymind-accesslint@v1
+            <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-bg px-4 py-4 font-mono text-[11px] leading-relaxed text-text sm:text-xs">{`- uses: a11ymind/accesslint@v1
   with:
     url: https://preview.example.com
     fail-on: serious`}</pre>
@@ -412,7 +412,7 @@ export default async function LandingPage() {
               See plans →
             </Link>
             <a
-              href="https://github.com/AliAl-nasser/a11ymind-accesslint"
+              href="https://github.com/a11ymind/accesslint"
               target="_blank"
               rel="noopener noreferrer"
               className="transition-colors hover:text-text"

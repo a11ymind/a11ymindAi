@@ -1,6 +1,6 @@
 import { CopyButton } from "@/components/CopyButton";
 
-const SNIPPET = `- uses: AliAl-nasser/a11ymind-accesslint@v1
+const SNIPPET = `- uses: a11ymind/accesslint@v1
   with:
     url: https://preview.example.com
     fail-on: serious`;
@@ -24,7 +24,7 @@ export function AccessLintCiCard() {
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton text={SNIPPET} label="Copy snippet" className="btn-ghost text-sm" />
           <a
-            href="https://github.com/AliAl-nasser/a11ymind-accesslint"
+            href="https://github.com/a11ymind/accesslint"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-ghost text-sm"
