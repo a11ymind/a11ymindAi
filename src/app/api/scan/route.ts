@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { normalizeUrl } from "@/lib/scan";
 import {
   extractClientIp,
   rateLimitAnonymousScan,
@@ -10,11 +9,6 @@ import {
   rateLimitHeaders,
   rateLimitUserAction,
 } from "@/lib/rate-limit";
-import {
-  createScanRecord,
-  executeScanRecord,
-  reapStaleRunningScans,
-} from "@/lib/scan-jobs";
 import { entitlementsFor } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
@@ -41,6 +35,7 @@ export async function POST(req: Request) {
 
     let target: string;
     try {
+      const { normalizeUrl } = await import("@/lib/scan");
       target = normalizeUrl(parsed.data.url);
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 400 });
@@ -81,6 +76,7 @@ export async function POST(req: Request) {
     }
 
     if (userId) {
+      const { reapStaleRunningScans } = await import("@/lib/scan-jobs");
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { plan: true },
@@ -190,6 +186,7 @@ export async function POST(req: Request) {
       }
     }
 
+    const { createScanRecord, executeScanRecord } = await import("@/lib/scan-jobs");
     const scan = await createScanRecord({ url: target, userId, siteId });
     const result = await executeScanRecord(scan, userPlan);
 
