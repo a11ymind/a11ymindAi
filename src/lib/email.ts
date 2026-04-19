@@ -95,7 +95,7 @@ export async function sendAuthWelcomeEmail(input: {
     "",
     "You can now:",
     "- run accessibility scans",
-    "- save monitored websites",
+    "- save individual pages to monitor",
     "- track regressions over time from your dashboard",
   ].join("\n");
 
@@ -107,7 +107,7 @@ export async function sendAuthWelcomeEmail(input: {
       <p style="margin: 0 0 12px;">You can now:</p>
       <ul style="margin: 0; padding-left: 18px;">
         <li>run accessibility scans</li>
-        <li>save monitored websites</li>
+        <li>save individual pages to monitor</li>
         <li>track regressions over time from your dashboard</li>
       </ul>
     </div>

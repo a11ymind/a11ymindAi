@@ -31,7 +31,7 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     ciIntegration: false,
   },
   STARTER: {
-    maxSites: 1,
+    maxSites: 5,
     monthlyScanLimit: null,
     aiFixes: true,
     aiMonthlyLimit: 100,
@@ -44,7 +44,7 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     ciIntegration: false,
   },
   PRO: {
-    maxSites: 10,
+    maxSites: 25,
     monthlyScanLimit: null,
     aiFixes: true,
     aiMonthlyLimit: 500,
@@ -73,9 +73,9 @@ export function isAtSiteLimit(plan: Plan, siteCount: number): boolean {
 export function savedSiteLimitMessage(plan: Plan): string {
   const { maxSites } = entitlementsFor(plan);
   if (plan === "PRO") {
-    return `You've reached the ${maxSites}-site limit.`;
+    return `You've reached the ${maxSites}-page limit.`;
   }
-  return `Your ${planLabel(plan)} plan allows ${maxSites} saved site${maxSites === 1 ? "" : "s"}. Upgrade to track more.`;
+  return `Your ${planLabel(plan)} plan allows ${maxSites} saved page${maxSites === 1 ? "" : "s"}. Upgrade to monitor more.`;
 }
 
 export function autoScanLabel(value: AutoScan): string {

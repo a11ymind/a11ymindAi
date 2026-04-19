@@ -87,7 +87,7 @@ export function MarketingOgCard() {
               color: "#cbd5e1",
             }}
           >
-            Scan live pages, monitor saved sites, generate AI fixes, and share reports teams can actually act on.
+            Scan live pages, monitor the URLs you care about, generate AI fixes, and share reports teams can actually act on.
           </div>
         </div>
 

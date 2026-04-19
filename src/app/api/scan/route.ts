@@ -55,7 +55,7 @@ export async function POST(req: Request) {
             error:
               "You've reached the anonymous scan limit for now. Please try again later.",
             message:
-              "You've reached the anonymous scan limit for now. Please try again later or create an account to keep tracking sites from your dashboard.",
+              "You've reached the anonymous scan limit for now. Please try again later or create an account to keep tracking pages from your dashboard.",
             aiEnabled: false,
             aiUsageCurrent: 0,
             aiUsageLimit: null,

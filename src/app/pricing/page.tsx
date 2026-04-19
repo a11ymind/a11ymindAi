@@ -47,9 +47,9 @@ export default async function PricingPage({
             <span className="gradient-text">how seriously you manage risk.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base text-text-muted">
-            Free is for fast visibility. Starter is for one site you care about. Pro is for
-            teams and agencies that need monitoring, AI remediation, and reports worth
-            sending onward.
+            Free is for fast visibility. Starter covers the handful of pages you care about most. Pro is for
+            teams and agencies that need monitoring across many pages, AI remediation, and reports worth
+            sending onward. Each saved entry is one URL.
           </p>
         </div>
       </section>
@@ -64,12 +64,12 @@ export default async function PricingPage({
           <PlanModeCard
             title="Starter"
             eyebrow="Fix and monitor"
-            body="Turn one important website into an ongoing workflow with AI fixes and scheduled rescans."
+            body="Turn up to five important pages into an ongoing workflow with AI fixes and weekly rescans."
           />
           <PlanModeCard
             title="Pro"
             eyebrow="Operate at scale"
-            body="Monitor multiple sites, generate reports, and give clients or stakeholders proof you are staying on top of changes."
+            body="Monitor up to 25 pages, generate reports, and give clients or stakeholders proof you are staying on top of changes."
             highlight
           />
         </div>
@@ -114,7 +114,7 @@ export default async function PricingPage({
                 <span>
                   <span className="text-text">Repeat scans catch regressions.</span>{" "}
                   <span className="text-text-muted">
-                    a11ymind re-scans your saved sites automatically and flags new risks as soon as
+                    a11ymind re-scans your saved pages automatically and flags new risks as soon as
                     they appear.
                   </span>
                 </span>
@@ -200,14 +200,14 @@ const PLAN_OUTCOMES: Record<
     proof: "Good for early discovery and quick validation.",
   },
   STARTER: {
-    outcome: "Keep one site under active accessibility watch.",
-    rhythm: "Monthly monitoring plus AI fixes when issues matter.",
-    proof: "Best first paid step when one website drives revenue or reputation.",
+    outcome: "Keep up to 5 pages under active accessibility watch.",
+    rhythm: "Weekly monitoring plus AI fixes when issues matter.",
+    proof: "Best first paid step when a handful of pages drive revenue or reputation.",
   },
   PRO: {
-    outcome: "Run accessibility like an operating discipline, not a one-off task.",
-    rhythm: "Weekly monitoring, AI remediation, and shareable reporting.",
-    proof: "Best for agencies, multi-site teams, and customer-facing operations.",
+    outcome: "Run accessibility across up to 25 pages like an operating discipline.",
+    rhythm: "Daily monitoring, AI remediation, and shareable reporting.",
+    proof: "Best for agencies, multi-page teams, and customer-facing operations.",
   },
 };
 

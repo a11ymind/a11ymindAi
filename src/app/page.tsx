@@ -232,7 +232,7 @@ export default async function LandingPage() {
             <ul className="mt-5 space-y-3 text-sm text-text-muted">
               <li className="flex items-start gap-3">
                 <Dot />
-                Scheduled rescans for saved sites
+                Scheduled rescans for each saved page
               </li>
               <li className="flex items-start gap-3">
                 <Dot />
@@ -244,7 +244,7 @@ export default async function LandingPage() {
               </li>
               <li className="flex items-start gap-3">
                 <Dot />
-                Monitoring badge for paid sites without fake compliance claims
+                Monitoring badge for paid pages without fake compliance claims
               </li>
             </ul>
           </div>
@@ -265,7 +265,7 @@ export default async function LandingPage() {
           />
           <AudienceCard
             title="Agencies"
-            body="Monitor client sites, show score movement, and export reports that make progress easy to explain."
+            body="Monitor the client pages that carry risk, show score movement, and export reports that make progress easy to explain."
           />
           <AudienceCard
             title="Ecommerce and marketing sites"
@@ -292,7 +292,7 @@ export default async function LandingPage() {
               </h2>
               <p className="mt-4 text-base text-text-muted">
                 A redesign, new template, form update, or CMS change can introduce fresh
-                accessibility risks overnight. a11ymind re-scans saved sites on a schedule
+                accessibility risks overnight. a11ymind re-scans the saved pages (each entry is one URL) on a schedule
                 so your team can catch regressions before they become support, sales, or
                 legal problems.
               </p>
@@ -461,7 +461,7 @@ function WorkflowStrip() {
   const steps = [
     { title: "Scan", body: "Run a real-browser check against any public page." },
     { title: "Fix", body: "Turn raw findings into plain-English action." },
-    { title: "Monitor", body: "Re-scan saved sites and catch regressions." },
+    { title: "Monitor", body: "Re-scan saved pages and catch regressions." },
     { title: "Report", body: "Share trends and reports with teams or clients." },
   ];
 
@@ -1297,7 +1297,7 @@ function ProductTour() {
       </div>
 
       <div className="mt-12 grid gap-5 lg:grid-cols-3">
-        <TourCard label="Dashboard · score history" caption="Track every monitored site over time, with deltas on every scan.">
+        <TourCard label="Dashboard · score history" caption="Track every monitored page over time, with deltas on every scan.">
           <DashboardPreview />
         </TourCard>
         <TourCard label="PDF · client-ready report" caption="One-click export with your score, risk breakdown, and recommended fixes.">

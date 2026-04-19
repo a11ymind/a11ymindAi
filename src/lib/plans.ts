@@ -22,7 +22,7 @@ export const PLAN_TIERS: PlanTier[] = [
     tagline: "See your accessibility risk in 60 seconds.",
     features: [
       { text: "5 scans / month", included: true },
-      { text: "1 saved site", included: true },
+      { text: "1 saved page", included: true },
       { text: "3 AI fix suggestions / month", included: true },
       { text: "Full WCAG 2.1 AA report", included: true },
       { text: "Open-source GitHub Action for CI", included: true },
@@ -34,12 +34,12 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "STARTER",
     name: "Starter",
-    priceUsd: 19,
+    priceUsd: 25,
     priceIdEnv: "STRIPE_STARTER_PRICE_ID",
-    tagline: "For one site you actually care about.",
+    tagline: "For the handful of pages that matter most.",
     features: [
       { text: "Unlimited manual scans", included: true },
-      { text: "1 saved site", included: true },
+      { text: "5 saved pages", included: true },
       { text: "Weekly auto-scan + email alerts", included: true },
       { text: "AI fix suggestions (100 / month)", included: true },
       { text: "PDF report + shareable link", included: true },
@@ -50,12 +50,12 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "PRO",
     name: "Pro",
-    priceUsd: 49,
+    priceUsd: 65,
     priceIdEnv: "STRIPE_PRO_PRICE_ID",
-    tagline: "Agencies and teams managing many sites.",
+    tagline: "Agencies and teams monitoring many pages.",
     features: [
       { text: "Everything in Starter", included: true },
-      { text: "10 saved sites", included: true },
+      { text: "25 saved pages", included: true },
       { text: "Daily auto-scan", included: true },
       { text: "AI fix suggestions (500 / month)", included: true },
       { text: "CI check history in your dashboard", included: true },

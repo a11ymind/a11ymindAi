@@ -224,16 +224,16 @@ export default async function DashboardPage({
                 Accessibility operations
               </p>
               <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight text-text sm:text-4xl">
-                Scan any page. Keep the sites that matter under watch.
+                Scan any page. Keep the pages that matter under watch.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
                 {sites.length === 0
-                  ? "Run a manual scan on any public URL, then save the websites you want a11ymind to keep monitoring over time."
-                  : `You currently have ${sites.length} monitored website${sites.length === 1 ? "" : "s"}. Use manual scans for fast checks, then turn important sites into an ongoing workflow.`}
+                  ? "Run a manual scan on any public URL, then save the individual pages you want a11ymind to keep monitoring over time. Each saved entry is one URL."
+                  : `You currently have ${sites.length} monitored page${sites.length === 1 ? "" : "s"}. Use manual scans for fast checks, then turn important URLs into an ongoing workflow.`}
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
                 <span className="rounded-full border border-border px-2.5 py-1">
-                  {entitlements.maxSites === 1 ? "Monitor 1 website" : "Monitor up to 10 websites"}
+                  {`Monitor up to ${entitlements.maxSites} page${entitlements.maxSites === 1 ? "" : "s"}`}
                 </span>
                 <span className="rounded-full border border-border px-2.5 py-1">
                   {scanCadence}
@@ -262,13 +262,9 @@ export default async function DashboardPage({
 
           <div className="grid gap-px border-t border-border/70 bg-border/60 md:grid-cols-4">
           <DashboardStat
-            label="Saved sites"
+            label="Saved pages"
             value={`${sites.length}/${entitlements.maxSites}`}
-            detail={
-              entitlements.maxSites === 1
-                ? "Monitor 1 website"
-                : "Monitor up to 10 websites"
-            }
+            detail={`Monitor up to ${entitlements.maxSites} page${entitlements.maxSites === 1 ? "" : "s"}`}
           />
           <DashboardStat
             label="Scan cadence"
@@ -304,14 +300,14 @@ export default async function DashboardPage({
           <div className="card mt-6 flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-medium text-text">
-                You can monitor {entitlements.maxSites} website{entitlements.maxSites === 1 ? "" : "s"} on your current plan.
+                You can monitor {entitlements.maxSites} page{entitlements.maxSites === 1 ? "" : "s"} on your current plan. Each saved entry is one URL.
               </p>
               <p className="mt-1 text-sm text-text-muted">
-                You can still scan any page manually. Upgrade to track more sites and keep monitoring changes as your site evolves.
+                You can still scan any page manually. Upgrade to track more pages and keep monitoring changes as your site evolves.
               </p>
             </div>
             <Link href="/pricing" className="btn-primary whitespace-nowrap">
-              Upgrade to monitor more sites
+              Upgrade to monitor more pages
             </Link>
           </div>
         )}
@@ -319,10 +315,10 @@ export default async function DashboardPage({
         {sites.length === 0 && (
           <div className="card mt-6 border-accent-muted bg-accent-muted/10 p-6">
             <h2 className="text-lg font-semibold text-text">
-              Scan your first site to start tracking accessibility improvements
+              Scan your first page to start tracking accessibility improvements
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-text-muted">
-              Run a scan on any public page, then save the websites you care about to monitor score changes, compare history, and catch new risks as the site evolves.
+              Run a scan on any public URL, then save individual pages (each entry is one URL) to monitor score changes, compare history, and catch new risks as the page evolves.
             </p>
           </div>
         )}
@@ -383,13 +379,13 @@ export default async function DashboardPage({
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
-                Monitored sites
+                Monitored pages
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-text">
-                The websites you&apos;re actively watching
+                The pages you&apos;re actively watching
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-text-muted">
-                Re-scan on demand, review score movement, and open the latest report for any monitored site.
+                Each row is one URL. Re-scan on demand, review score movement, and open the latest report for any monitored page.
               </p>
             </div>
           </div>
@@ -682,9 +678,9 @@ async function buildWeeklySummary(userId: string) {
     deltas.length === 0
       ? "Needs two scans to compare"
       : avgDelta > 0
-        ? "Average improvement across monitored sites"
+        ? "Average improvement across monitored pages"
         : avgDelta < 0
-          ? "Average regression across monitored sites"
+          ? "Average regression across monitored pages"
           : "Scores held steady";
 
   return { scanCount, newIssues, fixedIssues, deltaLabel, deltaDetail };

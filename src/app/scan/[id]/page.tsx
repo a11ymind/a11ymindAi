@@ -146,7 +146,7 @@ export default async function ScanResultPage({
         <InlineBanner
           tone="success"
           title="Saved to your dashboard"
-          body="This scan is now attached to your account, tied to a monitored site, and ready for future comparisons."
+          body="This scan is now attached to your account, tied to a monitored page, and ready for future comparisons."
           ctaHref="/dashboard"
           ctaLabel="Open dashboard"
         />
@@ -155,10 +155,10 @@ export default async function ScanResultPage({
       {claimable && searchParams?.limit === "site_limit" && limitPlan && (
         <InlineBanner
           tone="upgrade"
-          title="You hit your saved-site limit"
-          body={`You can monitor ${limitPlan === "PRO" ? "10 websites" : "1 website"} on your current plan. You can still scan any page manually, or upgrade to track more sites.`}
+          title="You hit your saved-page limit"
+          body={`You can monitor ${limitPlan === "PRO" ? "25 pages" : limitPlan === "STARTER" ? "5 pages" : "1 page"} on your current plan. Each saved entry is one URL — you can still scan any page manually, or upgrade to track more.`}
           ctaHref="/pricing"
-          ctaLabel="Upgrade to monitor more sites"
+          ctaLabel="Upgrade to monitor more pages"
         />
       )}
       {searchParams?.pdf === "pro_required" && ownedByMe && (
@@ -474,14 +474,14 @@ function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn
 
 function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }) {
   const href = loggedIn ? `/claim/${scanId}` : `/signup?scanId=${scanId}`;
-  const cta = loggedIn ? "Start monitoring this site" : "Create free account";
+  const cta = loggedIn ? "Start monitoring this page" : "Create free account";
   return (
     <section className="container-page mt-10">
       <div className="card flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-text">
             {loggedIn
-              ? "Save this scan and turn this website into an ongoing monitoring workflow."
+              ? "Save this scan and turn this page into an ongoing monitoring workflow (one URL per saved entry)."
               : "Create a free account to save this scan and keep working from it later."}
           </p>
           <p className="mt-1 text-xs text-text-muted">
@@ -681,7 +681,7 @@ function RegressionDiffLockedCard() {
         </h2>
         <p className="mt-2 text-sm text-text-muted">
           Pro shows the rule-level diff between scans so you can see what regressed,
-          what got fixed, and what still needs attention on monitored sites.
+          what got fixed, and what still needs attention on monitored pages.
         </p>
       </div>
       <div className="relative px-6 py-6 sm:px-7">
@@ -1430,17 +1430,17 @@ function singlePageCoverageTease({
 
   if (plan === "PRO") {
     return {
-      body: `${scope} Accessibility issues can appear again as your site changes, so keep monitored sites in your dashboard and stay ahead of regressions.`,
+      body: `${scope} Accessibility issues can appear again as your site changes, so keep monitored pages in your dashboard and stay ahead of regressions.`,
       ctaHref: claimable ? "/dashboard" : "/dashboard",
-      ctaLabel: "Review monitored sites",
+      ctaLabel: "Review monitored pages",
     };
   }
 
   if (plan === "STARTER") {
     return {
-      body: `${scope} Accessibility issues can appear again as your site changes. Upgrade to Pro to monitor more websites and catch regressions weekly.`,
+      body: `${scope} Accessibility issues can appear again as your site changes. Upgrade to Pro to monitor more pages and catch regressions daily.`,
       ctaHref: "/pricing",
-      ctaLabel: "Upgrade to monitor more sites",
+      ctaLabel: "Upgrade to monitor more pages",
     };
   }
 

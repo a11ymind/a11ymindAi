@@ -28,14 +28,14 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
+    "Scan live pages, monitor the URLs you care about, generate AI accessibility fixes, and share reports teams can actually act on.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
     description:
-      "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
+      "Scan live pages, monitor the URLs you care about, generate AI accessibility fixes, and share reports teams can actually act on.",
     type: "website",
     url: "/",
     siteName: "a11ymind AI",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
     description:
-      "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
+      "Scan live pages, monitor the URLs you care about, generate AI accessibility fixes, and share reports teams can actually act on.",
     images: ["/twitter-image"],
   },
 };
