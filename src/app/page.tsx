@@ -5,9 +5,20 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { URLScanner } from "@/components/URLScanner";
 
 export const metadata: Metadata = {
-  title: "a11ymind AI – Accessibility Monitoring, CI Checks, and AI Fixes",
+  title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
   description:
     "Scan live pages, monitor regressions, generate AI accessibility fixes, and share client-ready reports for websites and CI workflows.",
+  openGraph: {
+    title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
+    description:
+      "Scan live pages, monitor regressions, generate AI accessibility fixes, and share client-ready reports for websites and CI workflows.",
+    url: "/",
+  },
+  twitter: {
+    title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
+    description:
+      "Scan live pages, monitor regressions, generate AI accessibility fixes, and share client-ready reports for websites and CI workflows.",
+  },
 };
 
 export default async function LandingPage() {
@@ -926,6 +937,8 @@ function SiteFooter() {
         <FooterCol
           title="Resources"
           links={[
+            { href: "/privacy", label: "Privacy Policy" },
+            { href: "/terms", label: "Terms of Service" },
             { href: "https://www.w3.org/WAI/WCAG21/quickref/", label: "WCAG 2.1 quickref", external: true },
             { href: "https://www.ada.gov/", label: "ADA.gov", external: true },
           ]}

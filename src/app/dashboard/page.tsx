@@ -15,6 +15,7 @@ import {
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
+import { buildRegressionDiff } from "@/lib/scan-diff";
 import {
   autoScanLabel,
   entitlementsFor,
@@ -59,7 +60,12 @@ export default async function DashboardPage({
       scans: {
         where: { status: "COMPLETED" },
         orderBy: { createdAt: "asc" },
-        select: { id: true, score: true, createdAt: true },
+        select: {
+          id: true,
+          score: true,
+          createdAt: true,
+          violations: { select: { axeId: true } },
+        },
       },
     },
   });
@@ -161,6 +167,24 @@ export default async function DashboardPage({
             </div>
             <Link href="/pricing" className="text-sm text-accent hover:underline">
               Back to pricing
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {searchParams?.error === "claim_unavailable" && (
+        <section className="container-page">
+          <div className="card flex flex-col gap-2 border-severity-critical/40 bg-severity-critical/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-text">
+                We couldn&apos;t attach that scan to your account.
+              </p>
+              <p className="text-xs text-text-muted">
+                The scan may no longer exist or may already belong to another account. Run a fresh scan to continue.
+              </p>
+            </div>
+            <Link href="/" className="text-sm text-accent hover:underline">
+              Run a new scan
             </Link>
           </div>
         </section>
@@ -349,6 +373,10 @@ export default async function DashboardPage({
           const previous = site.scans[site.scans.length - 2];
           const band = latest ? scoreBand(latest.score) : null;
           const delta = latest && previous ? latest.score - previous.score : null;
+          const regressionDiff =
+            latest && previous
+              ? buildRegressionDiff(latest.violations, previous.violations)
+              : null;
           const badgeUrl = `${baseUrl}/badge/${site.id}`;
           const badgeSnippet = buildBadgeSnippet({
             homeUrl: baseUrl,
@@ -415,6 +443,37 @@ export default async function DashboardPage({
                       }
                     />
                   </div>
+                  {previous && regressionDiff && (
+                    <div className="mt-4 rounded-xl border border-border bg-bg-elevated/35 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                        Regression diff
+                      </p>
+                      {entitlements.regressionDiffs ? (
+                        <>
+                          <p className="mt-2 text-sm text-text">
+                            {regressionDiff.fixedCount} fixed · {regressionDiff.newCount} new ·{" "}
+                            {regressionDiff.unchangedCount} unchanged rule type
+                            {regressionDiff.unchangedCount === 1 ? "" : "s"}
+                          </p>
+                          <p className="mt-1 text-xs text-text-muted">
+                            Open the latest report to see which accessibility risks were introduced or resolved between scans.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-sm text-text">
+                            Unlock rule-level diffs between saved scans.
+                          </p>
+                          <p className="mt-1 text-xs text-text-muted">
+                            Pro shows which risk types are new, fixed, or unchanged across monitoring history.
+                          </p>
+                          <Link href="/pricing" className="mt-3 inline-flex text-xs text-accent hover:underline">
+                            Unlock regression diffs →
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="bg-bg px-5 py-4 md:min-w-[220px]">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">

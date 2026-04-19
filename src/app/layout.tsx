@@ -23,13 +23,38 @@ const metadataBase = new URL(
 
 export const metadata: Metadata = {
   metadataBase,
-  title: "a11ymind AI — Know your accessibility risk before a lawsuit does",
+  title: {
+    default: "a11ymind AI",
+    template: "%s",
+  },
   description:
-    "AI-powered ADA/WCAG 2.1 AA accessibility compliance scanning for small businesses and developers. Scan any URL in seconds, get plain-English fixes.",
+    "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "a11ymind AI",
-    description: "Know your accessibility risk before a lawsuit does.",
+    title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
+    description:
+      "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
     type: "website",
+    url: "/",
+    siteName: "a11ymind AI",
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "a11ymind AI social preview",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "a11ymind AI – Accessibility monitoring, CI checks, and AI fixes",
+    description:
+      "Scan live pages, monitor saved sites, generate AI accessibility fixes, and share reports teams can actually act on.",
+    images: ["/twitter-image"],
   },
 };
 

@@ -8,6 +8,7 @@ import { ShareReportButton } from "@/components/ShareReportButton";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { getSession } from "@/lib/auth";
+import { buildRegressionDiff } from "@/lib/scan-diff";
 import {
   entitlementsFor,
   planLabel,
@@ -39,6 +40,7 @@ export default async function ScanResultPage({
     limit?: string;
     plan?: string;
     pdf?: string;
+    claimed?: string;
     aiEnabled?: string;
     aiUsageCurrent?: string;
     aiUsageLimit?: string;
@@ -117,12 +119,16 @@ export default async function ScanResultPage({
   });
   const riskCount = scan.violations.length;
   const comparison = buildScanComparison(scan, previousScan);
+  const regressionDiff = previousScan
+    ? buildRegressionDiff(scan.violations, previousScan.violations)
+    : null;
   const visibleIssues = scan.violations.slice(0, 6);
   const visibleFixes = scan.violations
     .filter((violation) =>
       Boolean(violation.legalRationale || violation.plainEnglishFix || violation.codeExample),
     )
     .slice(0, 3);
+  const canSeeRegressionDiffs = ownedByMe && viewerEntitlements?.regressionDiffs === true;
   const fixesPanel = recommendedFixesState({
     scanId: scan.id,
     userId,
@@ -136,14 +142,23 @@ export default async function ScanResultPage({
   return (
     <PageShell loggedIn={!!userId}>
       {claimable && <ClaimBanner scanId={scan.id} loggedIn={!!userId} />}
-      {savedToDashboard && <SavedBanner />}
+      {searchParams?.claimed === "1" && (
+        <InlineBanner
+          tone="success"
+          title="Saved to your dashboard"
+          body="This scan is now attached to your account, tied to a monitored site, and ready for future comparisons."
+          ctaHref="/dashboard"
+          ctaLabel="Open dashboard"
+        />
+      )}
+      {savedToDashboard && searchParams?.claimed !== "1" && <SavedBanner />}
       {claimable && searchParams?.limit === "site_limit" && limitPlan && (
         <InlineBanner
           tone="upgrade"
           title="You hit your saved-site limit"
           body={`You can monitor ${limitPlan === "PRO" ? "10 websites" : "1 website"} on your current plan. You can still scan any page manually, or upgrade to track more sites.`}
           ctaHref="/pricing"
-          ctaLabel="Start monitoring"
+          ctaLabel="Upgrade to monitor more sites"
         />
       )}
       {searchParams?.pdf === "pro_required" && ownedByMe && (
@@ -152,7 +167,7 @@ export default async function ScanResultPage({
           title="PDF export is locked on your plan"
           body={`PDF downloads are available on Pro. You're currently on ${planLabel(effectiveOwnerPlan ?? "FREE")}.`}
           ctaHref="/pricing"
-          ctaLabel="Upgrade to Pro"
+          ctaLabel="Unlock PDF reports"
         />
       )}
       {searchParams?.pdf === "failed" && (
@@ -234,7 +249,7 @@ export default async function ScanResultPage({
                           href="/pricing"
                           className="text-xs text-text-subtle hover:text-text"
                         >
-                          PDF report is a Pro feature →
+                          Unlock PDF reports →
                         </Link>
                       )}
                     </>
@@ -337,6 +352,18 @@ export default async function ScanResultPage({
               />
             ))}
           </div>
+
+          {previousScan && regressionDiff && (
+            canSeeRegressionDiffs ? (
+              <RegressionDiffPanel
+                currentCreatedAt={scan.createdAt}
+                previousCreatedAt={previousScan.createdAt}
+                diff={regressionDiff}
+              />
+            ) : (
+              <RegressionDiffLockedCard />
+            )
+          )}
         </div>
 
         <RecommendedFixesPanel
@@ -447,7 +474,7 @@ function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn
 
 function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }) {
   const href = loggedIn ? `/claim/${scanId}` : `/signup?scanId=${scanId}`;
-  const cta = loggedIn ? "Save to dashboard" : "Create account to save";
+  const cta = loggedIn ? "Start monitoring this site" : "Create free account";
   return (
     <section className="container-page mt-10">
       <div className="card flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
@@ -478,7 +505,7 @@ function SavedBanner() {
           Saved to your dashboard for ongoing monitoring
         </p>
         <Link href="/dashboard" className="text-sm text-accent hover:underline">
-          View history →
+          Open history →
         </Link>
       </div>
     </section>
@@ -494,13 +521,15 @@ function InlineBanner({
 }: {
   title: string;
   body: string;
-  tone: "upgrade" | "error";
+  tone: "upgrade" | "error" | "success";
   ctaHref?: string;
   ctaLabel?: string;
 }) {
   const toneClass =
     tone === "error"
       ? "border-severity-critical/40 bg-severity-critical/10"
+      : tone === "success"
+        ? "border-accent/30 bg-accent/10"
       : "border-accent-muted bg-accent-muted/10";
 
   return (
@@ -577,6 +606,195 @@ function SeverityPill({ impact, count }: { impact: Impact; count: number }) {
         />
       </div>
       <p className="mt-2 text-2xl font-semibold tabular-nums">{count}</p>
+    </div>
+  );
+}
+
+function RegressionDiffPanel({
+  currentCreatedAt,
+  previousCreatedAt,
+  diff,
+}: {
+  currentCreatedAt: Date;
+  previousCreatedAt: Date;
+  diff: ReturnType<typeof buildRegressionDiff>;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-border bg-bg-elevated/45">
+      <div className="border-b border-border/70 px-6 py-5 sm:px-7">
+        <p className="text-xs uppercase tracking-wider text-text-subtle">Regression diff</p>
+        <h2 className="mt-2 text-xl font-semibold text-text">
+          What changed since the previous saved scan
+        </h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Comparing {new Date(previousCreatedAt).toLocaleDateString()} to{" "}
+          {new Date(currentCreatedAt).toLocaleDateString()} so you can see exactly
+          which risk types appeared, disappeared, or stayed the same.
+        </p>
+      </div>
+
+      <div className="grid gap-px border-b border-border/70 bg-border/60 md:grid-cols-3">
+        <DiffMetric
+          label="New risks"
+          value={`${diff.newCount}`}
+          tone="bad"
+          detail="Rule types detected now that were not present in the previous scan"
+        />
+        <DiffMetric
+          label="Fixed risks"
+          value={`${diff.fixedCount}`}
+          tone="good"
+          detail="Rule types present before that no longer appear in the current scan"
+        />
+        <DiffMetric
+          label="Unchanged"
+          value={`${diff.unchangedCount}`}
+          detail="Rule types that were detected in both scans"
+        />
+      </div>
+
+      <div className="grid gap-5 px-6 py-6 sm:px-7 lg:grid-cols-2">
+        <DiffList
+          title="New risks"
+          tone="bad"
+          emptyCopy="No new rule-level regressions were detected in this scan."
+          items={diff.newItems}
+        />
+        <DiffList
+          title="Fixed risks"
+          tone="good"
+          emptyCopy="No rule types were resolved compared with the previous scan."
+          items={diff.fixedItems}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RegressionDiffLockedCard() {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-border bg-bg-elevated/45">
+      <div className="border-b border-border/70 px-6 py-5 sm:px-7">
+        <p className="text-xs uppercase tracking-wider text-text-subtle">Regression diff</p>
+        <h2 className="mt-2 text-xl font-semibold text-text">
+          See exactly which risks are new or fixed
+        </h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Pro shows the rule-level diff between scans so you can see what regressed,
+          what got fixed, and what still needs attention on monitored sites.
+        </p>
+      </div>
+      <div className="relative px-6 py-6 sm:px-7">
+        <div className="space-y-3 opacity-40 blur-[1.5px]">
+          <div className="rounded-xl border border-border bg-bg-muted/30 p-4">
+            <p className="text-sm font-medium text-text">New risks</p>
+            <p className="mt-2 text-xs text-text-muted">
+              Link text is not descriptive enough for screen-reader users.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-muted/30 p-4">
+            <p className="text-sm font-medium text-text">Fixed risks</p>
+            <p className="mt-2 text-xs text-text-muted">
+              Form labels are now exposed correctly to assistive technology.
+            </p>
+          </div>
+        </div>
+        <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.15),rgba(11,13,17,0.9)_30%,rgba(11,13,17,0.95))] px-6 py-6 sm:px-7">
+          <p className="text-sm font-semibold text-text">Regression diffs are a Pro feature</p>
+          <p className="mt-2 max-w-xl text-sm text-text-muted">
+            Upgrade to Pro to compare saved scans side by side and spot the exact
+            accessibility risk types that were introduced or resolved.
+          </p>
+          <Link href="/pricing" className="btn-primary mt-4">
+            Compare regressions on Pro
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiffMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "good" | "bad";
+}) {
+  return (
+    <div className="bg-bg-elevated/60 p-4">
+      <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
+      <p
+        className="mt-2 text-2xl font-semibold"
+        style={
+          tone === "good"
+            ? { color: "#22c55e" }
+            : tone === "bad"
+              ? { color: "#ef4444" }
+              : undefined
+        }
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-text-muted">{detail}</p>
+    </div>
+  );
+}
+
+function DiffList({
+  title,
+  items,
+  emptyCopy,
+  tone,
+}: {
+  title: string;
+  items: ReturnType<typeof buildRegressionDiff>["newItems"];
+  emptyCopy: string;
+  tone: "good" | "bad";
+}) {
+  const accentClass =
+    tone === "good"
+      ? "border-accent/20 bg-accent/10 text-accent"
+      : "border-severity-critical/30 bg-severity-critical/10 text-severity-critical";
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-text">{title}</p>
+      <div className="mt-3 space-y-3">
+        {items.length > 0 ? (
+          items.slice(0, 5).map((item) => (
+            <div key={`${title}-${item.axeId}`} className="rounded-xl border border-border bg-bg-muted/25 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${accentClass}`}>
+                  {item.impact}
+                </span>
+                <span className="rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                  {item.axeId}
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-text">{item.help}</p>
+              {item.helpUrl ? (
+                <a
+                  href={item.helpUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex text-xs text-accent hover:underline"
+                >
+                  Rule guidance →
+                </a>
+              ) : null}
+            </div>
+          ))
+        ) : (
+          <p className="rounded-xl border border-border bg-bg-muted/20 p-4 text-sm text-text-muted">
+            {emptyCopy}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1108,7 +1326,7 @@ async function findPreviousComparableScan(scan: {
     id: true,
     score: true,
     createdAt: true,
-    violations: { select: { axeId: true } },
+    violations: { select: { axeId: true, help: true, helpUrl: true, impact: true } },
   } as const;
 
   if (scan.siteId) {
@@ -1214,7 +1432,7 @@ function singlePageCoverageTease({
     return {
       body: `${scope} Accessibility issues can appear again as your site changes, so keep monitored sites in your dashboard and stay ahead of regressions.`,
       ctaHref: claimable ? "/dashboard" : "/dashboard",
-      ctaLabel: "Start monitoring",
+      ctaLabel: "Review monitored sites",
     };
   }
 
@@ -1222,7 +1440,7 @@ function singlePageCoverageTease({
     return {
       body: `${scope} Accessibility issues can appear again as your site changes. Upgrade to Pro to monitor more websites and catch regressions weekly.`,
       ctaHref: "/pricing",
-      ctaLabel: "Start monitoring",
+      ctaLabel: "Upgrade to monitor more sites",
     };
   }
 
@@ -1236,8 +1454,8 @@ function singlePageCoverageTease({
 
   return {
     body: `${scope} Accessibility issues can appear again as your site changes. Create an account when you're ready to start monitoring.`,
-    ctaHref: "/pricing",
-    ctaLabel: "Start monitoring",
+    ctaHref: "/signup",
+    ctaLabel: "Create account",
   };
 }
 
@@ -1310,7 +1528,7 @@ function recommendedFixesState({
       mode: "locked" as const,
       body: "Upgrade to generate recommended fixes with legal rationale, plain-English steps, and copy-ready remediation guidance.",
       ctaHref: "/pricing",
-      ctaLabel: "Get AI fixes",
+      ctaLabel: "Unlock AI fixes",
       aiUsageCurrent: null,
       aiUsageLimit: null,
       aiUsageRemaining: null,
@@ -1326,7 +1544,7 @@ function recommendedFixesState({
           ? "You reached your monthly AI fix limit on Starter. Upgrade to Pro for higher coverage."
           : "You reached your monthly AI fix limit for now. New AI fixes will become available again next month.",
       ctaHref: userPlan === "STARTER" ? "/pricing" : undefined,
-      ctaLabel: userPlan === "STARTER" ? "Get AI fixes" : undefined,
+      ctaLabel: userPlan === "STARTER" ? "Upgrade to Pro" : undefined,
       aiUsageCurrent: apiAiFlags.aiUsageCurrent,
       aiUsageLimit: apiAiFlags.aiUsageLimit,
       aiUsageRemaining: apiAiFlags.aiUsageRemaining,
@@ -1338,7 +1556,7 @@ function recommendedFixesState({
     mode: "locked" as const,
     body: "Recommended fixes are not available for this scan yet. Save it and re-scan from your dashboard to keep monitoring changes over time.",
     ctaHref: claimable ? `/login?scanId=${encodeURIComponent(scanId)}` : "/dashboard",
-    ctaLabel: claimable ? "Start monitoring" : "Start monitoring",
+    ctaLabel: claimable ? "Create account to save" : "Open dashboard",
     aiUsageCurrent: apiAiFlags.aiUsageCurrent,
     aiUsageLimit: apiAiFlags.aiUsageLimit,
     aiUsageRemaining: apiAiFlags.aiUsageRemaining,

@@ -148,6 +148,17 @@ export default async function PricingPage({
             modify your site. a11ymind helps you reduce accessibility risk — it does not constitute
             legal advice or a guarantee of WCAG/ADA compliance.
           </p>
+          <p className="mt-3 text-xs text-text-subtle">
+            Paid subscriptions are governed by our{" "}
+            <Link href="/terms" className="text-accent hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-accent hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </section>
       </main>
@@ -170,12 +181,12 @@ const PLAN_COPY: Record<string, PlanCopy> = {
   STARTER: {
     pitch: "Turn one live website into a recurring accessibility workflow with AI help.",
     bestFor: "Best for small sites, solo operators, and focused teams.",
-    primaryCta: "Fix my site",
+    primaryCta: "Start monitoring",
   },
   PRO: {
     pitch: "Manage accessibility across multiple sites with reporting that is ready to share.",
     bestFor: "Best for agencies, product teams, and serious site owners.",
-    primaryCta: "Get full protection",
+    primaryCta: "Protect every site",
   },
 };
 
@@ -319,7 +330,7 @@ function PricingCTA({
         href="/api/stripe/portal?returnTo=%2Fpricing"
         className={tier.highlight ? "btn-primary w-full" : "btn-ghost w-full"}
       >
-        Manage in billing portal
+        Manage plan in billing
       </Link>
     );
   }
@@ -377,12 +388,12 @@ function PlanModeCard({
 
 function pricingBanner(error: string | undefined, canceled: string | undefined) {
   if (canceled === "1") {
-    return {
-      tone: "info" as const,
-      title: "Checkout was canceled.",
-      body: "Your plan did not change. You can restart checkout whenever you're ready.",
-      code: null,
-    };
+      return {
+        tone: "info" as const,
+        title: "Checkout was canceled.",
+        body: "Your plan did not change. Restart checkout whenever you're ready.",
+        code: null,
+      };
   }
 
   switch (error) {
@@ -418,7 +429,7 @@ function pricingBanner(error: string | undefined, canceled: string | undefined) 
       return {
         tone: "info" as const,
         title: "You're already on that plan.",
-        body: "Use the billing portal if you need to update payment details or manage your subscription.",
+        body: "Use billing to update payment details or manage this subscription.",
         code: "error=already_on_plan",
       };
     case "billing_portal_required":
@@ -432,7 +443,7 @@ function pricingBanner(error: string | undefined, canceled: string | undefined) 
       return {
         tone: "info" as const,
         title: "No active Stripe subscription was found for this account.",
-        body: "Start a paid plan from here first, then use the billing portal for future changes.",
+        body: "Choose a paid plan here first, then use billing for future changes.",
         code: "error=no_subscription",
       };
     case "portal_failed":

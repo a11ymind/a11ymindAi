@@ -19,8 +19,14 @@ export default async function ClaimPage({ params }: { params: { scanId: string }
       select: { plan: true },
     }),
   ]);
-  if (!scan) redirect("/dashboard");
-  if (scan.userId && scan.userId !== userId) redirect("/dashboard");
+  if (!scan) redirect("/dashboard?error=claim_unavailable");
+  if (scan.userId && scan.userId !== userId) {
+    redirect("/dashboard?error=claim_unavailable");
+  }
+
+  if (scan.userId === userId && scan.siteId) {
+    redirect(`/scan/${scan.id}?claimed=1`);
+  }
 
   const userPlan = user?.plan ?? "FREE";
   const limits = entitlementsFor(userPlan);
@@ -49,5 +55,5 @@ export default async function ClaimPage({ params }: { params: { scanId: string }
     data: { userId, siteId: site.id },
   });
 
-  redirect("/dashboard");
+  redirect(`/scan/${scan.id}?claimed=1`);
 }

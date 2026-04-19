@@ -59,7 +59,7 @@ export const PLAN_TIERS: PlanTier[] = [
       { text: "Daily auto-scan", included: true },
       { text: "AI fix suggestions (500 / month)", included: true },
       { text: "CI check history in your dashboard (coming soon)", included: false },
-      { text: "Regression diffs across scans (coming soon)", included: false },
+      { text: "Regression diffs across scans", included: true },
       { text: "Slack alerts (coming soon)", included: false },
     ],
   },
