@@ -26,6 +26,18 @@ export type ExecuteScanResult =
   | { ok: true; scanId: string; score: number; ai: AiUsageSummary }
   | { ok: false; scanId: string; error: string };
 
+function disabledAiSummary(userId: string | null, plan: Plan | null): AiUsageSummary {
+  return {
+    aiEnabled: false,
+    aiUsageCurrent: 0,
+    aiUsageLimit: plan ? entitlementsFor(plan).aiMonthlyLimit : null,
+    aiUsageRemaining: plan ? entitlementsFor(plan).aiMonthlyLimit : null,
+    aiLimitReached: false,
+    requiresLoginForAI: !userId,
+    requiresUpgradeForAI: Boolean(userId && (!plan || !entitlementsFor(plan).aiFixes)),
+  };
+}
+
 // Scans are executed inline with maxDuration=60. If a function times out
 // mid-transaction, the Scan row stays in RUNNING forever and (pre-fix) its
 // AI reservation slot is permanently consumed. Before kicking off a new scan
@@ -109,10 +121,14 @@ export async function executeScanRecord(
     return { ok: true, scanId: scan.id, score, ai: ai.summary };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Scan failed";
-    await prisma.scan.update({
-      where: { id: scan.id },
-      data: { status: "FAILED", error: message },
-    });
+    try {
+      await prisma.scan.update({
+        where: { id: scan.id },
+        data: { status: "FAILED", error: message },
+      });
+    } catch (updateError) {
+      console.error(`[scan-jobs] failed to persist scan failure for ${scan.id}:`, updateError);
+    }
     return { ok: false, scanId: scan.id, error: message };
   }
 }
@@ -164,10 +180,23 @@ async function maybeGenerateAiFixes(
     // AI guidance is optional. If the paid-only remediation path throws at
     // runtime, keep the scan itself successful and fall back to no fixes.
     console.error(`[scan-jobs] AI generation fallback for scan ${scanId}:`, error);
-    await clearAiReservation(scanId);
+    try {
+      await clearAiReservation(scanId);
+    } catch (clearError) {
+      console.error(`[scan-jobs] failed to clear AI reservation for ${scanId}:`, clearError);
+    }
+
+    let summary: AiUsageSummary;
+    try {
+      summary = await getAiUsageSummary(userId, plan);
+    } catch (summaryError) {
+      console.error(`[scan-jobs] failed to read AI usage summary for ${scanId}:`, summaryError);
+      summary = disabledAiSummary(userId, plan);
+    }
+
     return {
       fixes: [],
-      summary: await getAiUsageSummary(userId, plan),
+      summary,
     };
   }
 }
