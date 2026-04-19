@@ -86,6 +86,11 @@ export async function scanUrl(url: string): Promise<ScanResult> {
       "Mozilla/5.0 (compatible; a11ymindBot/1.0; +https://www.a11ymind.ai)",
     );
 
+    // Many production sites set a strict Content-Security-Policy that blocks
+    // inline <script> tags. Without bypass, page.addScriptTag({ content })
+    // below silently fails and axe never attaches to window.
+    await page.setBypassCSP(true);
+
     // Mitigate SSRF via sub-resource requests. The browser loads the target
     // page and every script/image/XHR that page kicks off; a malicious site
     // can redirect or fetch internal addresses. Re-validate each request's
@@ -140,10 +145,19 @@ export async function scanUrl(url: string): Promise<ScanResult> {
       );
     }
 
-    // Inject axe through a script tag instead of direct evaluation.
-    // This is more reliable in production Chromium runtimes and avoids
-    // minified reference errors while bootstrapping axe in-page.
+    // Prefer <script> injection (more reliable in headless Chromium on
+    // minified builds). If the page still doesn't expose window.axe — some
+    // runtimes or aggressive CSPs can still swallow it — fall back to
+    // evaluating the source directly, which runs in a DevTools-managed
+    // context that bypasses CSP entirely.
     await page.addScriptTag({ content: axe.source });
+    const axeReady = await page.evaluate(
+      () => typeof (globalThis as { axe?: unknown }).axe !== "undefined",
+    );
+    if (!axeReady) {
+      await page.evaluate(axe.source);
+    }
+
     const results = await page.evaluate(async () => {
       const runtimeAxe = (globalThis as { axe?: typeof axe }).axe;
       if (!runtimeAxe) {
