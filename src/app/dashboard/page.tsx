@@ -150,12 +150,12 @@ export default async function DashboardPage({
                 Unlock AI fixes
               </Link>
             ) : (
-              <Link
+              <a
                 href="/api/stripe/portal"
                 className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
               >
                 Manage billing
-              </Link>
+              </a>
             )}
             <span className="hidden max-w-[14rem] truncate text-sm text-text-muted md:inline">
               {user.name || user.email}

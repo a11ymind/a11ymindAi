@@ -326,12 +326,12 @@ function PricingCTA({
     signedIn && currentPlan !== null && currentPlan !== "FREE" && tier.id !== currentPlan;
   if (useBillingPortal) {
     return (
-      <Link
+      <a
         href="/api/stripe/portal?returnTo=%2Fpricing"
         className={tier.highlight ? "btn-primary w-full" : "btn-ghost w-full"}
       >
         Manage plan in billing
-      </Link>
+      </a>
     );
   }
   const href = `/api/stripe/checkout?plan=${tier.id}`;

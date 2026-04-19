@@ -123,42 +123,53 @@ async function maybeGenerateAiFixes(
   plan: Plan | null,
   violations: Awaited<ReturnType<typeof scanUrl>>["violations"],
 ): Promise<{ fixes: Awaited<ReturnType<typeof generateFixes>>; summary: AiUsageSummary }> {
-  const summary = await getAiUsageSummary(userId, plan);
-
-  if (!summary.aiEnabled || violations.length === 0 || !userId) {
-    return { fixes: [], summary };
-  }
-
-  if (!plan || !entitlementsFor(plan).aiFixes) {
-    return { fixes: [], summary };
-  }
-
-  const cached = await findCachedFixesForSite(scanId, violations);
-  if (cached) {
-    return { fixes: cached, summary };
-  }
-
-  const reservation = await reserveAiUsageSlot(scanId, userId, plan);
-  if (!reservation.ok) {
-    return { fixes: [], summary: reservation.summary };
-  }
-
-  let fixes: Awaited<ReturnType<typeof generateFixes>> = [];
   try {
-    fixes = await generateFixes(violations, plan);
-  } catch {
-    fixes = [];
-  }
+    const summary = await getAiUsageSummary(userId, plan);
 
-  if (fixes.length === 0) {
+    if (!summary.aiEnabled || violations.length === 0 || !userId) {
+      return { fixes: [], summary };
+    }
+
+    if (!plan || !entitlementsFor(plan).aiFixes) {
+      return { fixes: [], summary };
+    }
+
+    const cached = await findCachedFixesForSite(scanId, violations);
+    if (cached) {
+      return { fixes: cached, summary };
+    }
+
+    const reservation = await reserveAiUsageSlot(scanId, userId, plan);
+    if (!reservation.ok) {
+      return { fixes: [], summary: reservation.summary };
+    }
+
+    let fixes: Awaited<ReturnType<typeof generateFixes>> = [];
+    try {
+      fixes = await generateFixes(violations, plan);
+    } catch {
+      fixes = [];
+    }
+
+    if (fixes.length === 0) {
+      await clearAiReservation(scanId);
+      return {
+        fixes: [],
+        summary: await getAiUsageSummary(userId, plan),
+      };
+    }
+
+    return { fixes, summary: reservation.summary };
+  } catch (error) {
+    // AI guidance is optional. If the paid-only remediation path throws at
+    // runtime, keep the scan itself successful and fall back to no fixes.
+    console.error(`[scan-jobs] AI generation fallback for scan ${scanId}:`, error);
     await clearAiReservation(scanId);
     return {
       fixes: [],
       summary: await getAiUsageSummary(userId, plan),
     };
   }
-
-  return { fixes, summary: reservation.summary };
 }
 
 function violationSignature(violations: Pick<AxeViolation, "id" | "nodes">[]): string {
