@@ -127,7 +127,7 @@ export default function PrivacyPage() {
             served over HTTPS. We use the standard access controls provided by our
             hosting and database providers. No system is perfectly secure — if you
             discover a vulnerability please report it to
-            <a href="mailto:support@a11ymind.ai"> support@a11ymind.ai</a>.
+            <a href="mailto:security@a11ymind.ai"> security@a11ymind.ai</a>.
           </p>
 
           <h2>8. Children</h2>
