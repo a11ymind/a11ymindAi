@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CopyFixButton } from "@/components/CopyFixButton";
 import { CopyButton } from "@/components/CopyButton";
 import { EmailReportForm } from "@/components/EmailReportForm";
+import { AccessLintCiCard } from "@/components/AccessLintCiCard";
 import { Logo } from "@/components/Logo";
 import { RescanButton } from "@/components/RescanButton";
 import { ShareReportButton } from "@/components/ShareReportButton";
@@ -441,6 +442,10 @@ export default async function ScanResultPage({
             </p>
           </div>
         )}
+
+        <div className="mt-8">
+          <AccessLintCiCard />
+        </div>
       </section>
     </PageShell>
   );

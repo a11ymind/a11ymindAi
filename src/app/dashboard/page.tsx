@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { CiHistoryCard } from "@/components/CiHistoryCard";
+import { AccessLintCiCard } from "@/components/AccessLintCiCard";
 import { Logo } from "@/components/Logo";
 import { PlanBadge } from "@/components/PlanBadge";
 import { SignOutButton } from "@/components/UserMenu";
@@ -516,7 +517,7 @@ export default async function DashboardPage({
                   />
                 </div>
               )}
-              {entitlements.ciIntegration && (
+              {entitlements.ciIntegration ? (
                 <div className="border-t border-border/70 px-5 py-4">
                   <CiHistoryCard
                     siteId={site.id}
@@ -525,6 +526,10 @@ export default async function DashboardPage({
                     token={site.ciIngestToken}
                     checks={site.ciChecks}
                   />
+                </div>
+              ) : (
+                <div className="border-t border-border/70 px-5 py-4">
+                  <AccessLintCiCard />
                 </div>
               )}
               {entitlements.slackAlerts && (
