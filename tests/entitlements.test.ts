@@ -25,8 +25,8 @@ test("paid plans expose the expected entitlements", () => {
   assert.equal(pro.pdfExport, true);
   assert.equal(pro.monitoringBadge, true);
   assert.equal(pro.autoScan, "daily");
-  // Coming-soon flags — intentionally false until features ship.
-  assert.equal(pro.regressionDiffs, false);
+  // Shipped flags should stay aligned with product surfaces.
+  assert.equal(pro.regressionDiffs, true);
   assert.equal(pro.slackAlerts, false);
   assert.equal(pro.ciIntegration, false);
 });
