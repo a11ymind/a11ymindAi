@@ -4,6 +4,12 @@ An AI-powered ADA/WCAG accessibility compliance tool.
 
 Marketing tagline: *"Know your accessibility risk before a lawsuit does."*
 
+This repository is public and source-available under the Business Source
+License 1.1 (`BUSL-1.1`). The code converts to `Apache-2.0` on `2029-04-19`.
+See [LICENSE](LICENSE) for the exact terms, including the current production
+use grant and the restriction on offering a competing hosted service before the
+change date.
+
 ## Getting started
 
 ```bash
@@ -15,7 +21,28 @@ npx prisma db push
 npm run dev
 ```
 
-See `CLAUDE.md` for the architecture overview and commands reference.
+---
+
+## Security
+
+If you find a security issue, do not open a public issue. Follow
+[SECURITY.md](SECURITY.md) and report it privately.
+
+---
+
+## Licensing
+
+- Current license: `BUSL-1.1`
+- Change date: `2029-04-19`
+- Future license: `Apache-2.0`
+
+In practical terms:
+
+- development, evaluation, contribution, and internal/self-hosted use are
+  allowed now
+- using a11ymind for sites and apps you own or control is allowed now
+- offering a competing hosted accessibility scanning or monitoring product
+  based primarily on this code is not allowed before the change date
 
 ---
 

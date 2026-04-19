@@ -2,8 +2,6 @@ node_modules
 .next
 out
 dist
-!github-action/dist/
-!github-action/dist/**
 .env
 .env.local
 .env.*.local
@@ -15,3 +13,4 @@ coverage
 tsconfig.tsbuildinfo
 .claude
 .codex
+CLAUDE.md
