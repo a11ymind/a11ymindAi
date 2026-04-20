@@ -29,7 +29,18 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isProtectedPath(req.nextUrl.pathname)) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+    if (!nextAuthSecret) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set(
+        "callbackUrl",
+        `${req.nextUrl.pathname}${req.nextUrl.search}`,
+      );
+      const response = NextResponse.redirect(loginUrl);
+      return applyNoindexHeader(response, policy.noindex);
+    }
+
+    const token = await getToken({ req, secret: nextAuthSecret });
     if (!token) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set(
