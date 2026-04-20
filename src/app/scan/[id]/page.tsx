@@ -186,13 +186,15 @@ export default async function ScanResultPage({
           body="Try again in a moment. If this keeps happening, re-run the scan and export the newest report."
         />
       )}
-      <InlineBanner
-        tone="upgrade"
-        title="This scan covered 1 page only"
-        body={coverageTease.body}
-        ctaHref={coverageTease.ctaHref}
-        ctaLabel={coverageTease.ctaLabel}
-      />
+      {showSmartUpsell && (
+        <InlineBanner
+          tone="upgrade"
+          title="This scan covered 1 page only"
+          body={coverageTease.body}
+          ctaHref={coverageTease.ctaHref}
+          ctaLabel={coverageTease.ctaLabel}
+        />
+      )}
 
       <section className="container-page mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="space-y-6">
@@ -429,7 +431,7 @@ export default async function ScanResultPage({
                 <h2 className="text-xl font-semibold">
                   <span
                     className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
-                    style={{ background: `var(--tw-${impact})`, backgroundColor: severityColor(impact) }}
+                    style={{ backgroundColor: severityColor(impact) }}
                   />
                   {IMPACT_LABELS[impact]}
                   <span className="ml-2 text-sm font-normal text-text-muted">
@@ -1482,7 +1484,7 @@ function singlePageCoverageTease({
   if (plan === "PRO") {
     return {
       body: `${scope} Accessibility issues can appear again as your site changes, so keep monitored pages in your dashboard and stay ahead of regressions.`,
-      ctaHref: claimable ? "/dashboard" : "/dashboard",
+      ctaHref: "/dashboard",
       ctaLabel: "Review monitored pages",
     };
   }

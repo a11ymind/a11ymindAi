@@ -44,19 +44,33 @@ export async function POST() {
 
     if (live) {
       const priceId = live.items.data[0]?.price.id;
+      if (!priceId) {
+        console.warn(
+          `[stripe/sync] missing price id on subscription ${live.id}; clearing stale billing state`,
+        );
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            plan: "FREE",
+            stripeSubscriptionId: null,
+            stripePriceId: null,
+            stripeCurrentPeriodEnd: null,
+          },
+        });
+        return NextResponse.json({ ok: true, synced: true, plan: "FREE" });
+      }
+
       const plan = planForPriceId(priceId);
-      const periodEndSec = (live as Stripe.Subscription & {
-        current_period_end?: number;
-      }).current_period_end;
+      const periodEndSec = live.current_period_end;
       const periodEnd = periodEndSec ? new Date(periodEndSec * 1000) : null;
 
       await prisma.user.update({
         where: { id: user.id },
         data: {
           plan: plan ?? "FREE",
-          stripeSubscriptionId: live.id,
-          stripePriceId: priceId ?? null,
-          stripeCurrentPeriodEnd: periodEnd,
+          stripeSubscriptionId: plan ? live.id : null,
+          stripePriceId: plan ? priceId : null,
+          stripeCurrentPeriodEnd: plan ? periodEnd : null,
         },
       });
       return NextResponse.json({ ok: true, synced: true, plan: plan ?? "FREE" });

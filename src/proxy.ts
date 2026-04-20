@@ -6,6 +6,13 @@ function isProtectedPath(pathname: string) {
   return pathname.startsWith("/dashboard") || pathname.startsWith("/claim");
 }
 
+function applyNoindexHeader(response: NextResponse, noindex: boolean): NextResponse {
+  if (noindex) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  return response;
+}
+
 export async function proxy(req: NextRequest) {
   const policy = getHostPolicy({
     requestUrl: req.nextUrl,
@@ -18,10 +25,7 @@ export async function proxy(req: NextRequest) {
 
   if (policy.redirectTo) {
     const response = NextResponse.redirect(policy.redirectTo, 308);
-    if (policy.noindex) {
-      response.headers.set("X-Robots-Tag", "noindex, nofollow");
-    }
-    return response;
+    return applyNoindexHeader(response, policy.noindex);
   }
 
   if (isProtectedPath(req.nextUrl.pathname)) {
@@ -33,18 +37,12 @@ export async function proxy(req: NextRequest) {
         `${req.nextUrl.pathname}${req.nextUrl.search}`,
       );
       const response = NextResponse.redirect(loginUrl);
-      if (policy.noindex) {
-        response.headers.set("X-Robots-Tag", "noindex, nofollow");
-      }
-      return response;
+      return applyNoindexHeader(response, policy.noindex);
     }
   }
 
   const response = NextResponse.next();
-  if (policy.noindex) {
-    response.headers.set("X-Robots-Tag", "noindex, nofollow");
-  }
-  return response;
+  return applyNoindexHeader(response, policy.noindex);
 }
 
 export const config = {

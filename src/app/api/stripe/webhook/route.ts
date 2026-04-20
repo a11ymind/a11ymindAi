@@ -72,6 +72,13 @@ export async function POST(req: Request) {
 async function applySubscription(sub: Stripe.Subscription) {
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const priceId = sub.items.data[0]?.price.id;
+  if (!priceId) {
+    console.warn(
+      `[stripe/webhook] missing price id on subscription ${sub.id}; skipping update`,
+    );
+    return;
+  }
+
   const plan = planForPriceId(priceId);
   if (!plan) {
     console.warn(
@@ -87,17 +94,16 @@ async function applySubscription(sub: Stripe.Subscription) {
 
   // `current_period_end` is in seconds; the field is guaranteed present on
   // active subscriptions.
-  const periodEndSec = (sub as Stripe.Subscription & { current_period_end?: number })
-    .current_period_end;
+  const periodEndSec = sub.current_period_end;
   const periodEnd = active && periodEndSec ? new Date(periodEndSec * 1000) : null;
 
   const result = await prisma.user.updateMany({
     where: { stripeCustomerId: customerId },
     data: {
       plan: active ? plan : "FREE",
-      stripeSubscriptionId: sub.id,
-      stripePriceId: priceId ?? null,
-      stripeCurrentPeriodEnd: periodEnd,
+      stripeSubscriptionId: active ? sub.id : null,
+      stripePriceId: active ? priceId : null,
+      stripeCurrentPeriodEnd: active ? periodEnd : null,
     },
   });
   if (result.count === 0) {
