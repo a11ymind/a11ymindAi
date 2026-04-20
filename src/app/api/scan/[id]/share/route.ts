@@ -18,8 +18,9 @@ function generateToken(): string {
 
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -58,7 +59,7 @@ export async function POST(
   }
 
   const scan = await prisma.scan.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, userId: true, shareToken: true, status: true },
   });
   if (!scan || scan.userId !== session.user.id) {
@@ -81,15 +82,16 @@ export async function POST(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const scan = await prisma.scan.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, userId: true },
   });
   if (!scan || scan.userId !== session.user.id) {

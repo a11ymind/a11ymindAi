@@ -38,8 +38,8 @@ export default async function ScanResultPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{
     limit?: string;
     plan?: string;
     pdf?: string;
@@ -51,11 +51,13 @@ export default async function ScanResultPage({
     requiresLoginForAI?: string;
     requiresUpgradeForAI?: string;
     aiLimitReached?: string;
-  };
+  }>;
 }) {
+  const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const [scan, session] = await Promise.all([
     prisma.scan.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         violations: true,
         user: { select: { plan: true } },
@@ -112,8 +114,8 @@ export default async function ScanResultPage({
   const viewerEntitlements = effectiveOwnerPlan ? entitlementsFor(effectiveOwnerPlan) : null;
   const canSeeAiFixes = !savedScanRequiresAiUpgrade;
   const canExportPdf = ownedByMe && viewerEntitlements?.pdfExport === true;
-  const limitPlan = parsePlan(searchParams?.plan);
-  const apiAiFlags = parseAiFlags(searchParams);
+  const limitPlan = parsePlan(resolvedSearchParams?.plan);
+  const apiAiFlags = parseAiFlags(resolvedSearchParams);
   const coverageTease = singlePageCoverageTease({
     host: hostOf(scan.url),
     loggedIn: !!userId,
@@ -149,7 +151,7 @@ export default async function ScanResultPage({
   return (
     <PageShell loggedIn={!!userId}>
       {claimable && <ClaimBanner scanId={scan.id} loggedIn={!!userId} />}
-      {searchParams?.claimed === "1" && (
+      {resolvedSearchParams?.claimed === "1" && (
         <InlineBanner
           tone="success"
           title="Saved to your dashboard"
@@ -158,8 +160,8 @@ export default async function ScanResultPage({
           ctaLabel="Open dashboard"
         />
       )}
-      {savedToDashboard && searchParams?.claimed !== "1" && <SavedBanner />}
-      {claimable && searchParams?.limit === "site_limit" && limitPlan && (
+      {savedToDashboard && resolvedSearchParams?.claimed !== "1" && <SavedBanner />}
+      {claimable && resolvedSearchParams?.limit === "site_limit" && limitPlan && (
         <InlineBanner
           tone="upgrade"
           title="You hit your saved-page limit"
@@ -168,7 +170,7 @@ export default async function ScanResultPage({
           ctaLabel="Upgrade to monitor more pages"
         />
       )}
-      {searchParams?.pdf === "pro_required" && ownedByMe && (
+      {resolvedSearchParams?.pdf === "pro_required" && ownedByMe && (
         <InlineBanner
           tone="upgrade"
           title="PDF export is locked on your plan"
@@ -177,7 +179,7 @@ export default async function ScanResultPage({
           ctaLabel="Unlock PDF reports"
         />
       )}
-      {searchParams?.pdf === "failed" && (
+      {resolvedSearchParams?.pdf === "failed" && (
         <InlineBanner
           tone="error"
           title="We couldn't generate the PDF report"

@@ -9,17 +9,18 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.redirect(
-      new URL(`/login?callbackUrl=${encodeURIComponent(`/scan/${params.id}`)}`, _req.url),
+      new URL(`/login?callbackUrl=${encodeURIComponent(`/scan/${id}`)}`, _req.url),
     );
   }
 
   const scan = await prisma.scan.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       user: {
         select: { plan: true },
@@ -44,12 +45,12 @@ export async function GET(
   }
 
   if (scan.status !== "COMPLETED") {
-    return redirectToScan(params.id, "failed", _req.url);
+    return redirectToScan(id, "failed", _req.url);
   }
 
   const entitlements = entitlementsFor(scan.user?.plan ?? "FREE");
   if (!entitlements.pdfExport) {
-    return redirectToScan(params.id, "pro_required", _req.url);
+    return redirectToScan(id, "pro_required", _req.url);
   }
 
   try {
@@ -75,7 +76,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("[scan/pdf] failed:", error);
-    return redirectToScan(params.id, "failed", _req.url);
+    return redirectToScan(id, "failed", _req.url);
   }
 }
 

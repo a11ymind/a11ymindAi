@@ -17,8 +17,9 @@ const Body = z.object({
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   let json: unknown;
   try {
     json = await req.json();
@@ -71,7 +72,7 @@ export async function POST(
   }
 
   const scan = await prisma.scan.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       url: true,

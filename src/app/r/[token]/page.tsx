@@ -25,10 +25,11 @@ const IMPACT_LABELS: Record<Impact, string> = {
 export default async function SharedReportPage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
+  const { token } = await params;
   const scan = await prisma.scan.findUnique({
-    where: { shareToken: params.token },
+    where: { shareToken: token },
     include: {
       violations: {
         select: {

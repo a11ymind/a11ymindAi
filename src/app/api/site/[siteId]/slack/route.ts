@@ -14,8 +14,9 @@ const Body = z.object({
 
 export async function POST(
   req: Request,
-  { params }: { params: { siteId: string } },
+  { params }: { params: Promise<{ siteId: string }> },
 ) {
+  const { siteId } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +38,7 @@ export async function POST(
   }
 
   const site = await prisma.site.findUnique({
-    where: { id: params.siteId },
+    where: { id: siteId },
     select: {
       id: true,
       userId: true,

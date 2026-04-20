@@ -10,10 +10,11 @@ const BADGE_HEIGHT = 36;
 
 export async function GET(
   _req: Request,
-  { params }: { params: { siteId: string } },
+  { params }: { params: Promise<{ siteId: string }> },
 ) {
+  const { siteId } = await params;
   const site = await prisma.site.findUnique({
-    where: { id: params.siteId },
+    where: { id: siteId },
     select: {
       url: true,
       user: {

@@ -9,15 +9,16 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,
-  { params }: { params: { siteId: string } },
+  { params }: { params: Promise<{ siteId: string }> },
 ) {
+  const { siteId } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const site = await prisma.site.findUnique({
-    where: { id: params.siteId },
+    where: { id: siteId },
     select: {
       id: true,
       userId: true,

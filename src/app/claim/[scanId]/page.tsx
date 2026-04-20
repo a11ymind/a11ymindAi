@@ -5,15 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClaimPage({ params }: { params: { scanId: string } }) {
+export default async function ClaimPage({ params }: { params: Promise<{ scanId: string }> }) {
+  const { scanId } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
-    redirect(`/login?scanId=${encodeURIComponent(params.scanId)}`);
+    redirect(`/login?scanId=${encodeURIComponent(scanId)}`);
   }
   const userId = session.user.id;
 
   const [scan, user] = await Promise.all([
-    prisma.scan.findUnique({ where: { id: params.scanId } }),
+    prisma.scan.findUnique({ where: { id: scanId } }),
     prisma.user.findUnique({
       where: { id: userId },
       select: { plan: true },
