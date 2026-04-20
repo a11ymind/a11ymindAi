@@ -6,7 +6,7 @@ function isProtectedPath(pathname: string) {
   return pathname.startsWith("/dashboard") || pathname.startsWith("/claim");
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const policy = getHostPolicy({
     requestUrl: req.nextUrl,
     hostHeader: req.headers.get("host"),
