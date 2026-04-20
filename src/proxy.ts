@@ -13,6 +13,16 @@ function applyNoindexHeader(response: NextResponse, noindex: boolean): NextRespo
   return response;
 }
 
+function createLoginRedirectResponse(req: NextRequest, noindex: boolean): NextResponse {
+  const loginUrl = new URL("/login", req.url);
+  loginUrl.searchParams.set(
+    "callbackUrl",
+    `${req.nextUrl.pathname}${req.nextUrl.search}`,
+  );
+  const response = NextResponse.redirect(loginUrl);
+  return applyNoindexHeader(response, noindex);
+}
+
 export async function proxy(req: NextRequest) {
   const policy = getHostPolicy({
     requestUrl: req.nextUrl,
@@ -31,24 +41,12 @@ export async function proxy(req: NextRequest) {
   if (isProtectedPath(req.nextUrl.pathname)) {
     const nextAuthSecret = process.env.NEXTAUTH_SECRET;
     if (!nextAuthSecret) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set(
-        "callbackUrl",
-        `${req.nextUrl.pathname}${req.nextUrl.search}`,
-      );
-      const response = NextResponse.redirect(loginUrl);
-      return applyNoindexHeader(response, policy.noindex);
+      return createLoginRedirectResponse(req, policy.noindex);
     }
 
     const token = await getToken({ req, secret: nextAuthSecret });
     if (!token) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set(
-        "callbackUrl",
-        `${req.nextUrl.pathname}${req.nextUrl.search}`,
-      );
-      const response = NextResponse.redirect(loginUrl);
-      return applyNoindexHeader(response, policy.noindex);
+      return createLoginRedirectResponse(req, policy.noindex);
     }
   }
 
