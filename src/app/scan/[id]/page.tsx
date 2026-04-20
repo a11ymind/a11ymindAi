@@ -4,6 +4,7 @@ import { CopyFixButton } from "@/components/CopyFixButton";
 import { CopyButton } from "@/components/CopyButton";
 import { EmailReportForm } from "@/components/EmailReportForm";
 import { AccessLintCiCard } from "@/components/AccessLintCiCard";
+import { SmartUpsellBanner } from "@/components/SmartUpsellBanner";
 import { Logo } from "@/components/Logo";
 import { RescanButton } from "@/components/RescanButton";
 import { ShareReportButton } from "@/components/ShareReportButton";
@@ -124,6 +125,10 @@ export default async function ScanResultPage({
   const regressionDiff = previousScan
     ? buildRegressionDiff(scan.violations, previousScan.violations)
     : null;
+  const criticalCount = scan.violations.filter((v) => v.impact === "critical").length;
+  const seriousCount = scan.violations.filter((v) => v.impact === "serious").length;
+  const showSmartUpsell =
+    (!userId || effectiveOwnerPlan === "FREE") && scan.status === "COMPLETED";
   const visibleIssues = scan.violations.slice(0, 6);
   const visibleFixes = scan.violations
     .filter((violation) =>
@@ -292,6 +297,16 @@ export default async function ScanResultPage({
             </p>
           </div>
 
+          {showSmartUpsell && (
+            <SmartUpsellBanner
+              host={hostOf(scan.url)}
+              riskCount={riskCount}
+              criticalCount={criticalCount}
+              seriousCount={seriousCount}
+              hasPreviousScan={!!previousScan}
+            />
+          )}
+
           <div className="overflow-hidden rounded-[1.5rem] border border-border bg-bg-elevated/50">
             <div className="flex items-start justify-between gap-4">
               <div className="px-6 py-6 sm:px-7">
@@ -372,6 +387,7 @@ export default async function ScanResultPage({
           state={fixesPanel}
           fixes={visibleFixes}
           fallbackViolations={visibleIssues.slice(0, 3)}
+          totalViolations={riskCount}
         />
       </section>
 
@@ -501,8 +517,11 @@ function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }
         </div>
         {!loggedIn && (
           <div className="border-t border-border/60 pt-4">
-            <p className="text-xs text-text-subtle">
-              Not ready to sign up? Email yourself this report so you can revisit it later.
+            <p className="text-sm font-medium text-text">
+              Get your full report by email — free, no credit card.
+            </p>
+            <p className="mt-1 text-xs text-text-subtle">
+              We&apos;ll send the score, top critical issues, and a link back to this page.
             </p>
             <EmailReportForm scanId={scanId} />
           </div>
@@ -958,8 +977,10 @@ function RecommendedFixesPanel({
   state,
   fixes,
   fallbackViolations,
+  totalViolations,
 }: {
   state: ReturnType<typeof recommendedFixesState>;
+  totalViolations: number;
   fixes: {
     id: string;
     help: string;
@@ -1009,7 +1030,11 @@ function RecommendedFixesPanel({
           )}
         </div>
       ) : (
-        <LockedAiPreview state={state} fallbackViolations={fallbackViolations} />
+        <LockedAiPreview
+          state={state}
+          fallbackViolations={fallbackViolations}
+          totalViolations={totalViolations}
+        />
       )}
     </aside>
   );
@@ -1121,10 +1146,13 @@ function AiUsagePanel({
 function LockedAiPreview({
   state,
   fallbackViolations,
+  totalViolations,
 }: {
   state: ReturnType<typeof recommendedFixesState>;
   fallbackViolations: { id: string; help: string; impact: string }[];
+  totalViolations: number;
 }) {
+  const showUpgradeReassurance = state.ctaHref === "/pricing";
   return (
     <div className="relative border-t border-border/70 px-6 py-6">
       <div className="space-y-4">
@@ -1148,8 +1176,11 @@ function LockedAiPreview({
         ))}
       </div>
       <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.2),rgba(11,13,17,0.88)_30%,rgba(11,13,17,0.94))] p-6">
-        <p className="text-sm font-semibold text-text">
-          <LockIcon /> AI fix suggestions are locked
+        <p className="flex items-center gap-2 text-sm font-semibold text-text">
+          <LockIcon />
+          {totalViolations > 0
+            ? `${totalViolations} AI fix${totalViolations === 1 ? "" : "es"} ready for this scan`
+            : "AI fix suggestions are locked"}
         </p>
         <p className="mt-1 max-w-md text-sm text-text-muted">
           {state.body}
@@ -1159,6 +1190,11 @@ function LockedAiPreview({
             {state.ctaLabel}
           </Link>
         ) : null}
+        {showUpgradeReassurance && (
+          <p className="mt-3 text-xs text-text-subtle">
+            Cancel anytime · 2 minute setup
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1542,9 +1578,9 @@ function recommendedFixesState({
   if (apiAiFlags.requiresUpgradeForAI || userPlan === "FREE") {
     return {
       mode: "locked" as const,
-      body: "Upgrade to generate recommended fixes with legal rationale, plain-English steps, and copy-ready remediation guidance.",
+      body: "Each fix ships with a plain-English explanation, pasteable code, and a legal rationale line — generated for every violation on this scan.",
       ctaHref: "/pricing",
-      ctaLabel: "Unlock AI fixes",
+      ctaLabel: "Unlock AI fixes — from $25/month",
       aiUsageCurrent: null,
       aiUsageLimit: null,
       aiUsageRemaining: null,

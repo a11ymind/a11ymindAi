@@ -55,7 +55,7 @@ export function EmailReportForm({ scanId }: { scanId: string }) {
         disabled={state === "sending"}
       />
       <button type="submit" className="btn-ghost whitespace-nowrap text-sm" disabled={state === "sending"}>
-        {state === "sending" ? "Sending…" : "Email me this report"}
+        {state === "sending" ? "Sending…" : "Send my report"}
       </button>
       {error ? (
         <p className="text-xs text-severity-critical sm:w-full">{error}</p>
