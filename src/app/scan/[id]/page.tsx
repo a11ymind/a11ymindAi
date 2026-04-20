@@ -388,6 +388,7 @@ export default async function ScanResultPage({
           fixes={visibleFixes}
           fallbackViolations={visibleIssues.slice(0, 3)}
           totalViolations={riskCount}
+          isFreeOrAnonViewer={showSmartUpsell}
         />
       </section>
 
@@ -978,9 +979,11 @@ function RecommendedFixesPanel({
   fixes,
   fallbackViolations,
   totalViolations,
+  isFreeOrAnonViewer,
 }: {
   state: ReturnType<typeof recommendedFixesState>;
   totalViolations: number;
+  isFreeOrAnonViewer: boolean;
   fixes: {
     id: string;
     help: string;
@@ -1034,6 +1037,7 @@ function RecommendedFixesPanel({
           state={state}
           fallbackViolations={fallbackViolations}
           totalViolations={totalViolations}
+          isFreeOrAnonViewer={isFreeOrAnonViewer}
         />
       )}
     </aside>
@@ -1147,12 +1151,15 @@ function LockedAiPreview({
   state,
   fallbackViolations,
   totalViolations,
+  isFreeOrAnonViewer,
 }: {
   state: ReturnType<typeof recommendedFixesState>;
   fallbackViolations: { id: string; help: string; impact: string }[];
   totalViolations: number;
+  isFreeOrAnonViewer: boolean;
 }) {
-  const showUpgradeReassurance = state.ctaHref === "/pricing";
+  const showUpgradeReassurance = isFreeOrAnonViewer && state.ctaHref === "/pricing";
+  const showReadyHeadline = isFreeOrAnonViewer && totalViolations > 0;
   return (
     <div className="relative border-t border-border/70 px-6 py-6">
       <div className="space-y-4">
@@ -1178,7 +1185,7 @@ function LockedAiPreview({
       <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.2),rgba(11,13,17,0.88)_30%,rgba(11,13,17,0.94))] p-6">
         <p className="flex items-center gap-2 text-sm font-semibold text-text">
           <LockIcon />
-          {totalViolations > 0
+          {showReadyHeadline
             ? `${totalViolations} AI fix${totalViolations === 1 ? "" : "es"} ready for this scan`
             : "AI fix suggestions are locked"}
         </p>
