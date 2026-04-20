@@ -77,22 +77,20 @@ export async function GET(req: Request) {
 
       const execution = await executeScanRecord(reservation.scan, reservation.plan);
       if (execution.ok) {
-        let alert: AlertOutcome = {
-          status: "skipped",
-          reason: "not_attempted",
-        };
-        try {
-          alert = await maybeSendScheduledScanAlert({
-            siteId: site.id,
-            currentScanId: execution.scanId,
-            now: startedAt,
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown alert failure";
-          console.error(`[cron] alert failure for site ${site.id}:`, error);
-          alert = { status: "failed", error: message };
-        }
+        const alert: AlertOutcome = await (async () => {
+          try {
+            return await maybeSendScheduledScanAlert({
+              siteId: site.id,
+              currentScanId: execution.scanId,
+              now: startedAt,
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown alert failure";
+            console.error(`[cron] alert failure for site ${site.id}:`, error);
+            return { status: "failed", error: message };
+          }
+        })();
 
         results.push({
           siteId: site.id,

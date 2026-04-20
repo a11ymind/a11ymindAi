@@ -1213,16 +1213,6 @@ function LockedLine({ className }: { className: string }) {
   return <div className={`h-3 rounded-full bg-white/10 ${className}`} />;
 }
 
-function LockedBlock() {
-  return (
-    <div className="space-y-2">
-      <LockedLine className="w-full" />
-      <LockedLine className="w-11/12" />
-      <LockedLine className="w-4/5" />
-    </div>
-  );
-}
-
 function LockIcon() {
   return (
     <svg
