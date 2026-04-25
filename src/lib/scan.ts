@@ -184,23 +184,6 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   }
 }
 
-function chromiumBinPath(): string {
-  // @sparticuz/chromium's exports map only exposes "." so we can't resolve
-  // "./package.json" directly. Instead resolve the main entry point and
-  // navigate up to the package root: build/cjs/index.cjs → ../../.. → root.
-  const { createRequire } = require("node:module") as typeof import("node:module");
-  const req = createRequire(import.meta.url ?? __filename);
-  const main = req.resolve("@sparticuz/chromium");
-  return require("node:path").join(main, "../../..", "bin");
-}
-
-function chromiumPackUrl(): string {
-  // Last-resort fallback URL when bin/ is not present in the bundle.
-  // Update this version string when upgrading @sparticuz/chromium.
-  const version = "147.0.1";
-  return `https://github.com/Sparticuz/chromium/releases/download/v${version}/chromium-v${version}-pack.tar`;
-}
-
 async function launchBrowser(): Promise<Browser> {
   if (process.env.GITHUB_ACTIONS === "true") {
     return puppeteer.launch({
@@ -218,15 +201,29 @@ async function launchBrowser(): Promise<Browser> {
 
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     const { default: chromium } = await import("@sparticuz/chromium");
-    // outputFileTracingIncludes in next.config.js copies the bin/ directory
-    // (containing .br binary files) into the Vercel output bundle so
-    // executablePath() can find it without any network download.
-    // CHROMIUM_EXECUTABLE_PATH overrides with a CDN URL (e.g. Cloudflare R2)
-    // if the bin/ path is still missing after a build without tracing enabled.
-    const binPath = chromiumBinPath();
-    const execInput =
-      process.env.CHROMIUM_EXECUTABLE_PATH ??
-      (existsSync(binPath) ? binPath : chromiumPackUrl());
+
+    // Resolution order:
+    // 1. CHROMIUM_EXECUTABLE_PATH env var (CDN URL or absolute path)
+    // 2. chromium.executablePath() with no arg — uses the package's own
+    //    import.meta.url to find bin/ (works when outputFileTracingIncludes
+    //    copied the .br files into the Vercel bundle)
+    // 3. GitHub releases URL as last resort if bin/ is still missing
+    let executablePath: string;
+    if (process.env.CHROMIUM_EXECUTABLE_PATH) {
+      executablePath = await chromium.executablePath(
+        process.env.CHROMIUM_EXECUTABLE_PATH,
+      );
+    } else {
+      try {
+        executablePath = await chromium.executablePath();
+      } catch {
+        const version = "147.0.1";
+        executablePath = await chromium.executablePath(
+          `https://github.com/Sparticuz/chromium/releases/download/v${version}/chromium-v${version}-pack.tar`,
+        );
+      }
+    }
+
     return puppeteer.launch({
       args: [
         ...chromium.args,
@@ -236,7 +233,7 @@ async function launchBrowser(): Promise<Browser> {
         "--disable-gpu",
       ],
       defaultViewport: DEFAULT_VIEWPORT,
-      executablePath: await chromium.executablePath(execInput),
+      executablePath,
       headless: true,
     });
   }
