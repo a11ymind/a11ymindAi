@@ -25,14 +25,14 @@ export default async function LandingPage() {
   return (
     <>
       <SiteHeader />
-      <main id="main" className="min-h-screen">
+      <main id="main" className="page-shell-gradient min-h-screen">
       {/* Hero */}
       <section aria-labelledby="hero-heading" className="relative overflow-hidden">
         <div className="aurora" aria-hidden="true" />
         <div className="grid-bg" aria-hidden="true" />
 
-        <div className="container-page relative py-14 sm:py-20 md:py-24">
-          <div className="grid gap-10 md:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] md:items-end">
+        <div className="container-page relative py-16 sm:py-24 md:py-28">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:items-center">
             <div className="text-center md:text-left">
               <Link
                 href="/pricing"
@@ -50,25 +50,25 @@ export default async function LandingPage() {
 
               <h1
                 id="hero-heading"
-                className="mt-7 max-w-4xl animate-fade-in-up text-balance text-[2.35rem] font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl lg:text-[4.5rem]"
+                className="mt-7 max-w-4xl animate-fade-in-up text-balance text-[2.45rem] font-semibold leading-[0.98] tracking-[-0.055em] sm:text-5xl md:text-6xl lg:text-[4.9rem]"
               >
-                <span className="shimmer-text">Catch accessibility risks</span>
+                <span className="shimmer-text">Operate accessibility</span>
                 <br />
-                <span className="gradient-text">before users, clients, or lawyers do.</span>
+                <span className="gradient-text">like a product system.</span>
               </h1>
               <p
                 className="mt-6 max-w-2xl animate-fade-in-up text-base text-text-muted sm:text-lg"
                 style={{ animationDelay: "80ms" }}
               >
-                a11ymind helps modern teams scan live pages, monitor regressions, generate
-                plain-English fixes, and share reports people can actually act on.
+                Scan live pages, catch regressions, generate plain-English fixes, and share reports
+                teams can act on before accessibility work turns into last-minute cleanup.
               </p>
 
               <div
                 className="mt-10 flex w-full animate-fade-in-up justify-center md:justify-start"
                 style={{ animationDelay: "140ms" }}
               >
-                <URLScanner />
+                <URLScanner ctaLabel="Scan for free" />
               </div>
 
               <div
@@ -87,23 +87,10 @@ export default async function LandingPage() {
             <HeroSignalPanel />
           </div>
 
-          <WorkflowStrip />
+          <HeroProofStrip />
           <LogoStrip />
         </div>
       </section>
-
-      {/* Stats strip */}
-      <section aria-label="Key metrics" className="container-page -mt-6 pb-8">
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-4">
-          <StatCell value="90+" label="Automated checks" />
-          <StatCell value="Real" label="Browser-based scan" />
-          <StatCell value="AI" label="Plain-English remediation" />
-          <StatCell value="Trend" label="Score history and monitoring" />
-        </div>
-      </section>
-
-      {/* Stack row */}
-      <StackRow />
 
       {/* Problem / differentiation */}
       <section aria-labelledby="why-heading" className="container-page py-16 sm:py-20">
@@ -165,7 +152,7 @@ export default async function LandingPage() {
           <FeatureCard
             step="02"
             title="See accessibility risks"
-            body="Get a compliance score and a ranked list of risks by severity, so you know what to tackle first."
+            body="Get an accessibility score and a ranked list of risks by severity, so you know what to tackle first."
             icon={<ListIcon />}
           />
           <FeatureCard
@@ -198,10 +185,10 @@ export default async function LandingPage() {
       </section>
 
       <section aria-labelledby="workflow-heading" className="container-page py-16 sm:py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Built for shipping teams</Eyebrow>
           <h2 id="workflow-heading" className="mt-3 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            Use it before release, and after launch.
+            One workflow for preview checks and live monitoring.
           </h2>
           <p className="mt-4 text-base text-text-muted">
             a11ymind fits the modern delivery workflow: preview checks in CI, rescans on
@@ -210,7 +197,7 @@ export default async function LandingPage() {
           </p>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <div className="card p-6">
+          <div className="surface-premium rounded-[1.5rem] p-6">
             <p className="text-xs uppercase tracking-[0.18em] text-accent">CI workflow</p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight">
               Catch accessibility regressions before merge.
@@ -224,7 +211,7 @@ export default async function LandingPage() {
     url: https://preview.example.com
     fail-on: serious`}</pre>
           </div>
-          <div className="card p-6">
+          <div className="rounded-[1.5rem] border border-white/10 bg-bg-elevated/45 p-6 shadow-card">
             <p className="text-xs uppercase tracking-[0.18em] text-accent">After launch</p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight">
               Keep watching the site that users actually see.
@@ -232,7 +219,7 @@ export default async function LandingPage() {
             <ul className="mt-5 space-y-3 text-sm text-text-muted">
               <li className="flex items-start gap-3">
                 <Dot />
-                Scheduled rescans for each saved page
+                Scheduled rescans for monitored website pages
               </li>
               <li className="flex items-start gap-3">
                 <Dot />
@@ -251,33 +238,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section aria-labelledby="audience-heading" className="container-page py-16 sm:py-20">
-        <div className="mx-auto max-w-2xl text-center">
-          <Eyebrow>Who it&apos;s for</Eyebrow>
-          <h2 id="audience-heading" className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Built for teams that ship, report, and maintain.
-          </h2>
-        </div>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          <AudienceCard
-            title="SaaS teams"
-            body="Use CI checks and post-deploy monitoring to catch regressions before users notice."
-          />
-          <AudienceCard
-            title="Agencies"
-            body="Monitor the client pages that carry risk, show score movement, and export reports that make progress easy to explain."
-          />
-          <AudienceCard
-            title="Ecommerce and marketing sites"
-            body="Frequent content, theme, and landing-page changes make recurring accessibility checks essential."
-          />
-          <AudienceCard
-            title="Lean operators"
-            body="Get plain-English explanations and fixes without needing a full-time accessibility specialist."
-          />
-        </div>
-      </section>
-
       {/* Real product surfaces */}
       <ProductTour />
 
@@ -292,13 +252,13 @@ export default async function LandingPage() {
               </h2>
               <p className="mt-4 text-base text-text-muted">
                 A redesign, new template, form update, or CMS change can introduce fresh
-                accessibility risks overnight. a11ymind re-scans the saved pages (each entry is one URL) on a schedule
+                accessibility risks overnight. a11ymind re-scans monitored pages across your website on a schedule
                 so your team can catch regressions before they become support, sales, or
-                legal problems.
+                operational problems.
               </p>
               <ul className="mt-6 space-y-3 text-sm text-text">
                 <li className="flex items-start gap-3">
-                  <Dot /> Automatic weekly or monthly re-scans
+                  <Dot /> Automatic weekly or daily re-scans on paid plans
                 </li>
                 <li className="flex items-start gap-3">
                   <Dot /> Track score trends and new-vs-fixed risks
@@ -324,27 +284,6 @@ export default async function LandingPage() {
               </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Testimonial */}
-      <section aria-label="Customer testimonial" className="container-page py-12 sm:py-16">
-        <div className="grid gap-5 md:grid-cols-3">
-          <QuoteCard
-            quote="Our CI caught three serious WCAG regressions the week before launch. That alone justified using it."
-            person="Maya Chen"
-            role="Staff Engineer, SaaS startup"
-          />
-          <QuoteCard
-            quote="The report format made client conversations easier because we could show progress, not just problems."
-            person="Jordan Lee"
-            role="Agency founder"
-          />
-          <QuoteCard
-            quote="The plain-English fixes helped our frontend team move faster without pulling in a specialist for every issue."
-            person="Avery Patel"
-            role="Product lead"
-          />
         </div>
       </section>
 
@@ -390,11 +329,7 @@ export default async function LandingPage() {
 
       {/* Final CTA */}
       <section aria-labelledby="cta-heading" className="container-page py-16 sm:py-24">
-        <div className="relative mx-auto flex max-w-3xl flex-col items-center overflow-hidden rounded-2xl border border-border bg-bg-elevated/60 p-6 text-center sm:p-10 md:p-14">
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
-          />
+        <div className="surface-premium mx-auto flex max-w-4xl flex-col items-center rounded-[1.75rem] p-6 text-center sm:p-10 md:p-14">
           <h2 id="cta-heading" className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
             Start with one page.{" "}
             <span className="gradient-text">Stay ahead of what changes after.</span>
@@ -404,7 +339,7 @@ export default async function LandingPage() {
             and reports you can share.
           </p>
           <div className="mt-8 flex w-full justify-center">
-            <URLScanner />
+            <URLScanner ctaLabel="Scan for free" />
           </div>
           <PricingAnchor className="mt-5 justify-center" />
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-text-subtle">
@@ -457,20 +392,20 @@ function TrustItem({ children }: { children: React.ReactNode }) {
   );
 }
 
-function WorkflowStrip() {
+function HeroProofStrip() {
   const steps = [
-    { title: "Scan", body: "Run a real-browser check against any public page." },
-    { title: "Fix", body: "Turn raw findings into plain-English action." },
-    { title: "Monitor", body: "Re-scan saved pages and catch regressions." },
-    { title: "Report", body: "Share trends and reports with teams or clients." },
+    { title: "Scan", body: "Real-browser checks against live and preview URLs." },
+    { title: "Fix", body: "Plain-English guidance and pasteable remediation." },
+    { title: "Monitor", body: "Scheduled page checks with regression history." },
+    { title: "Report", body: "Shareable proof for teams, clients, and releases." },
   ];
 
   return (
-    <div className="mt-10 w-full max-w-5xl rounded-2xl border border-border/80 bg-bg-elevated/30 p-3 sm:p-4">
-      <div className="grid gap-px overflow-hidden rounded-xl border border-border/50 bg-border/50 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mt-12 w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-3 shadow-card backdrop-blur-sm sm:p-4">
+      <div className="grid gap-px overflow-hidden rounded-[1.1rem] border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((step, idx) => (
-          <div key={step.title} className="bg-bg px-4 py-5 text-left">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+          <div key={step.title} className="bg-bg/75 px-4 py-5 text-left backdrop-blur-sm">
+            <p className="section-kicker">
               0{idx + 1}
             </p>
             <h3 className="mt-2 text-sm font-semibold text-text">{step.title}</h3>
@@ -608,8 +543,8 @@ function ComparisonCard({
 
 function ResultPreview() {
   return (
-    <div className="card mx-auto max-w-4xl overflow-hidden p-0 shadow-glow-lg">
-      <div className="flex items-center justify-between gap-3 border-b border-border bg-bg-muted/60 px-4 py-3 sm:px-5">
+    <div className="surface-premium mx-auto max-w-5xl rounded-[1.75rem] p-0">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-bg/45 px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-severity-critical/80" />
           <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-severity-moderate/80" />
@@ -623,12 +558,12 @@ function ResultPreview() {
         </span>
       </div>
 
-      <div className="grid gap-4 p-3 sm:gap-6 sm:p-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-        <div className="flex items-center gap-4 rounded-xl border border-border bg-bg-muted/60 p-4 md:flex-col md:items-center md:justify-center md:gap-0 md:p-5">
+      <div className="grid gap-4 p-3 sm:gap-6 sm:p-6 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+        <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-bg/55 p-4 md:flex-col md:items-center md:justify-center md:gap-0 md:p-5">
           <ScoreDial score={62} />
           <div className="flex flex-col md:mt-3 md:items-center">
-            <p className="text-[10px] uppercase tracking-wider text-text-subtle sm:text-xs">
-              Compliance
+            <p className="section-kicker">
+              Accessibility score
             </p>
             <p className="text-sm font-semibold text-severity-moderate">Needs work</p>
           </div>
@@ -653,7 +588,7 @@ function ResultPreview() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-bg-muted/60 p-3 sm:p-4">
+          <div className="rounded-2xl border border-white/10 bg-bg/60 p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[11px] uppercase tracking-wider text-accent sm:text-xs">
                 Recommended fix
@@ -846,16 +781,16 @@ function HeroSignalPanel() {
     <div className="relative">
       <div
         aria-hidden="true"
-        className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.22),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.12),transparent_40%)] blur-2xl"
+        className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.28),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.13),transparent_42%)] blur-2xl"
       />
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(9,11,15,0.92),rgba(14,17,22,0.78))] p-5 shadow-glow lg:p-7">
-        <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-4">
+      <div className="surface-premium rounded-[1.85rem] p-5 lg:p-7">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
-              Accessibility operating view
+            <p className="section-kicker">
+              Live operating view
             </p>
             <p className="mt-1 text-sm font-medium text-text">
-              Preview checks + live monitoring
+              Production pages + preview checks
             </p>
           </div>
           <span className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-accent">
@@ -863,44 +798,67 @@ function HeroSignalPanel() {
           </span>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border/70 bg-bg-muted/35 p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Now</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-text">62</p>
-            <p className="text-sm text-severity-moderate">Needs attention</p>
-            <p className="mt-3 text-xs leading-relaxed text-text-muted">
-              Serious contrast and missing alt text are dragging this release down.
-            </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-[0.82fr_1fr]">
+          <div className="rounded-2xl border border-white/10 bg-bg/60 p-4">
+            <p className="section-kicker">Project health</p>
+            <p className="mt-2 text-5xl font-semibold tracking-[-0.06em] text-text">82</p>
+            <p className="text-sm text-accent">+7 points this week</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-accent to-accent-glow" />
+            </div>
           </div>
-          <div className="rounded-2xl border border-border/70 bg-bg-muted/20 p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Since last scan</p>
+          <div className="rounded-2xl border border-white/10 bg-bg/45 p-4">
+            <p className="section-kicker">This release</p>
             <div className="mt-2 space-y-2 text-sm text-text">
               <p className="flex items-center justify-between">
-                <span>Score change</span>
-                <span className="font-medium text-accent">+5</span>
+                <span>Pages monitored</span>
+                <span className="font-medium text-text">24</span>
               </p>
               <p className="flex items-center justify-between">
-                <span>New risks</span>
+                <span>New affected locations</span>
                 <span className="font-medium text-text">2</span>
               </p>
               <p className="flex items-center justify-between">
-                <span>Fixed risks</span>
-                <span className="font-medium text-text">4</span>
+                <span>Fixed this week</span>
+                <span className="font-medium text-accent">11</span>
+              </p>
+              <p className="flex items-center justify-between">
+                <span>Worst page</span>
+                <span className="font-medium text-severity-moderate">Checkout</span>
               </p>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60">
-          <div className="bg-bg px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">What teams do next</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-muted">
-              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Run in CI</span>
-              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Copy fix</span>
-              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Rescan</span>
-              <span className="rounded-full border border-border bg-bg-muted/50 px-2.5 py-1">Share report</span>
-            </div>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-bg/55">
+          <div className="border-b border-white/10 px-4 py-3">
+            <p className="section-kicker">Fix queue</p>
           </div>
+          <div className="divide-y divide-white/10">
+            {[
+              ["Critical", "Button has no accessible name", "button.checkout-primary"],
+              ["Serious", "Form input missing label", "#billing-email"],
+              ["Moderate", "Low contrast helper text", ".promo-disclaimer"],
+            ].map(([impact, issue, selector]) => (
+              <div key={selector} className="px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-text">{issue}</p>
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+                    {impact}
+                  </span>
+                </div>
+                <code className="mt-2 block truncate font-mono text-xs text-accent">{selector}</code>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-4 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 text-center">
+          {["Scan", "Fix", "Rescan", "Share"].map((item) => (
+            <div key={item} className="bg-bg/70 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle">{item}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1303,7 +1261,7 @@ function ProductTour() {
         <TourCard label="PDF · client-ready report" caption="One-click export with your score, risk breakdown, and recommended fixes.">
           <PdfPreview />
         </TourCard>
-        <TourCard label="Badge · monitoring proof" caption="Drop a live compliance badge on your footer once you start monitoring.">
+        <TourCard label="Badge · monitoring proof" caption="Drop a live monitoring badge on your footer once you start monitoring.">
           <BadgePreview />
         </TourCard>
       </div>

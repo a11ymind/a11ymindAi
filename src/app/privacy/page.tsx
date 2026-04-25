@@ -111,7 +111,7 @@ export default function PrivacyPage() {
           <p>
             You can export or delete your account data at any time by emailing
             <a href="mailto:support@a11ymind.ai"> support@a11ymind.ai</a>. Account
-            deletion removes your user record, saved sites, scans, and share
+            deletion removes your user record, monitored websites/pages, scans, and share
             tokens. Billing records may be retained where required by law.
           </p>
           <p>

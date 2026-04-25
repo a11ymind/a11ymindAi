@@ -42,6 +42,7 @@ export async function POST(
     select: {
       id: true,
       userId: true,
+      projectId: true,
       user: { select: { plan: true } },
     },
   });
@@ -51,10 +52,20 @@ export async function POST(
 
   const rawWebhook = parsed.data.webhookUrl;
   if (!rawWebhook) {
-    await prisma.site.update({
-      where: { id: site.id },
-      data: { slackWebhookUrl: null },
-    });
+    await prisma.$transaction([
+      prisma.site.update({
+        where: { id: site.id },
+        data: { slackWebhookUrl: null },
+      }),
+      ...(site.projectId
+        ? [
+            prisma.project.update({
+              where: { id: site.projectId },
+              data: { slackWebhookUrl: null },
+            }),
+          ]
+        : []),
+    ]);
     return NextResponse.json({ ok: true, configured: false });
   }
 
@@ -76,10 +87,20 @@ export async function POST(
     );
   }
 
-  await prisma.site.update({
-    where: { id: site.id },
-    data: { slackWebhookUrl: webhookUrl },
-  });
+  await prisma.$transaction([
+    prisma.site.update({
+      where: { id: site.id },
+      data: { slackWebhookUrl: webhookUrl },
+    }),
+    ...(site.projectId
+      ? [
+          prisma.project.update({
+            where: { id: site.projectId },
+            data: { slackWebhookUrl: webhookUrl },
+          }),
+        ]
+      : []),
+  ]);
 
   return NextResponse.json({ ok: true, configured: true });
 }

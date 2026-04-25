@@ -47,9 +47,9 @@ export default async function PricingPage({
             <span className="gradient-text">how seriously you manage risk.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base text-text-muted">
-            Free is for fast visibility. Starter covers the handful of pages you care about most. Pro is for
-            teams and agencies that need monitoring across many pages, AI remediation, and reports worth
-            sending onward. Each saved entry is one URL.
+            Free is for fast visibility. Starter monitors one website across its important pages. Pro is for
+            teams and agencies that need monitoring across multiple websites, AI remediation, and reports worth
+            sending onward.
           </p>
         </div>
       </section>
@@ -64,12 +64,12 @@ export default async function PricingPage({
           <PlanModeCard
             title="Starter"
             eyebrow="Fix and monitor"
-            body="Turn up to five important pages into an ongoing workflow with AI fixes and weekly rescans."
+            body="Turn one website into an ongoing workflow with up to 25 monitored pages, AI fixes, and weekly rescans."
           />
           <PlanModeCard
             title="Pro"
             eyebrow="Operate at scale"
-            body="Monitor up to 25 pages, generate reports, and give clients or stakeholders proof you are staying on top of changes."
+            body="Monitor up to 5 websites with 100 pages each, generate reports, and give stakeholders proof you are staying on top of changes."
             highlight
           />
         </div>
@@ -114,7 +114,7 @@ export default async function PricingPage({
                 <span>
                   <span className="text-text">Repeat scans catch regressions.</span>{" "}
                   <span className="text-text-muted">
-                    a11ymind re-scans your saved pages automatically and flags new risks as soon as
+                    a11ymind re-scans your monitored pages automatically and flags new risks as soon as
                     they appear.
                   </span>
                 </span>
@@ -124,7 +124,7 @@ export default async function PricingPage({
                 <span>
                   <span className="text-text">You stay protected, not just informed.</span>{" "}
                   <span className="text-text-muted">
-                    One-shot audits go stale. Ongoing monitoring keeps your compliance score
+                    One-shot audits go stale. Ongoing monitoring keeps your accessibility score
                     trending in the right direction.
                   </span>
                 </span>
@@ -139,8 +139,8 @@ export default async function PricingPage({
           <p className="font-medium text-text">All plans include</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             <li>• axe-core WCAG 2.1 A + AA rule coverage</li>
-            <li>• Severity-weighted 0–100 compliance score</li>
-            <li>• Per-violation legal rationale referencing WCAG success criteria</li>
+            <li>• Severity-weighted 0–100 accessibility score</li>
+            <li>• Per-violation WCAG rationale and remediation context</li>
             <li>• Change-over-time score history</li>
           </ul>
           <p className="mt-5 text-xs text-text-subtle">
@@ -176,7 +176,7 @@ const PLAN_COPY: Record<string, PlanCopy> = {
   FREE: {
     pitch: "Run scans on any public page and keep one important site on your radar.",
     bestFor: "Best for operators who need visibility before they need a workflow.",
-    primaryCta: "Run a free scan",
+    primaryCta: "Start free",
   },
   STARTER: {
     pitch: "Turn one live website into a recurring accessibility workflow with AI help.",
@@ -200,19 +200,19 @@ const PLAN_OUTCOMES: Record<
     proof: "Good for early discovery and quick validation.",
   },
   STARTER: {
-    outcome: "Keep up to 5 pages under active accessibility watch.",
+    outcome: "Keep one website, up to 25 pages, under active accessibility watch.",
     rhythm: "Weekly monitoring plus AI fixes when issues matter.",
     proof: "Best first paid step when a handful of pages drive revenue or reputation.",
   },
   PRO: {
-    outcome: "Run accessibility across up to 25 pages like an operating discipline.",
+    outcome: "Run accessibility across up to 5 websites like an operating discipline.",
     rhythm: "Daily monitoring, AI remediation, and shareable reporting.",
     proof: "Best for agencies, multi-page teams, and customer-facing operations.",
   },
 };
 
 function planCopy(id: string): PlanCopy {
-  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Run a free scan" };
+  return PLAN_COPY[id] ?? { pitch: "", bestFor: "", primaryCta: "Start scanning" };
 }
 
 function PricingCard({
@@ -284,7 +284,7 @@ function PricingCard({
         {tier.features.map((f) => (
           <li
             key={f.text}
-            className={`flex items-start gap-2 ${f.included ? "text-text" : "text-text-subtle line-through"}`}
+            className={`flex items-start gap-2 ${f.included ? "text-text" : "text-text-subtle"}`}
           >
             <CheckOrDash included={f.included} />
             <span>{f.text}</span>
@@ -359,7 +359,7 @@ function CheckOrDash({ included }: { included: boolean }) {
   }
   return (
     <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-text-subtle" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M5 10h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="10" cy="10" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" />
     </svg>
   );
 }

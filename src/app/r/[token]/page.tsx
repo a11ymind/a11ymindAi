@@ -38,6 +38,19 @@ export default async function SharedReportPage({
           impact: true,
           help: true,
           description: true,
+          selector: true,
+          element: true,
+          failureSummary: true,
+          instances: {
+            orderBy: { ordinal: "asc" },
+            select: {
+              id: true,
+              ordinal: true,
+              selector: true,
+              element: true,
+              failureSummary: true,
+            },
+          },
         },
       },
     },
@@ -60,7 +73,7 @@ export default async function SharedReportPage({
           <Logo />
         </Link>
         <Link href="/" className="btn-primary text-sm">
-          Scan your own site
+          Scan your own page
         </Link>
       </header>
 
@@ -133,6 +146,7 @@ export default async function SharedReportPage({
                     <p className="mt-1 font-mono text-xs text-text-subtle">
                       {v.axeId}
                     </p>
+                    <SharedAffectedLocations violation={v} />
                   </div>
                 ))}
               </div>
@@ -141,7 +155,7 @@ export default async function SharedReportPage({
         })}
         <div className="card mt-8 flex flex-col items-start gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-text-muted">
-            Want to check your own site? a11ymind scans any URL in seconds.
+            Want to check your own page? a11ymind scans any public URL in seconds.
           </p>
           <Link href="/" className="btn-primary text-sm">
             Run a free scan
@@ -149,6 +163,71 @@ export default async function SharedReportPage({
         </div>
       </section>
     </main>
+  );
+}
+
+function SharedAffectedLocations({
+  violation,
+}: {
+  violation: {
+    id: string;
+    selector: string;
+    element: string;
+    failureSummary: string | null;
+    instances: {
+      id: string;
+      ordinal: number;
+      selector: string;
+      element: string;
+      failureSummary: string | null;
+    }[];
+  };
+}) {
+  const locations =
+    violation.instances.length > 0
+      ? violation.instances
+      : violation.selector || violation.element || violation.failureSummary
+        ? [
+            {
+              id: `${violation.id}-legacy-location`,
+              ordinal: 0,
+              selector: violation.selector,
+              element: violation.element,
+              failureSummary: violation.failureSummary,
+            },
+          ]
+        : [];
+
+  if (locations.length === 0) return null;
+
+  return (
+    <details className="mt-3 rounded-lg border border-border bg-bg/50 p-3">
+      <summary className="cursor-pointer text-xs font-medium text-accent">
+        Show {locations.length} affected location{locations.length === 1 ? "" : "s"}
+      </summary>
+      <div className="mt-3 space-y-3">
+        {locations.map((location, index) => (
+          <div key={location.id} className="rounded-md border border-border bg-bg-muted/40 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+              Location {index + 1}
+            </p>
+            <code className="mt-2 block overflow-x-auto rounded-md border border-border bg-bg p-2 font-mono text-xs text-text">
+              {location.selector || "(no selector)"}
+            </code>
+            {location.failureSummary && (
+              <pre className="mt-2 whitespace-pre-wrap rounded-md border border-border bg-bg p-2 font-mono text-xs text-text-subtle">
+                {location.failureSummary}
+              </pre>
+            )}
+            {location.element && (
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-bg p-2 font-mono text-xs text-text-muted">
+                {location.element}
+              </pre>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 

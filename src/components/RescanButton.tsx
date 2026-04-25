@@ -29,17 +29,7 @@ export function RescanButton({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scan failed");
-      router.push(
-        buildScanResultHref(data.scanId, {
-          aiEnabled: data.aiEnabled,
-          aiUsageCurrent: data.aiUsageCurrent,
-          aiUsageLimit: data.aiUsageLimit,
-          aiUsageRemaining: data.aiUsageRemaining,
-          requiresLoginForAI: data.requiresLoginForAI,
-          requiresUpgradeForAI: data.requiresUpgradeForAI,
-          aiLimitReached: data.aiLimitReached,
-        }),
-      );
+      router.push(buildScanResultHref(data.scanId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Scan failed");
       setLoading(false);
@@ -54,7 +44,7 @@ export function RescanButton({
         disabled={loading}
         className={compact ? "btn-ghost text-xs" : "btn-ghost"}
       >
-        {loading ? "Scanning…" : label ?? "Re-scan"}
+        {loading ? "Starting…" : label ?? "Re-scan"}
       </button>
       {error && <span className="text-xs text-severity-critical">{error}</span>}
     </div>

@@ -29,6 +29,7 @@ export async function maybeSendWeeklyDigest(input: {
     select: {
       id: true,
       url: true,
+      pageId: true,
       lastDigestSentAt: true,
       user: { select: { email: true, plan: true } },
     },
@@ -49,7 +50,7 @@ export async function maybeSendWeeklyDigest(input: {
   const windowStart = new Date(now.getTime() - DIGEST_WINDOW_MS);
   const scansThisWeek = await prisma.scan.findMany({
     where: {
-      siteId: site.id,
+      ...(site.pageId ? { pageId: site.pageId } : { siteId: site.id }),
       status: "COMPLETED",
       createdAt: { gte: windowStart },
     },

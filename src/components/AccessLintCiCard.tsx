@@ -5,7 +5,7 @@ const SNIPPET = `- uses: a11ymind/accesslint@v1
     url: https://preview.example.com
     fail-on: serious`;
 
-export function AccessLintCiCard() {
+export function AccessLintCiCard({ compact = false }: { compact?: boolean }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -33,9 +33,11 @@ export function AccessLintCiCard() {
           </a>
         </div>
       </div>
-      <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
-        <code>{SNIPPET}</code>
-      </pre>
+      {!compact && (
+        <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
+          <code>{SNIPPET}</code>
+        </pre>
+      )}
     </div>
   );
 }

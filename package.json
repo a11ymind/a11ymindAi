@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "backfill:projects": "tsx scripts/backfill-project-pages.ts",
+    "backfill:project-slack": "tsx scripts/backfill-project-slack.ts",
+    "backfill:project-ci": "tsx scripts/backfill-project-ci.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",

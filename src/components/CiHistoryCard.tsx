@@ -23,12 +23,14 @@ export function CiHistoryCard({
   endpoint,
   token,
   checks,
+  compact = false,
 }: {
   siteId: string;
   siteUrl: string;
   endpoint: string;
   token: string;
   checks: CiCheckItem[];
+  compact?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -37,11 +39,13 @@ export function CiHistoryCard({
           <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
             CI check history
           </p>
-          <p className="mt-1 text-sm text-text">
-            Store AccessLint or pipeline results for {siteUrl} in your dashboard.
-          </p>
+          {!compact && (
+            <p className="mt-1 text-sm text-text">
+              Store AccessLint or pipeline results for the {siteUrl} website project in your dashboard.
+            </p>
+          )}
           <p className="mt-1 text-xs text-text-muted">
-            Use the per-site ingest token below from GitHub Actions or any CI job.
+            Use the project ingest token below from GitHub Actions or any CI job.
             If it ever leaks, rotate it — the old value stops working immediately.
           </p>
         </div>
@@ -53,7 +57,7 @@ export function CiHistoryCard({
 
       <div className="mt-4 space-y-3">
         {checks.length > 0 ? (
-          checks.map((check) => (
+          checks.slice(0, compact ? 2 : checks.length).map((check) => (
             <div key={check.id} className="rounded-xl border border-white/10 bg-background/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +108,7 @@ export function CiHistoryCard({
           ))
         ) : (
           <p className="rounded-xl border border-white/10 bg-background/60 p-4 text-sm text-text-muted">
-            No CI checks have been posted for this site yet.
+            No CI checks have been posted for this website project yet.
           </p>
         )}
       </div>

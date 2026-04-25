@@ -29,7 +29,7 @@ export default function SignupPage() {
                 <Check /> Free plan, no credit card required
               </li>
               <li className="flex items-center gap-2">
-                <Check /> Save scans and keep a running history
+                <Check /> Save pages and keep a running accessibility history
               </li>
               <li className="flex items-center gap-2">
                 <Check /> Upgrade any time for AI fixes, monitoring, and reports

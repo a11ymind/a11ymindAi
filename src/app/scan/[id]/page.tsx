@@ -12,6 +12,9 @@ import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { getSession } from "@/lib/auth";
 import { buildRegressionDiff } from "@/lib/scan-diff";
+import { ScanProgressClient } from "@/components/ScanProgressClient";
+import { RetryScanButton } from "@/components/RetryScanButton";
+import { canRetryScan, retryAttemptsRemaining } from "@/lib/scan-retry";
 import {
   entitlementsFor,
   planLabel,
@@ -59,13 +62,87 @@ export default async function ScanResultPage({
     prisma.scan.findUnique({
       where: { id },
       include: {
-        violations: true,
+        violations: {
+          include: {
+            instances: {
+              orderBy: { ordinal: "asc" },
+            },
+          },
+        },
         user: { select: { plan: true } },
       },
     }),
     getSession(),
   ]);
   if (!scan) notFound();
+
+  if (scan.status === "FAILED") {
+    const retryAvailable = canRetryScan(scan);
+    const attemptsRemaining = retryAttemptsRemaining(scan);
+
+    return (
+      <PageShell>
+        <div className="card mx-auto mt-20 max-w-xl p-8 text-center">
+          <h1 className="text-xl font-semibold">We couldn&apos;t scan that URL.</h1>
+          <p className="mt-2 text-sm text-text-muted">{scan.error || "Unknown error."}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs text-text-subtle">
+            <span className="rounded-full border border-border px-2.5 py-1">
+              Attempts: {scan.attemptCount}
+            </span>
+            <span className="rounded-full border border-border px-2.5 py-1">
+              Retries left: {attemptsRemaining}
+            </span>
+            {scan.completedAt && (
+              <span className="rounded-full border border-border px-2.5 py-1">
+                Failed {new Date(scan.completedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
+          {retryAvailable ? (
+            <RetryScanButton scanId={scan.id} />
+          ) : (
+            <Link href="/" className="btn-primary mt-6">
+              Scan another page
+            </Link>
+          )}
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (scan.status === "PENDING" || scan.status === "RUNNING") {
+    return (
+      <PageShell loggedIn={!!session?.user?.id}>
+        <section className="container-page mt-16">
+          <div className="card mx-auto max-w-2xl p-8">
+            <p className="text-xs uppercase tracking-wider text-text-subtle">
+              Accessibility scan
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold text-text">
+              Your report is being generated.
+            </h1>
+            <p className="mt-3 break-all font-mono text-sm text-text-muted">
+              {scan.url}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-subtle">
+              <span className="rounded-full border border-border px-2.5 py-1">
+                Queued {new Date(scan.createdAt).toLocaleTimeString()}
+              </span>
+              <span className="rounded-full border border-border px-2.5 py-1">
+                Attempt {Math.max(scan.attemptCount, scan.status === "RUNNING" ? 1 : 0) || 1}
+              </span>
+              {scan.startedAt && (
+                <span className="rounded-full border border-border px-2.5 py-1">
+                  Started {new Date(scan.startedAt).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+            <ScanProgressClient scanId={scan.id} />
+          </div>
+        </section>
+      </PageShell>
+    );
+  }
 
   const previousScan = await findPreviousComparableScan(scan);
   const previousAxeIds = new Set(
@@ -76,20 +153,6 @@ export default async function ScanResultPage({
       process.env.NEXTAUTH_URL ??
       "http://localhost:3000",
   );
-
-  if (scan.status === "FAILED") {
-    return (
-      <PageShell>
-        <div className="card mx-auto mt-20 max-w-xl p-8 text-center">
-          <h1 className="text-xl font-semibold">We couldn&apos;t scan that URL.</h1>
-          <p className="mt-2 text-sm text-text-muted">{scan.error || "Unknown error."}</p>
-          <Link href="/" className="btn-primary mt-6">
-            Scan another page
-          </Link>
-        </div>
-      </PageShell>
-    );
-  }
 
   const grouped = new Map<Impact, typeof scan.violations>();
   for (const impact of IMPACT_ORDER) grouped.set(impact, []);
@@ -161,13 +224,13 @@ export default async function ScanResultPage({
         />
       )}
       {savedToDashboard && resolvedSearchParams?.claimed !== "1" && <SavedBanner />}
-      {claimable && resolvedSearchParams?.limit === "site_limit" && limitPlan && (
+      {claimable && resolvedSearchParams?.limit && limitPlan && (
         <InlineBanner
           tone="upgrade"
-          title="You hit your saved-page limit"
-          body={`You can monitor ${limitPlan === "PRO" ? "25 pages" : limitPlan === "STARTER" ? "5 pages" : "1 page"} on your current plan. Each saved entry is one URL — you can still scan any page manually, or upgrade to track more.`}
+          title="You hit your monitoring limit"
+          body={limitMessage(resolvedSearchParams.limit, limitPlan)}
           ctaHref="/pricing"
-          ctaLabel="Upgrade to monitor more pages"
+          ctaLabel="Upgrade monitoring"
         />
       )}
       {resolvedSearchParams?.pdf === "pro_required" && ownedByMe && (
@@ -189,7 +252,7 @@ export default async function ScanResultPage({
       {showSmartUpsell && (
         <InlineBanner
           tone="upgrade"
-          title="This scan covered 1 page only"
+          title="This scan covered one URL"
           body={coverageTease.body}
           ctaHref={coverageTease.ctaHref}
           ctaLabel={coverageTease.ctaLabel}
@@ -198,11 +261,11 @@ export default async function ScanResultPage({
 
       <section className="container-page mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(14,17,22,0.92),rgba(14,17,22,0.72))] shadow-glow">
+          <div className="surface-premium rounded-[1.75rem]">
             <div className="border-b border-border/70 px-6 py-4 sm:px-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                  <p className="section-kicker">
                     Accessibility report
                   </p>
                   <p className="mt-1 text-sm text-text-muted">
@@ -227,9 +290,9 @@ export default async function ScanResultPage({
               <div>
                 <p className="text-xs uppercase tracking-wider text-text-subtle">Scanned URL</p>
                 <p className="mt-2 break-all font-mono text-sm text-text">{scan.url}</p>
-                <h1 className="mt-5 max-w-3xl text-balance text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+                <h1 className="mt-5 max-w-3xl text-balance text-3xl font-semibold tracking-[-0.03em] text-text sm:text-5xl">
                   {riskCount === 0
-                    ? "This page looks clean in automated testing."
+                    ? "This page looks clean in automated accessibility testing."
                     : `${riskCount} accessibility risk${riskCount === 1 ? "" : "s"} need attention on this page.`}
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
@@ -238,7 +301,7 @@ export default async function ScanResultPage({
                   hand.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <RescanButton url={scan.url} label="Re-scan site" />
+                  <RescanButton url={scan.url} label="Re-scan page" />
                   {ownedByMe && scan.status === "COMPLETED" && (
                     <ShareReportButton
                       scanId={scan.id}
@@ -270,9 +333,9 @@ export default async function ScanResultPage({
               <ScoreDial score={scan.score} band={band} />
             </div>
 
-            <div className="grid gap-px border-t border-border/70 bg-border/60 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-px border-t border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">
               <ResultMetric
-                label="Compliance score"
+                label="Accessibility score"
                 value={`${scan.score}/100`}
                 detail={band.label}
               />
@@ -297,7 +360,7 @@ export default async function ScanResultPage({
               />
             </div>
             <p className="px-6 py-5 text-sm text-text-muted sm:px-8">
-              Some of these accessibility risks may impact usability, conversions, and accessibility compliance.
+              Automated testing is a strong first pass. Manual keyboard and screen-reader review is still recommended for full confidence.
             </p>
           </div>
 
@@ -474,7 +537,7 @@ export default async function ScanResultPage({
 
 function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn?: boolean }) {
   return (
-    <main className="min-h-screen">
+    <main className="page-shell-gradient min-h-screen">
       <header className="container-page flex items-center justify-between py-6">
         <Link href="/">
           <Logo />
@@ -509,7 +572,7 @@ function ClaimBanner({ scanId, loggedIn }: { scanId: string; loggedIn: boolean }
           <div>
             <p className="text-sm font-medium text-text">
               {loggedIn
-                ? "Save this scan and turn this page into an ongoing monitoring workflow (one URL per saved entry)."
+                ? "Save this scan and turn this page into an ongoing website monitoring workflow."
                 : "Create a free account to save this scan and keep working from it later."}
             </p>
             <p className="mt-1 text-xs text-text-muted">
@@ -635,7 +698,7 @@ function ScoreDial({
 
 function SeverityPill({ impact, count }: { impact: Impact; count: number }) {
   return (
-    <div className="bg-bg-elevated/60 p-4">
+    <div className="metric-tile">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-text-subtle">
           {IMPACT_LABELS[impact]}
@@ -664,12 +727,12 @@ function RegressionDiffPanel({
       <div className="border-b border-border/70 px-6 py-5 sm:px-7">
         <p className="text-xs uppercase tracking-wider text-text-subtle">Regression diff</p>
         <h2 className="mt-2 text-xl font-semibold text-text">
-          What changed since the previous saved scan
+          What changed since the previous monitored scan
         </h2>
         <p className="mt-2 text-sm text-text-muted">
           Comparing {new Date(previousCreatedAt).toLocaleDateString()} to{" "}
           {new Date(currentCreatedAt).toLocaleDateString()} so you can see exactly
-          which risk types appeared, disappeared, or stayed the same.
+            which affected locations appeared, disappeared, or stayed the same.
         </p>
       </div>
 
@@ -678,18 +741,18 @@ function RegressionDiffPanel({
           label="New risks"
           value={`${diff.newCount}`}
           tone="bad"
-          detail="Rule types detected now that were not present in the previous scan"
+          detail="Affected locations detected now that were not present in the previous scan"
         />
         <DiffMetric
           label="Fixed risks"
           value={`${diff.fixedCount}`}
           tone="good"
-          detail="Rule types present before that no longer appear in the current scan"
+          detail="Affected locations present before that no longer appear in the current scan"
         />
         <DiffMetric
           label="Unchanged"
           value={`${diff.unchangedCount}`}
-          detail="Rule types that were detected in both scans"
+          detail="Affected locations that were detected in both scans"
         />
       </div>
 
@@ -697,13 +760,13 @@ function RegressionDiffPanel({
         <DiffList
           title="New risks"
           tone="bad"
-          emptyCopy="No new rule-level regressions were detected in this scan."
+          emptyCopy="No new affected locations were detected in this scan."
           items={diff.newItems}
         />
         <DiffList
           title="Fixed risks"
           tone="good"
-          emptyCopy="No rule types were resolved compared with the previous scan."
+          emptyCopy="No affected locations were resolved compared with the previous scan."
           items={diff.fixedItems}
         />
       </div>
@@ -720,8 +783,8 @@ function RegressionDiffLockedCard() {
           See exactly which risks are new or fixed
         </h2>
         <p className="mt-2 text-sm text-text-muted">
-          Pro shows the rule-level diff between scans so you can see what regressed,
-          what got fixed, and what still needs attention on monitored pages.
+          Pro shows the selector-level diff between scans so you can see what regressed,
+          what got fixed, and which exact selectors still need attention on monitored pages.
         </p>
       </div>
       <div className="relative px-6 py-6 sm:px-7">
@@ -742,8 +805,8 @@ function RegressionDiffLockedCard() {
         <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.15),rgba(11,13,17,0.9)_30%,rgba(11,13,17,0.95))] px-6 py-6 sm:px-7">
           <p className="text-sm font-semibold text-text">Regression diffs are a Pro feature</p>
           <p className="mt-2 max-w-xl text-sm text-text-muted">
-            Upgrade to Pro to compare saved scans side by side and spot the exact
-            accessibility risk types that were introduced or resolved.
+            Upgrade to Pro to compare monitored scans side by side and spot the exact
+            accessibility selectors that were introduced or resolved.
           </p>
           <Link href="/pricing" className="btn-primary mt-4">
             Compare regressions on Pro
@@ -807,7 +870,7 @@ function DiffList({
       <div className="mt-3 space-y-3">
         {items.length > 0 ? (
           items.slice(0, 5).map((item) => (
-            <div key={`${title}-${item.axeId}`} className="rounded-xl border border-border bg-bg-muted/25 p-4">
+            <div key={`${title}-${item.key}`} className="rounded-xl border border-border bg-bg-muted/25 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${accentClass}`}>
                   {item.impact}
@@ -817,6 +880,11 @@ function DiffList({
                 </span>
               </div>
               <p className="mt-3 text-sm text-text">{item.help}</p>
+              {item.selector && (
+                <code className="mt-3 block overflow-x-auto rounded-md border border-border bg-bg p-2 font-mono text-xs text-text-subtle">
+                  {item.selector}
+                </code>
+              )}
               {item.helpUrl ? (
                 <a
                   href={item.helpUrl}
@@ -867,10 +935,14 @@ function RiskListItem({
     help: string;
     impact: string;
     description: string;
+    selector: string;
+    instances: { id: string }[];
   };
   isNew: boolean;
   hasBaseline: boolean;
 }) {
+  const affectedCount = Math.max(violation.instances.length, violation.selector ? 1 : 0);
+
   return (
     <div className="rounded-xl border border-border bg-bg-muted/30 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -885,6 +957,11 @@ function RiskListItem({
           </p>
           <p className="mt-1 text-xs text-text-subtle">
             <span className="font-medium text-text">Why it matters:</span> {plainEnglishRiskImpact(violation.help, violation.impact)}
+          </p>
+          <p className="mt-2 font-mono text-xs text-text-subtle">
+            {affectedCount > 0
+              ? `${affectedCount} affected location${affectedCount === 1 ? "" : "s"} · ${violation.selector || "selector unavailable"}`
+              : "Affected location unavailable"}
           </p>
         </div>
         <span className="rounded-full border border-border px-2.5 py-1 text-[11px] uppercase tracking-wider text-text-subtle">
@@ -909,13 +986,36 @@ function ViolationCard({
     helpUrl: string;
     element: string;
     selector: string;
+    failureSummary: string | null;
     legalRationale: string | null;
     plainEnglishFix: string | null;
     codeExample: string | null;
+    instances: {
+      id: string;
+      ordinal: number;
+      element: string;
+      selector: string;
+      failureSummary: string | null;
+    }[];
   };
   isNew: boolean;
   hasBaseline: boolean;
 }) {
+  const instances =
+    violation.instances.length > 0
+      ? violation.instances
+      : violation.selector || violation.element || violation.failureSummary
+        ? [
+            {
+              id: `${violation.id}-legacy-instance`,
+              ordinal: 0,
+              element: violation.element,
+              selector: violation.selector,
+              failureSummary: violation.failureSummary,
+            },
+          ]
+        : [];
+
   return (
     <article className="rounded-[1.25rem] border border-border bg-bg-elevated/45 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -956,25 +1056,65 @@ function ViolationCard({
         </div>
       </div>
 
-      <Section label="Affected element">
-        <div className="flex items-center justify-between gap-2">
-          <code className="block flex-1 overflow-x-auto rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text">
-            {violation.selector || "(no selector)"}
-          </code>
-          {violation.selector && (
-            <CopyButton text={violation.selector} label="Copy selector" />
-          )}
-        </div>
-        {violation.element && (
-          <div className="mt-2 flex items-start justify-between gap-2">
-            <pre className="flex-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-bg-muted p-3 font-mono text-xs text-text-muted">
-              {violation.element}
-            </pre>
-            <CopyButton text={violation.element} label="Copy HTML" />
+      <Section label={`Affected locations (${instances.length})`}>
+        {instances.length > 0 ? (
+          <div className="space-y-3">
+            {instances.map((instance, index) => (
+              <AffectedLocationCard
+                key={instance.id}
+                index={index}
+                selector={instance.selector}
+                element={instance.element}
+                failureSummary={instance.failureSummary}
+              />
+            ))}
           </div>
+        ) : (
+          <p className="rounded-md border border-border bg-bg-muted p-3 text-sm text-text-muted">
+            axe-core did not return a specific selector for this issue.
+          </p>
         )}
       </Section>
     </article>
+  );
+}
+
+function AffectedLocationCard({
+  index,
+  selector,
+  element,
+  failureSummary,
+}: {
+  index: number;
+  selector: string;
+  element: string;
+  failureSummary: string | null;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-bg-muted/40 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+          Location {index + 1}
+        </p>
+        {selector && <CopyButton text={selector} label="Copy selector" />}
+      </div>
+      <code className="block overflow-x-auto rounded-md border border-border bg-bg p-3 font-mono text-xs text-text">
+        {selector || "(no selector)"}
+      </code>
+      {failureSummary && (
+        <pre className="mt-2 whitespace-pre-wrap rounded-md border border-border bg-bg p-3 font-mono text-xs text-text-subtle">
+          {failureSummary}
+        </pre>
+      )}
+      {element && (
+        <div className="mt-2 flex items-start justify-between gap-2">
+          <pre className="flex-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-bg p-3 font-mono text-xs text-text-muted">
+            {element}
+          </pre>
+          <CopyButton text={element} label="Copy HTML" />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1019,10 +1159,9 @@ function RecommendedFixesPanel({
       <div className="border-b border-border/70 px-6 py-5">
         <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
         <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
-        <div className="mt-4 space-y-2 text-sm text-text-muted">
-        <p>New accessibility risks can appear anytime.</p>
-        <p>You scanned 1 page — more pages may have accessibility risks.</p>
-        </div>
+        <p className="mt-4 text-sm text-text-muted">
+          Prioritized remediation guidance for this scan. Re-scan after each fix to confirm the issue is gone.
+        </p>
       </div>
       {usage && <AiUsagePanel usage={usage} />}
 
@@ -1368,9 +1507,30 @@ function parsePlan(value: string | undefined): "FREE" | "STARTER" | "PRO" | null
   return value === "FREE" || value === "STARTER" || value === "PRO" ? value : null;
 }
 
+function limitMessage(limit: string, plan: "FREE" | "STARTER" | "PRO") {
+  if (limit === "project_limit") {
+    return plan === "PRO"
+      ? "Pro monitors up to 5 websites. Upgrade or contact support when you need more client or product websites."
+      : plan === "STARTER"
+        ? "Starter monitors 1 website. Upgrade to Pro to monitor multiple websites."
+        : "Free monitors 1 page. Upgrade to Starter to monitor a full website.";
+  }
+
+  if (limit === "page_limit") {
+    return plan === "PRO"
+      ? "This website has reached the Pro page limit of 100 monitored pages."
+      : plan === "STARTER"
+        ? "This website has reached the Starter page limit of 25 monitored pages."
+        : "Free monitors 1 page. Upgrade to Starter to monitor more pages on this website.";
+  }
+
+  return "Your current plan cannot monitor more pages. You can still run manual scans, or upgrade to keep tracking this page.";
+}
+
 async function findPreviousComparableScan(scan: {
   id: string;
   createdAt: Date;
+  pageId: string | null;
   siteId: string | null;
   userId: string | null;
   url: string;
@@ -1379,8 +1539,33 @@ async function findPreviousComparableScan(scan: {
     id: true,
     score: true,
     createdAt: true,
-    violations: { select: { axeId: true, help: true, helpUrl: true, impact: true } },
+    violations: {
+      select: {
+        axeId: true,
+        help: true,
+        helpUrl: true,
+        impact: true,
+        selector: true,
+        instances: {
+          select: { selector: true },
+          orderBy: { ordinal: "asc" },
+        },
+      },
+    },
   } as const;
+
+  if (scan.pageId) {
+    return prisma.scan.findFirst({
+      where: {
+        pageId: scan.pageId,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
 
   if (scan.siteId) {
     return prisma.scan.findFirst({
@@ -1415,13 +1600,13 @@ async function findPreviousComparableScan(scan: {
 function buildScanComparison(
   current: {
     score: number;
-    violations: { axeId: string }[];
+    violations: ComparableViolation[];
   },
   previous:
     | {
         score: number;
         createdAt: Date;
-        violations: { axeId: string }[];
+        violations: ComparableViolation[];
       }
     | null,
 ) {
@@ -1437,8 +1622,8 @@ function buildScanComparison(
   }
 
   const delta = current.score - previous.score;
-  const currentIssues = new Set(current.violations.map((violation) => violation.axeId));
-  const previousIssues = new Set(previous.violations.map((violation) => violation.axeId));
+  const currentIssues = new Set(current.violations.flatMap(locationSignaturesFor));
+  const previousIssues = new Set(previous.violations.flatMap(locationSignaturesFor));
   let newCount = 0;
   let fixedCount = 0;
 
@@ -1458,6 +1643,27 @@ function buildScanComparison(
     fixedCount,
     issueDetail: `New risks: ${newCount} · Fixed risks: ${fixedCount}`,
   };
+}
+
+type ComparableViolation = {
+  axeId: string;
+  selector?: string | null;
+  instances?: { selector?: string | null }[];
+};
+
+function locationSignaturesFor(violation: ComparableViolation): string[] {
+  const instanceSelectors = (violation.instances ?? [])
+    .map((instance) => instance.selector?.trim())
+    .filter((selector): selector is string => Boolean(selector));
+
+  if (instanceSelectors.length > 0) {
+    return [...new Set(instanceSelectors)].map((selector) =>
+      `${violation.axeId}|${selector}`,
+    );
+  }
+
+  const selector = violation.selector?.trim();
+  return [selector ? `${violation.axeId}|${selector}` : violation.axeId];
 }
 
 function hostOf(url: string): string {
@@ -1579,7 +1785,7 @@ function recommendedFixesState({
   if (apiAiFlags.requiresUpgradeForAI || userPlan === "FREE") {
     return {
       mode: "locked" as const,
-      body: "Each fix ships with a plain-English explanation, pasteable code, and a legal rationale line — generated for every violation on this scan.",
+      body: "Each fix ships with a plain-English explanation, pasteable code, and WCAG context for every violation on this scan.",
       ctaHref: "/pricing",
       ctaLabel: "Unlock AI fixes — from $25/month",
       aiUsageCurrent: null,

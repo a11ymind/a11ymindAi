@@ -3,6 +3,8 @@ import type { Plan } from "@prisma/client";
 export type AutoScan = "none" | "monthly" | "weekly" | "daily";
 
 export type Entitlements = {
+  maxProjects: number;
+  maxPagesPerProject: number;
   maxSites: number;
   monthlyScanLimit: number | null;
   aiFixes: boolean;
@@ -18,6 +20,8 @@ export type Entitlements = {
 
 export const ENTITLEMENTS: Record<Plan, Entitlements> = {
   FREE: {
+    maxProjects: 1,
+    maxPagesPerProject: 1,
     maxSites: 1,
     monthlyScanLimit: 5,
     aiFixes: true,
@@ -31,7 +35,9 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     ciIntegration: false,
   },
   STARTER: {
-    maxSites: 5,
+    maxProjects: 1,
+    maxPagesPerProject: 25,
+    maxSites: 25,
     monthlyScanLimit: null,
     aiFixes: true,
     aiMonthlyLimit: 100,
@@ -44,7 +50,9 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     ciIntegration: false,
   },
   PRO: {
-    maxSites: 25,
+    maxProjects: 5,
+    maxPagesPerProject: 100,
+    maxSites: 500,
     monthlyScanLimit: null,
     aiFixes: true,
     aiMonthlyLimit: 500,
@@ -71,11 +79,14 @@ export function isAtSiteLimit(plan: Plan, siteCount: number): boolean {
 }
 
 export function savedSiteLimitMessage(plan: Plan): string {
-  const { maxSites } = entitlementsFor(plan);
+  const { maxProjects, maxPagesPerProject } = entitlementsFor(plan);
   if (plan === "PRO") {
-    return `You've reached the ${maxSites}-page limit.`;
+    return `You've reached the Pro limit of ${maxProjects} websites with ${maxPagesPerProject} pages each.`;
   }
-  return `Your ${planLabel(plan)} plan allows ${maxSites} saved page${maxSites === 1 ? "" : "s"}. Upgrade to monitor more.`;
+  if (maxPagesPerProject === 1) {
+    return `Your ${planLabel(plan)} plan allows 1 monitored page. Upgrade to monitor full websites.`;
+  }
+  return `Your ${planLabel(plan)} plan allows ${maxProjects} website with up to ${maxPagesPerProject} pages. Upgrade to monitor more.`;
 }
 
 export function autoScanLabel(value: AutoScan): string {

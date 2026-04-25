@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buildScanResultHref } from "@/lib/scan-result-url";
 
-export function URLScanner() {
+export function URLScanner({
+  ctaLabel = "Scan page",
+  helperText = "No signup required for your first scan. We respect robots.txt and never modify your site.",
+}: {
+  ctaLabel?: string;
+  helperText?: string;
+}) {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,17 +29,7 @@ export function URLScanner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scan failed");
-      router.push(
-        buildScanResultHref(data.scanId, {
-          aiEnabled: data.aiEnabled,
-          aiUsageCurrent: data.aiUsageCurrent,
-          aiUsageLimit: data.aiUsageLimit,
-          aiUsageRemaining: data.aiUsageRemaining,
-          requiresLoginForAI: data.requiresLoginForAI,
-          requiresUpgradeForAI: data.requiresUpgradeForAI,
-          aiLimitReached: data.aiLimitReached,
-        }),
-      );
+      router.push(buildScanResultHref(data.scanId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setLoading(false);
@@ -77,7 +73,7 @@ export function URLScanner() {
             </>
           ) : (
             <>
-              <span>Scan for free</span>
+              <span>{ctaLabel}</span>
               <span aria-hidden="true" className="ml-1.5 transition-transform group-hover:translate-x-0.5">
                 →
               </span>
@@ -88,7 +84,7 @@ export function URLScanner() {
       {loading && (
         <p className="mt-3 flex items-center gap-2 text-sm text-text-muted">
           <span className="inline-flex h-1.5 w-1.5 animate-pulse-soft rounded-full bg-accent" />
-          Loading the page in headless Chromium and running 90+ WCAG checks — usually 15–45 seconds.
+          Creating your scan job — the report page will show progress while Chromium runs 90+ WCAG checks.
         </p>
       )}
       {error && (
@@ -97,7 +93,7 @@ export function URLScanner() {
         </p>
       )}
       <p className="mt-3 text-xs text-text-subtle">
-        No signup required for your first scan. We respect robots.txt and never modify your site.
+        {helperText}
       </p>
     </form>
   );

@@ -59,6 +59,7 @@ export async function GET(
       await findPreviousComparableScan({
         id: scan.id,
         createdAt: scan.createdAt,
+        pageId: scan.pageId,
         siteId: scan.siteId,
         userId: scan.userId,
         url: scan.url,
@@ -103,6 +104,7 @@ function hostFromUrl(url: string): string {
 async function findPreviousComparableScan(scan: {
   id: string;
   createdAt: Date;
+  pageId: string | null;
   siteId: string | null;
   userId: string | null;
   url: string;
@@ -112,6 +114,19 @@ async function findPreviousComparableScan(scan: {
     createdAt: true,
     violations: { select: { axeId: true } },
   } as const;
+
+  if (scan.pageId) {
+    return prisma.scan.findFirst({
+      where: {
+        pageId: scan.pageId,
+        status: "COMPLETED",
+        createdAt: { lt: scan.createdAt },
+        id: { not: scan.id },
+      },
+      orderBy: { createdAt: "desc" },
+      select,
+    });
+  }
 
   if (scan.siteId) {
     return prisma.scan.findFirst({

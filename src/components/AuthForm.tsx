@@ -170,8 +170,8 @@ export function AuthForm({
       </h1>
       <p className="mt-1 text-sm text-text-muted">
         {mode === "login"
-          ? "Log in to review reports, monitor your saved pages, and manage billing."
-          : "Save scans, track accessibility changes over time, and unlock paid workflows when you need them."}
+          ? "Log in to review reports, monitor website pages, and manage billing."
+          : "Save monitored pages, track accessibility changes over time, and unlock paid workflows when you need them."}
         {scanId && (
           <span className="mt-2 block rounded-md border border-accent-muted bg-accent-muted/20 px-3 py-2 text-xs text-accent">
             Your recent scan will be attached to your account so you can keep working from that result.

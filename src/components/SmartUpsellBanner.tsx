@@ -83,11 +83,11 @@ function copyForVariant(
     return {
       eyebrow: "Critical risk detected",
       headline: `${criticalCount} critical issue${criticalCount === 1 ? "" : "s"} on ${site} — AI can write the fix.`,
-      body: `Critical violations are the ones most likely to trigger demand letters. Unlock AI-written fixes for all ${riskCount} issues and stop guessing which selector changed.`,
+      body: `Critical violations are the issues most likely to block real users. Unlock AI-written fixes for all ${riskCount} issues and stop guessing which selector changed.`,
       bullets: [
         "Plain-English explanation per issue",
         "Pasteable code fix with before/after",
-        "Legal-rationale line for every risk",
+        "WCAG context for every risk",
       ],
     };
   }
@@ -96,7 +96,7 @@ function copyForVariant(
     return {
       eyebrow: "Ongoing monitoring",
       headline: `${riskCount} issues on ${site} — you'll want scheduled scans.`,
-      body: `A single scan is a snapshot. Put this page on weekly auto-scan so new regressions get flagged the week they ship, not the week a lawyer finds them.`,
+      body: `A single scan is a snapshot. Put this page on scheduled monitoring so new regressions get flagged when they ship, not after a customer or client finds them.`,
       bullets: [
         "Weekly auto-scan + email alerts",
         "AI fixes (100 / month on Starter)",

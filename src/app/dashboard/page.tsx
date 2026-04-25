@@ -1,9 +1,11 @@
 import Link from "next/link";
+import type { ComponentProps, ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { CiHistoryCard } from "@/components/CiHistoryCard";
 import { AccessLintCiCard } from "@/components/AccessLintCiCard";
+import { CrawlSiteButton } from "@/components/CrawlSiteButton";
 import { Logo } from "@/components/Logo";
 import { PlanBadge } from "@/components/PlanBadge";
 import { SignOutButton } from "@/components/UserMenu";
@@ -62,6 +64,41 @@ export default async function DashboardPage({
     select: {
       id: true,
       url: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          origin: true,
+          ciIngestToken: true,
+          slackWebhookUrl: true,
+          ciChecks: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              source: true,
+              status: true,
+              score: true,
+              criticalCount: true,
+              seriousCount: true,
+              moderateCount: true,
+              minorCount: true,
+              branch: true,
+              commitSha: true,
+              environment: true,
+              runUrl: true,
+              reportUrl: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+      page: {
+        select: {
+          id: true,
+          url: true,
+        },
+      },
       ciIngestToken: true,
       slackWebhookUrl: true,
       scans: {
@@ -104,6 +141,7 @@ export default async function DashboardPage({
   }));
 
   const chartData = buildChartData(sites);
+  const projectGroups = groupSitesByProject(sites);
   const weekly = await buildWeeklySummary(session.user.id);
   const entitlements = entitlementsFor(user.plan);
   const atSiteLimit = isAtSiteLimit(user.plan, sites.length);
@@ -122,7 +160,7 @@ export default async function DashboardPage({
     : "Locked";
   const aiFixesDetail = entitlements.aiFixes
     ? aiUsage.aiUsageLimit === null
-      ? "AI remediation guidance on every saved scan"
+      ? "AI remediation guidance on every monitored scan"
       : aiUsage.aiLimitReached
         ? `Monthly cap reached — upgrade for more`
         : `${aiUsage.aiUsageRemaining} AI fix${aiUsage.aiUsageRemaining === 1 ? "" : "es"} left this month`
@@ -165,7 +203,7 @@ export default async function DashboardPage({
           </div>
         </div>
       </header>
-      <main id="main" className="min-h-screen">
+      <main id="main" className="page-shell-gradient min-h-screen">
 
       {searchParams?.upgraded === "1" && (
         <section className="container-page">
@@ -218,23 +256,23 @@ export default async function DashboardPage({
       )}
 
       <section className="container-page mt-4">
-        <div className="overflow-hidden rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,rgba(14,17,22,0.92),rgba(14,17,22,0.76))] shadow-glow">
+        <div className="surface-premium rounded-[1.75rem]">
           <div className="grid gap-8 px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:items-end">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+              <p className="section-kicker">
                 Accessibility operations
               </p>
-              <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+              <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-[-0.03em] text-text sm:text-5xl">
                 Scan any page. Keep the pages that matter under watch.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
                 {sites.length === 0
-                  ? "Run a manual scan on any public URL, then save the individual pages you want a11ymind to keep monitoring over time. Each saved entry is one URL."
+                  ? "Run a manual scan on any public URL, then save the website pages you want a11ymind to keep monitoring over time."
                   : `You currently have ${sites.length} monitored page${sites.length === 1 ? "" : "s"}. Use manual scans for fast checks, then turn important URLs into an ongoing workflow.`}
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-2 text-[11px] text-text-subtle">
                 <span className="rounded-full border border-border px-2.5 py-1">
-                  {`Monitor up to ${entitlements.maxSites} page${entitlements.maxSites === 1 ? "" : "s"}`}
+                  {`${entitlements.maxProjects} website${entitlements.maxProjects === 1 ? "" : "s"} · ${entitlements.maxPagesPerProject} page${entitlements.maxPagesPerProject === 1 ? "" : "s"} each`}
                 </span>
                 <span className="rounded-full border border-border px-2.5 py-1">
                   {scanCadence}
@@ -247,8 +285,8 @@ export default async function DashboardPage({
                 </span>
               </div>
             </div>
-            <div className="rounded-[1.25rem] border border-border/70 bg-bg-muted/25 p-4 sm:p-5">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+            <div className="rounded-[1.35rem] border border-white/10 bg-bg/55 p-4 shadow-card backdrop-blur-md sm:p-5">
+              <p className="section-kicker">
                 Run a fresh scan
               </p>
               <p className="mt-2 text-sm text-text-muted">
@@ -256,16 +294,19 @@ export default async function DashboardPage({
                 any public page.
               </p>
               <div className="mt-5">
-                <URLScanner />
+                <URLScanner
+                  ctaLabel="Run scan"
+                  helperText="Manual scans are useful for launch checks and spot reviews. Save important URLs to keep them monitored over time."
+                />
               </div>
             </div>
           </div>
 
-          <div className="grid gap-px border-t border-border/70 bg-border/60 md:grid-cols-4">
+          <div className="grid gap-px border-t border-white/10 bg-white/10 md:grid-cols-4">
           <DashboardStat
-            label="Saved pages"
+            label="Monitored pages"
             value={`${sites.length}/${entitlements.maxSites}`}
-            detail={`Monitor up to ${entitlements.maxSites} page${entitlements.maxSites === 1 ? "" : "s"}`}
+            detail={`${projectGroups.length}/${entitlements.maxProjects} website${entitlements.maxProjects === 1 ? "" : "s"} used`}
           />
           <DashboardStat
             label="Scan cadence"
@@ -286,7 +327,7 @@ export default async function DashboardPage({
             value={entitlements.pdfExport ? "Enabled" : "Locked"}
             detail={
               entitlements.pdfExport
-                ? "Download reports from saved scans"
+                ? "Download reports from monitored scans"
                 : "Upgrade to Pro to unlock"
             }
           />
@@ -294,14 +335,14 @@ export default async function DashboardPage({
         </div>
 
         <p className="mt-4 text-sm text-text-muted">
-          Websites change often, which means new accessibility issues can appear anytime.
+          Use manual scans for fast validation, then keep important pages monitored so regressions show up in history.
         </p>
 
         {atSiteLimit && user.plan !== "PRO" && (
           <div className="card mt-6 flex flex-col items-start justify-between gap-4 border-accent-muted bg-accent-muted/10 p-5 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-medium text-text">
-                You can monitor {entitlements.maxSites} page{entitlements.maxSites === 1 ? "" : "s"} on your current plan. Each saved entry is one URL.
+                You can monitor {entitlements.maxProjects} website{entitlements.maxProjects === 1 ? "" : "s"} with up to {entitlements.maxPagesPerProject} page{entitlements.maxPagesPerProject === 1 ? "" : "s"} each on your current plan.
               </p>
               <p className="mt-1 text-sm text-text-muted">
                 You can still scan any page manually. Upgrade to track more pages and keep monitoring changes as your site evolves.
@@ -319,7 +360,7 @@ export default async function DashboardPage({
               Scan your first page to start tracking accessibility improvements
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-text-muted">
-              Run a scan on any public URL, then save individual pages (each entry is one URL) to monitor score changes, compare history, and catch new risks as the page evolves.
+              Run a scan on any public URL, then save website pages to monitor score changes, compare history, and catch new risks as the page evolves.
             </p>
           </div>
         )}
@@ -386,12 +427,21 @@ export default async function DashboardPage({
                 The pages you&apos;re actively watching
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-text-muted">
-                Each row is one URL. Re-scan on demand, review score movement, and open the latest report for any monitored page.
+                Each project groups monitored pages for one website. Paid plans can discover same-origin pages from sitemap and homepage links, then add them up to the page limit.
               </p>
             </div>
           </div>
         )}
-        {sites.map((site) => {
+        {projectGroups.map((group) => (
+          <div key={group.key} className="space-y-3">
+            <ProjectHealthSummary
+              group={group}
+              scanCadence={scanCadence}
+              canDiscoverPages={user.plan !== "FREE"}
+              entitlements={entitlements}
+              baseUrl={baseUrl}
+            />
+            {group.sites.map((site) => {
           const latest = site.scans[site.scans.length - 1];
           const previous = site.scans[site.scans.length - 2];
           const band = latest ? scoreBand(latest.score) : null;
@@ -400,17 +450,12 @@ export default async function DashboardPage({
             latest && previous
               ? buildRegressionDiff(latest.violations, previous.violations)
               : null;
-          const badgeUrl = `${baseUrl}/badge/${site.id}`;
-          const badgeSnippet = buildBadgeSnippet({
-            homeUrl: baseUrl,
-            badgeUrl,
-          });
           return (
-            <div key={site.id} className="overflow-hidden rounded-[1.35rem] border border-border bg-bg-elevated/35">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
+            <details key={site.id} className="group overflow-hidden rounded-[1.35rem] border border-white/10 bg-bg-elevated/35 shadow-card">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 px-5 py-4 marker:hidden">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
-                    {hostOf(site.url)}
+                    Monitored page
                   </p>
                   <p className="truncate font-mono text-sm text-text">{site.url}</p>
                   <p className="mt-1 text-xs text-text-subtle">
@@ -436,17 +481,20 @@ export default async function DashboardPage({
                     <p className="text-xs text-text-subtle">{band.label}</p>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  {latest && (
-                    <Link href={`/scan/${latest.id}`} className="btn-ghost text-sm">
-                      Open report
-                    </Link>
-                  )}
-                  <RescanButton url={site.url} />
-                </div>
-              </div>
+                <span className="rounded-full border border-border px-2.5 py-1 text-xs text-text-subtle transition-colors group-open:border-accent/40 group-open:text-accent">
+                  Details
+                </span>
+              </summary>
               <div className="grid gap-px bg-border/60 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="bg-bg px-5 py-4">
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    {latest && (
+                      <Link href={`/scan/${latest.id}`} className="btn-ghost text-sm">
+                        Open report
+                      </Link>
+                    )}
+                    <RescanButton url={site.url} />
+                  </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <SiteMiniMetric
                       label="Status"
@@ -485,10 +533,10 @@ export default async function DashboardPage({
                       ) : (
                         <>
                           <p className="mt-2 text-sm text-text">
-                            Unlock rule-level diffs between saved scans.
+                            Unlock selector-level diffs between monitored scans.
                           </p>
                           <p className="mt-1 text-xs text-text-muted">
-                            Pro shows which risk types are new, fixed, or unchanged across monitoring history.
+                            Pro shows which affected locations are new, fixed, or unchanged across monitoring history.
                           </p>
                           <Link href="/pricing" className="mt-3 inline-flex text-xs text-accent hover:underline">
                             Unlock regression diffs →
@@ -504,45 +552,15 @@ export default async function DashboardPage({
                   </p>
                   <p className="mt-2 text-sm font-medium text-text">{scanCadence}</p>
                   <p className="mt-1 text-xs text-text-muted">
-                    Websites change constantly, so this site stays in your monitoring loop.
+                    Websites change constantly, so this page stays in your monitoring loop.
                   </p>
                 </div>
               </div>
-              {entitlements.monitoringBadge && (
-                <div className="border-t border-border/70 px-5 py-4">
-                  <BadgeEmbedCard
-                    siteUrl={site.url}
-                    badgeUrl={badgeUrl}
-                    snippet={badgeSnippet}
-                  />
-                </div>
-              )}
-              {entitlements.ciIntegration ? (
-                <div className="border-t border-border/70 px-5 py-4">
-                  <CiHistoryCard
-                    siteId={site.id}
-                    siteUrl={site.url}
-                    endpoint={`${baseUrl}/api/ci/report`}
-                    token={site.ciIngestToken}
-                    checks={site.ciChecks}
-                  />
-                </div>
-              ) : (
-                <div className="border-t border-border/70 px-5 py-4">
-                  <AccessLintCiCard />
-                </div>
-              )}
-              {entitlements.slackAlerts && (
-                <div className="border-t border-border/70 px-5 py-4">
-                  <SlackWebhookCard
-                    siteId={site.id}
-                    configured={Boolean(site.slackWebhookUrl)}
-                  />
-                </div>
-              )}
-            </div>
+            </details>
           );
-        })}
+            })}
+          </div>
+        ))}
       </section>
     </main>
     </>
@@ -559,7 +577,7 @@ function DashboardStat({
   detail: string;
 }) {
   return (
-    <div className="bg-bg-elevated/60 p-4">
+    <div className="metric-tile">
       <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
       <p className="mt-2 text-lg font-semibold text-text">{value}</p>
       <p className="mt-1 text-xs text-text-muted">{detail}</p>
@@ -640,6 +658,7 @@ async function buildWeeklySummary(userId: string) {
       id: true,
       score: true,
       createdAt: true,
+      pageId: true,
       siteId: true,
       violations: { select: { axeId: true } },
     },
@@ -648,21 +667,23 @@ async function buildWeeklySummary(userId: string) {
   const thisWeek = scans.filter((s) => s.createdAt >= weekStart);
   const scanCount = thisWeek.length;
 
-  // Per-site diff: first in-window scan vs latest in-window scan.
-  const bySite = new Map<string, typeof scans>();
+  // Per-page diff: first in-window scan vs latest in-window scan. Falls back
+  // to legacy siteId for historical rows that predate Page.
+  const byPage = new Map<string, typeof scans>();
   for (const s of scans) {
-    if (!s.siteId) continue;
-    const arr = bySite.get(s.siteId) ?? [];
+    const key = s.pageId ? `page:${s.pageId}` : s.siteId ? `site:${s.siteId}` : null;
+    if (!key) continue;
+    const arr = byPage.get(key) ?? [];
     arr.push(s);
-    bySite.set(s.siteId, arr);
+    byPage.set(key, arr);
   }
 
   let newIssues = 0;
   let fixedIssues = 0;
   const deltas: number[] = [];
-  for (const [, siteScans] of bySite) {
-    const latest = siteScans[siteScans.length - 1];
-    const baseline = siteScans.find((s) => s.createdAt < weekStart) ?? siteScans[0];
+  for (const [, pageScans] of byPage) {
+    const latest = pageScans[pageScans.length - 1];
+    const baseline = pageScans.find((s) => s.createdAt < weekStart) ?? pageScans[0];
     if (!latest || latest === baseline) continue;
     const latestSet = new Set(latest.violations.map((v) => v.axeId));
     const baseSet = new Set(baseline.violations.map((v) => v.axeId));
@@ -702,6 +723,306 @@ function buildBadgeSnippet({
   return `<a href="${homeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Accessibility monitored by a11ymind">
   <img src="${badgeUrl}" alt="Accessibility monitored by a11ymind" style="height:36px;width:auto;border:0" />
 </a>`;
+}
+
+function ProjectHealthSummary<TSite extends ProjectGroupSite>({
+  group,
+  scanCadence,
+  canDiscoverPages,
+  entitlements,
+  baseUrl,
+}: {
+  group: ProjectGroup<TSite>;
+  scanCadence: string;
+  canDiscoverPages: boolean;
+  entitlements: ReturnType<typeof entitlementsFor>;
+  baseUrl: string;
+}) {
+  const health = projectHealthFor(group.sites);
+  const band = health.averageScore === null ? null : scoreBand(health.averageScore);
+  const primarySite = group.sites[0];
+  const attentionLabel = health.worstSite
+    ? `${hostOf(health.worstSite.url)} · ${health.worstScore}/100`
+    : "Run first scan";
+  const badgeUrl = `${baseUrl}/badge/${primarySite.id}`;
+  const badgeSnippet = buildBadgeSnippet({
+    homeUrl: group.origin,
+    badgeUrl,
+  });
+
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,27,0.78),rgba(12,14,19,0.74))] shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5">
+        <div>
+          <p className="section-kicker">
+            Website project
+          </p>
+          <h3 className="mt-1 text-xl font-semibold tracking-tight text-text">{group.label}</h3>
+          <p className="mt-1 text-xs text-text-muted">
+            {group.sites.length} monitored page{group.sites.length === 1 ? "" : "s"} · {group.origin}
+          </p>
+        </div>
+        {canDiscoverPages && <CrawlSiteButton siteId={group.sites[0].id} />}
+      </div>
+
+      <div className="grid gap-px border-t border-white/10 bg-white/10 md:grid-cols-5">
+        <ProjectMiniMetric
+          label="Project health"
+          value={health.averageScore === null ? "Waiting" : `${health.averageScore}/100`}
+          detail={band?.label ?? "No completed scans yet"}
+          tone={band?.tone}
+        />
+        <ProjectMiniMetric
+          label="Coverage"
+          value={`${health.scannedPages}/${group.sites.length}`}
+          detail="Monitored pages with scans"
+        />
+        <ProjectMiniMetric
+          label="Needs attention"
+          value={attentionLabel}
+          detail={health.openIssues === 0 ? "No automated issues detected" : `${health.openIssues} latest issue${health.openIssues === 1 ? "" : "s"}`}
+          tone={health.worstScore !== null ? scoreBand(health.worstScore).tone : undefined}
+        />
+        <ProjectMiniMetric
+          label="Regressions"
+          value={`${health.regressingPages}`}
+          detail={health.regressingPages === 0 ? "No page score drops" : "Pages down since previous scan"}
+          tone={health.regressingPages > 0 ? "bad" : "good"}
+        />
+        <ProjectMiniMetric
+          label="Monitoring"
+          value={scanCadence}
+          detail="Applied to each monitored page"
+        />
+      </div>
+      <div className="grid gap-px border-t border-white/10 bg-white/10 lg:grid-cols-3">
+        <ProjectControlPanel title="Page discovery">
+          {canDiscoverPages ? (
+            <>
+              <p className="text-sm text-text-muted">
+                Find same-origin pages from the sitemap and homepage links, then start scans up to your plan limit.
+              </p>
+              <div className="mt-4">
+                <CrawlSiteButton siteId={primarySite.id} />
+              </div>
+            </>
+          ) : (
+            <UpgradeControl
+              body="Upgrade to Starter to discover and monitor more pages on this website."
+              cta="Compare plans"
+            />
+          )}
+        </ProjectControlPanel>
+
+        <ProjectControlPanel title="CI history">
+          {entitlements.ciIntegration ? (
+            <CiHistoryCard
+              siteId={primarySite.id}
+              siteUrl={group.origin}
+              endpoint={`${baseUrl}/api/ci/report`}
+              token={primarySite.project?.ciIngestToken ?? primarySite.ciIngestToken}
+              checks={primarySite.project?.ciChecks ?? primarySite.ciChecks}
+              compact
+            />
+          ) : (
+            <AccessLintCiCard compact />
+          )}
+        </ProjectControlPanel>
+
+        <ProjectControlPanel title="Alerts and proof">
+          <div className="space-y-4">
+            {entitlements.slackAlerts ? (
+              <SlackWebhookCard
+                siteId={primarySite.id}
+                configured={Boolean(primarySite.project?.slackWebhookUrl ?? primarySite.slackWebhookUrl)}
+                compact
+              />
+            ) : (
+              <UpgradeControl
+                body="Pro adds Slack alerts when monitored pages regress."
+                cta="Unlock Slack alerts"
+              />
+            )}
+            {entitlements.monitoringBadge ? (
+              <BadgeEmbedCard
+                siteUrl={group.origin}
+                badgeUrl={badgeUrl}
+                snippet={badgeSnippet}
+                compact
+              />
+            ) : (
+              <p className="text-xs text-text-subtle">
+                Monitoring badges are included on Starter and Pro.
+              </p>
+            )}
+          </div>
+        </ProjectControlPanel>
+      </div>
+    </div>
+  );
+}
+
+function ProjectControlPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="metric-tile">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">{title}</p>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function UpgradeControl({ body, cta }: { body: string; cta: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-bg-elevated/35 p-4">
+      <p className="text-sm text-text-muted">{body}</p>
+      <Link href="/pricing" className="mt-3 inline-flex text-xs text-accent hover:underline">
+        {cta} →
+      </Link>
+    </div>
+  );
+}
+
+function ProjectMiniMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "good" | "warn" | "bad";
+}) {
+  return (
+    <div className="bg-bg/70 px-4 py-4 backdrop-blur-sm">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">{label}</p>
+      <p
+        className="mt-2 truncate text-sm font-semibold text-text"
+        style={tone ? { color: bandColor(tone) } : undefined}
+        title={value}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-text-muted">{detail}</p>
+    </div>
+  );
+}
+
+function projectHealthFor<TSite extends ProjectGroupSite>(sites: TSite[]) {
+  let scannedPages = 0;
+  let openIssues = 0;
+  let regressingPages = 0;
+  let worstScore: number | null = null;
+  let worstSite: TSite | null = null;
+  const latestScores: number[] = [];
+
+  for (const site of sites) {
+    const latest = site.scans[site.scans.length - 1];
+    if (!latest) continue;
+
+    scannedPages += 1;
+    latestScores.push(latest.score);
+    openIssues += latest.violations.length;
+
+    const previous = site.scans[site.scans.length - 2];
+    if (previous && latest.score < previous.score) {
+      regressingPages += 1;
+    }
+
+    if (worstScore === null || latest.score < worstScore) {
+      worstScore = latest.score;
+      worstSite = site;
+    }
+  }
+
+  return {
+    averageScore: latestScores.length
+      ? Math.round(latestScores.reduce((sum, score) => sum + score, 0) / latestScores.length)
+      : null,
+    scannedPages,
+    openIssues,
+    regressingPages,
+    worstScore,
+    worstSite,
+  };
+}
+
+type ProjectGroupSite = {
+  id: string;
+  url: string;
+  ciIngestToken: string;
+  slackWebhookUrl: string | null;
+  ciChecks: ComponentProps<typeof CiHistoryCard>["checks"];
+  project: {
+    id: string;
+    name: string | null;
+    origin: string;
+    ciIngestToken: string | null;
+    slackWebhookUrl: string | null;
+    ciChecks: ComponentProps<typeof CiHistoryCard>["checks"];
+  } | null;
+  scans: {
+    score: number;
+    violations: { axeId: string }[];
+  }[];
+};
+
+type ProjectGroup<TSite extends ProjectGroupSite> = {
+  key: string;
+  label: string;
+  origin: string;
+  sites: TSite[];
+};
+
+function groupSitesByProject<TSite extends {
+  id: string;
+  url: string;
+  ciIngestToken: string;
+  slackWebhookUrl: string | null;
+  ciChecks: ComponentProps<typeof CiHistoryCard>["checks"];
+  project: {
+    id: string;
+    name: string | null;
+    origin: string;
+    ciIngestToken: string | null;
+    slackWebhookUrl: string | null;
+    ciChecks: ComponentProps<typeof CiHistoryCard>["checks"];
+  } | null;
+  scans: { score: number; violations: { axeId: string }[] }[];
+}>(sites: TSite[]): ProjectGroup<TSite>[] {
+  const groups = new Map<
+    string,
+    ProjectGroup<TSite>
+  >();
+
+  for (const site of sites) {
+    const origin = site.project?.origin ?? originOf(site.url);
+    const key = site.project?.id ?? origin;
+    const group = groups.get(key) ?? {
+      key,
+      label: site.project?.name || hostOf(origin),
+      origin,
+      sites: [],
+    };
+    group.sites.push(site);
+    groups.set(key, group);
+  }
+
+  return [...groups.values()];
+}
+
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
 }
 
 function SiteMiniMetric({

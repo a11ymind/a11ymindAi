@@ -44,7 +44,7 @@ a11ymind combines:
 
 - fast page scans powered by headless Chromium + axe-core
 - plain-English remediation guidance with AI-generated fixes
-- saved-site monitoring, regression tracking, and scheduled rescans
+- website/page monitoring, regression tracking, and scheduled rescans
 - PDF reports, shareable results, and CI / Slack alerting for higher tiers
 - a companion GitHub Action for pre-deploy preview checks in CI
 
@@ -60,7 +60,7 @@ It is designed for:
 - Anonymous scanning from the landing page with no login required
 - Email/password, Google, and GitHub sign-in via NextAuth
 - Free, Starter, and Pro plans with feature gating
-- Protected dashboard with saved sites, scan history, and plan-aware upsells
+- Protected dashboard with website projects, monitored pages, scan history, and plan-aware upsells
 - Scheduled monitoring with email alerts and Pro Slack alerts
 - Pro PDF export and shareable scan reports
 - AccessLint CI ingestion for pushing external scan summaries back into the
@@ -163,6 +163,7 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_STARTER_PRICE_ID=
 STRIPE_PRO_PRICE_ID=
 CRON_SECRET=
+SCAN_WORKER_SECRET=
 ```
 
 Optional:
@@ -186,6 +187,8 @@ Notes:
   in each environment.
 - `CRON_SECRET` secures the scheduled auto-scan endpoint. Use a random string of
   at least 16 characters in production.
+- `SCAN_WORKER_SECRET` secures the internal scan worker endpoint. Use a random
+  string of at least 16 characters in production.
 - Paid checkout is intentionally blocked while
   `STRIPE_STARTER_PRICE_ID` / `STRIPE_PRO_PRICE_ID` still use placeholder
   values.
@@ -327,8 +330,8 @@ Production:
 - If deployed scanning is unreliable, move scanning to a dedicated worker or
   browser service before taking production traffic.
 - Scheduled auto-scans are driven by a once-per-day Vercel Cron route at
-  `/api/cron/auto-scan`. The route checks which saved sites are due and only
-  scans those sites.
+  `/api/cron/auto-scan`. The route checks which monitored pages are due and only
+  scans those pages.
 - The repo includes a `vercel.json` cron entry for `0 5 * * *` (5:00 UTC
   daily), which fits Vercel Hobby's once-per-day cron limit while still
   supporting weekly and monthly cadences. The weekly/monthly cadence is
@@ -342,30 +345,30 @@ Production:
 ### Scheduled auto-scans
 
 - Free users do not receive scheduled scans.
-- Starter users receive a monthly auto-scan for each saved site.
-- Pro users receive a weekly auto-scan for each saved site.
-- The scheduler runs daily, then computes eligibility from the current saved
-  site owner plan plus the latest scan timestamp:
+- Starter users receive a weekly auto-scan for each monitored page.
+- Pro users receive a daily auto-scan for each monitored page.
+- The scheduler runs daily, then computes eligibility from the current page
+  owner plan plus the latest scan timestamp:
+  - Daily cadence = due after 1 day
   - Weekly cadence = due after 7 days
-  - Monthly cadence = due after 30 days
 - Manual rescans count as the latest scan too, so a recent manual run delays
-  the next scheduled run for that site instead of creating a duplicate report.
+  the next scheduled run for that monitored page instead of creating a duplicate report.
 - Scheduled scans are written into the normal `Scan` history, so they appear in
   the same dashboard/history views as manual runs.
 
 ##### Email alerts
 
 - After each successful scheduled scan the cron compares the new scan against
-  the previous `COMPLETED` scan for that site (set-diff of axe rule IDs).
+  the previous `COMPLETED` scan for that monitored page.
 - An alert email is sent only when there is a meaningful change:
   - at least one **new** issue appeared, or
   - the accessibility **score dropped**
 - Alerts go only to Starter and Pro users with an email on file. Free users do
   not receive scheduled alerts.
-- Cooldown: the same site will not email more than once per ~23h, tracked via
+- Cooldown: the same monitored page will not email more than once per ~23h, tracked via
   `Site.lastAlertSentAt` / `Site.lastAlertScanId`. This is belt-and-braces on
   top of the weekly/monthly cadence gate.
-- Send failures are logged and attached to the per-site cron result; they do
+- Send failures are logged and attached to the per-page cron result; they do
   not abort the batch or mark the scan as failed.
 - Email content is defined in `sendScheduledScanAlertEmail` in
   `src/lib/email.ts`. The report link uses `NEXT_PUBLIC_APP_URL` (falls back to
@@ -373,7 +376,7 @@ Production:
 
 ##### Slack alerts
 
-- Pro users can add a per-site Slack incoming webhook URL from the dashboard.
+- Pro users can add a project-level Slack incoming webhook URL from the dashboard.
 - Slack alerts use the same scheduled-scan signal as email alerts:
   - at least one **new** issue appeared, or
   - the accessibility **score dropped**
@@ -382,13 +385,13 @@ Production:
 - Slack delivery is best-effort. A Slack failure is logged but does not abort
   the scheduled scan batch.
 - If either email or Slack is delivered successfully, the alert cooldown is
-  updated for that site.
+  updated for that monitored page.
 
 ### CI check history
 
-- Pro sites now include a per-site CI ingest token and CI history panel in the
+- Pro projects include a project-level CI ingest token and CI history panel in the
   dashboard.
-- POST CI summaries to `/api/ci/report` with the site token. No extra global
+- POST CI summaries to `/api/ci/report` with the project token. No extra global
   env var is required.
 - The endpoint stores a lightweight history of:
   - source
@@ -404,7 +407,7 @@ Example payload:
 
 ```json
 {
-  "token": "site-token-from-dashboard",
+  "token": "project-token-from-dashboard",
   "source": "accesslint",
   "status": "passed",
   "score": 88,
@@ -420,10 +423,10 @@ Example payload:
 
 Notes:
 
-- Tokens are per-site, so CI history is attached to the correct monitored site
+- Tokens are per-project, so CI history is attached to the correct website project
   without requiring user auth in the pipeline.
-- If a site's owner is not on Pro, the ingest endpoint returns `403`.
-- The dashboard shows the latest CI checks per site and includes a copyable
+- If a project's owner is not on Pro, the ingest endpoint returns `403`.
+- The dashboard shows the latest CI checks per project and includes a copyable
   snippet for wiring pipelines into the endpoint.
 
 #### Cron authentication
@@ -456,7 +459,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 ```
 
 The route returns a JSON summary with counts for completed, failed, and skipped
-sites plus per-site outcomes for logs/operator checks.
+monitored pages plus per-page outcomes for logs/operator checks.
 
 ### Anonymous scan rate limiting
 
@@ -500,7 +503,7 @@ Useful Vercel references:
   Free users do not receive alerts.
 - Resend is wired as a minimal transactional-email foundation. No template
   system or queueing, but welcome emails and scheduled-scan alerts both use it.
-- Saved-site quotas are enforced in app logic and still have a theoretical
+- Website/page quotas are enforced in app logic and still have a theoretical
   concurrent-request race.
 - Scan target hardening now blocks obvious private/local targets, but this is
   not a full network-isolation solution.
@@ -590,10 +593,10 @@ Run these four commands in order. Copy the `price_...` ID printed by each
 # Starter
 stripe products create \
   --name "a11ymind Starter" \
-  --description "1 saved site, monthly auto-scan, email alerts"
+  --description "1 monitored website, up to 25 pages, weekly auto-scan, email alerts"
 
 stripe prices create \
-  --unit-amount 1900 \
+  --unit-amount 2500 \
   --currency usd \
   -d "recurring[interval]=month" \
   --product <paste_starter_product_id_here>
@@ -602,10 +605,10 @@ stripe prices create \
 # Pro
 stripe products create \
   --name "a11ymind Pro" \
-  --description "Up to 10 sites, weekly auto-scan, AI fix suggestions, PDF export"
+  --description "5 monitored websites, up to 100 pages each, daily auto-scan, AI fix suggestions, PDF export"
 
 stripe prices create \
-  --unit-amount 4900 \
+  --unit-amount 6500 \
   --currency usd \
   -d "recurring[interval]=month" \
   --product <paste_pro_product_id_here>

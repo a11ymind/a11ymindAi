@@ -5,9 +5,11 @@ import { useState } from "react";
 export function SlackWebhookCard({
   siteId,
   configured,
+  compact = false,
 }: {
   siteId: string;
   configured: boolean;
+  compact?: boolean;
 }) {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isConfigured, setIsConfigured] = useState(configured);
@@ -49,17 +51,21 @@ export function SlackWebhookCard({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
-        Slack alerts
-      </p>
-      <p className="mt-1 text-sm text-text">
-        Send a Slack alert when scheduled monitoring finds new accessibility risks
-        or the score drops.
-      </p>
+      {!compact && (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
+            Slack alerts
+          </p>
+          <p className="mt-1 text-sm text-text">
+            Send a Slack alert when scheduled monitoring finds new accessibility risks
+            or the score drops.
+          </p>
+        </>
+      )}
       <p className="mt-1 text-xs text-text-muted">
         {isConfigured
-          ? "A webhook is already configured for this site. Paste a new one to replace it, or submit an empty field to remove it."
-          : "Paste a Slack incoming webhook URL for this site."}
+          ? "A webhook is already configured for this website project. Paste a new one to replace it, or submit an empty field to remove it."
+          : "Paste a Slack incoming webhook URL for this website project."}
       </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-3">

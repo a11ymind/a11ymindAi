@@ -26,7 +26,7 @@ export default function LoginPage() {
             </div>
             <ul className="mt-6 space-y-2 text-xs text-text-subtle">
               <li className="flex items-center gap-2">
-                <Check /> Return to your saved scans and monitored pages
+                <Check /> Return to website projects, monitored pages, and reports
               </li>
               <li className="flex items-center gap-2">
                 <Check /> Open reports, billing, and diagnostics in one place

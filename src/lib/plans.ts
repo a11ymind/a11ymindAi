@@ -22,7 +22,7 @@ export const PLAN_TIERS: PlanTier[] = [
     tagline: "See your accessibility risk in 60 seconds.",
     features: [
       { text: "5 scans / month", included: true },
-      { text: "1 saved page", included: true },
+      { text: "1 monitored page", included: true },
       { text: "3 AI fix suggestions / month", included: true },
       { text: "Full WCAG 2.1 AA report", included: true },
       { text: "Open-source GitHub Action for CI", included: true },
@@ -39,7 +39,7 @@ export const PLAN_TIERS: PlanTier[] = [
     tagline: "For the handful of pages that matter most.",
     features: [
       { text: "Unlimited manual scans", included: true },
-      { text: "5 saved pages", included: true },
+      { text: "1 monitored website, up to 25 pages", included: true },
       { text: "Weekly auto-scan + email alerts", included: true },
       { text: "AI fix suggestions (100 / month)", included: true },
       { text: "PDF report + shareable link", included: true },
@@ -55,7 +55,7 @@ export const PLAN_TIERS: PlanTier[] = [
     tagline: "Agencies and teams monitoring many pages.",
     features: [
       { text: "Everything in Starter", included: true },
-      { text: "25 saved pages", included: true },
+      { text: "5 monitored websites, up to 100 pages each", included: true },
       { text: "Daily auto-scan", included: true },
       { text: "AI fix suggestions (500 / month)", included: true },
       { text: "CI check history in your dashboard", included: true },

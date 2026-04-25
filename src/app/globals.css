@@ -65,6 +65,50 @@
   .card {
     @apply rounded-xl border border-border bg-bg-elevated/80 backdrop-blur-sm shadow-card;
   }
+  .surface-premium {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018) 42%, rgba(6, 182, 212, 0.055)),
+      radial-gradient(900px 420px at 8% 0%, rgba(34, 211, 238, 0.16), transparent 58%),
+      radial-gradient(760px 360px at 100% 12%, rgba(245, 158, 11, 0.085), transparent 54%),
+      rgba(13, 16, 22, 0.88);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 24px 80px -48px rgba(0, 0, 0, 0.95),
+      0 0 60px -38px rgba(6, 182, 212, 0.75);
+    backdrop-filter: blur(18px);
+  }
+  .surface-premium::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: linear-gradient(90deg, #000, transparent 75%);
+    -webkit-mask-image: linear-gradient(90deg, #000, transparent 75%);
+    opacity: 0.42;
+  }
+  .surface-premium > * {
+    position: relative;
+    z-index: 1;
+  }
+  .metric-tile {
+    @apply bg-bg/70 p-4 backdrop-blur-sm;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  }
+  .section-kicker {
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em] text-text-subtle;
+  }
+  .page-shell-gradient {
+    background-image:
+      radial-gradient(900px 460px at 50% -180px, rgba(6, 182, 212, 0.1), transparent 62%),
+      radial-gradient(720px 360px at 92% 12%, rgba(245, 158, 11, 0.06), transparent 58%);
+  }
   .card-hover {
     @apply transition-[transform,border-color,box-shadow,background-color] duration-200 hover:border-border-strong hover:bg-bg-elevated hover:-translate-y-0.5;
   }

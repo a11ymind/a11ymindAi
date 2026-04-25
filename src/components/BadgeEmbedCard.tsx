@@ -7,10 +7,12 @@ export function BadgeEmbedCard({
   siteUrl,
   badgeUrl,
   snippet,
+  compact = false,
 }: {
   siteUrl: string;
   badgeUrl: string;
   snippet: string;
+  compact?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -25,18 +27,22 @@ export function BadgeEmbedCard({
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className={`${compact ? "" : "mt-4"} rounded-2xl border border-white/10 bg-white/5 p-4`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
             Monitoring badge
           </p>
-          <p className="mt-1 text-sm text-text">
-            Add a lightweight footer badge to show this website is actively monitored by a11ymind.
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            This signals ongoing accessibility monitoring. It does not claim certification or full compliance.
-          </p>
+          {!compact && (
+            <>
+              <p className="mt-1 text-sm text-text">
+                Add a lightweight footer badge to show this website project is actively monitored by a11ymind.
+              </p>
+              <p className="mt-1 text-xs text-text-muted">
+                This signals ongoing accessibility monitoring. It does not claim certification or full compliance.
+              </p>
+            </>
+          )}
           <div className="mt-3 rounded-xl border border-white/10 bg-background px-3 py-3">
             <Image
               src={badgeUrl}
@@ -57,9 +63,11 @@ export function BadgeEmbedCard({
               {copied ? "Copied" : "Copy snippet"}
             </button>
           </div>
-          <pre className="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
-            <code>{snippet}</code>
-          </pre>
+          {!compact && (
+            <pre className="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
+              <code>{snippet}</code>
+            </pre>
+          )}
         </div>
       </div>
     </div>

@@ -55,18 +55,34 @@ export async function POST(req: Request) {
     );
   }
 
-  const site = await prisma.site.findUnique({
+  const project = await prisma.project.findUnique({
     where: { ciIngestToken: parsed.data.token },
     select: {
       id: true,
       user: { select: { plan: true } },
     },
   });
-  if (!site) {
+  const legacySite = project
+    ? null
+    : await prisma.site.findUnique({
+        where: { ciIngestToken: parsed.data.token },
+        select: {
+          id: true,
+          projectId: true,
+          user: { select: { plan: true } },
+        },
+      });
+  const target = project
+    ? { siteId: null, projectId: project.id, plan: project.user.plan }
+    : legacySite
+      ? { siteId: legacySite.id, projectId: legacySite.projectId, plan: legacySite.user.plan }
+      : null;
+
+  if (!target) {
     return NextResponse.json({ error: "Invalid CI ingest token" }, { status: 401 });
   }
 
-  if (!entitlementsFor(site.user.plan).ciIntegration) {
+  if (!entitlementsFor(target.plan).ciIntegration) {
     return NextResponse.json(
       { error: "CI check history is available on Pro." },
       { status: 403 },
@@ -75,7 +91,8 @@ export async function POST(req: Request) {
 
   const ciCheck = await prisma.ciCheck.create({
     data: {
-      siteId: site.id,
+      siteId: target.siteId,
+      projectId: target.projectId,
       source: parsed.data.source,
       status: parsed.data.status,
       score: parsed.data.score ?? null,

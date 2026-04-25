@@ -66,6 +66,7 @@ const REQUIRED_ENV = [
   "NEXTAUTH_URL",
   "NEXT_PUBLIC_APP_URL",
   "CRON_SECRET",
+  "SCAN_WORKER_SECRET",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_STARTER_PRICE_ID",
@@ -135,6 +136,13 @@ export function getDeploymentDiagnostics(): DeploymentDiagnostic {
       message: process.env.CRON_SECRET
         ? "CRON_SECRET is configured for the auto-scan route."
         : "CRON_SECRET is missing. Scheduled auto-scans cannot be invoked safely.",
+    },
+    {
+      name: "Scan worker authentication",
+      status: process.env.SCAN_WORKER_SECRET ? "pass" : "fail",
+      message: process.env.SCAN_WORKER_SECRET
+        ? "SCAN_WORKER_SECRET is configured for the internal scan worker route."
+        : "SCAN_WORKER_SECRET is missing. New scans will rely on the browser fallback instead of server-side worker dispatch.",
     },
     {
       name: "Anthropic integration",

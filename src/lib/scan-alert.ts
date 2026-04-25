@@ -30,8 +30,10 @@ export async function maybeSendScheduledScanAlert(input: {
     select: {
       id: true,
       url: true,
+      pageId: true,
       lastAlertSentAt: true,
       slackWebhookUrl: true,
+      project: { select: { slackWebhookUrl: true } },
       user: { select: { email: true, plan: true } },
     },
   });
@@ -39,7 +41,8 @@ export async function maybeSendScheduledScanAlert(input: {
   if (site.user.plan === "FREE") {
     return { status: "skipped", reason: "plan_ineligible" };
   }
-  const shouldSendSlack = site.user.plan === "PRO" && Boolean(site.slackWebhookUrl);
+  const slackWebhookUrl = site.project?.slackWebhookUrl ?? site.slackWebhookUrl;
+  const shouldSendSlack = site.user.plan === "PRO" && Boolean(slackWebhookUrl);
   if (!site.user.email && !shouldSendSlack) {
     return { status: "skipped", reason: "no_destination" };
   }
@@ -51,31 +54,34 @@ export async function maybeSendScheduledScanAlert(input: {
     return { status: "skipped", reason: "cooldown" };
   }
 
-  const [currentScan, previousScan] = await Promise.all([
-    prisma.scan.findUnique({
-      where: { id: input.currentScanId },
-      select: {
-        id: true,
-        score: true,
-        violations: { select: { axeId: true } },
-      },
-    }),
-    prisma.scan.findFirst({
-      where: {
-        siteId: site.id,
-        status: "COMPLETED",
-        id: { not: input.currentScanId },
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        score: true,
-        violations: { select: { axeId: true } },
-      },
-    }),
-  ]);
+  const currentScan = await prisma.scan.findUnique({
+    where: { id: input.currentScanId },
+    select: {
+      id: true,
+      score: true,
+      pageId: true,
+      siteId: true,
+      violations: { select: { axeId: true } },
+    },
+  });
 
   if (!currentScan) return { status: "skipped", reason: "current_scan_missing" };
+
+  const previousScan = await prisma.scan.findFirst({
+    where: {
+      ...(currentScan.pageId || site.pageId
+        ? { pageId: currentScan.pageId ?? site.pageId }
+        : { siteId: currentScan.siteId ?? site.id }),
+      status: "COMPLETED",
+      id: { not: input.currentScanId },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      score: true,
+      violations: { select: { axeId: true } },
+    },
+  });
 
   const currentSet = new Set(currentScan.violations.map((v) => v.axeId));
   const previousSet = new Set(
@@ -120,9 +126,9 @@ export async function maybeSendScheduledScanAlert(input: {
       }
     }
 
-    if (shouldSendSlack && site.slackWebhookUrl) {
+    if (shouldSendSlack && slackWebhookUrl) {
       const slack = await sendSlackRegressionAlert({
-        webhookUrl: site.slackWebhookUrl,
+        webhookUrl: slackWebhookUrl,
         siteUrl: site.url,
         previousScore,
         currentScore: currentScan.score,

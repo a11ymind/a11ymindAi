@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       });
       userPlan = user?.plan ?? "FREE";
 
-      // Release any of this user's prior scans that got stuck in RUNNING.
+      // Release any of this user's prior scans that got stuck before finishing.
       // Protects the AI reservation slot + gives an accurate in-flight count.
       await reapStaleRunningScans(userId);
 
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
       const concurrencyCap =
         userPlan === "PRO" ? 5 : userPlan === "STARTER" ? 2 : 1;
       const inFlight = await prisma.scan.count({
-        where: { userId, status: "RUNNING" },
+        where: { userId, status: { in: ["PENDING", "RUNNING"] } },
       });
       if (inFlight >= concurrencyCap) {
         return NextResponse.json(
@@ -186,21 +186,30 @@ export async function POST(req: Request) {
       }
     }
 
-    const { createScanRecord, executeScanRecord } = await import("@/lib/scan-jobs");
-    const scan = await createScanRecord({ url: target, userId, siteId });
-    const result = await executeScanRecord(scan, userPlan);
-
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: result.error, scanId: result.scanId },
-        { status: 500 },
-      );
+    const { createScanRecord } = await import("@/lib/scan-jobs");
+    const { ensureProjectPageForUrl } = await import("@/lib/projects");
+    const projectPage = await ensureProjectPageForUrl({ userId, url: target });
+    if (projectPage && siteId) {
+      await prisma.site.updateMany({
+        where: { id: siteId, userId: userId ?? undefined },
+        data: {
+          projectId: projectPage.projectId,
+          pageId: projectPage.pageId,
+        },
+      });
     }
+    const scan = await createScanRecord({
+      url: target,
+      userId,
+      siteId,
+      projectId: projectPage?.projectId ?? null,
+      pageId: projectPage?.pageId ?? null,
+    });
+    enqueueScanWorker(scan.id, req.url);
 
     return NextResponse.json({
-      scanId: result.scanId,
-      score: result.score,
-      ...result.ai,
+      scanId: scan.id,
+      status: "PENDING",
     });
   } catch (error) {
     console.error("[api/scan] unexpected error:", error);
@@ -214,4 +223,43 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+function enqueueScanWorker(scanId: string, requestUrl: string) {
+  const secret = process.env.SCAN_WORKER_SECRET;
+  if (!secret) {
+    console.warn("[api/scan] SCAN_WORKER_SECRET missing; client fallback will start scan");
+    return;
+  }
+
+  const baseUrl = workerBaseUrl(requestUrl);
+  after(async () => {
+    try {
+      const res = await fetch(`${baseUrl}/api/internal/scan-worker`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${secret}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ scanId }),
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.error(
+          `[api/scan] scan worker returned ${res.status} for ${scanId}`,
+        );
+      }
+    } catch (error) {
+      console.error(`[api/scan] failed to enqueue scan worker for ${scanId}:`, error);
+    }
+  });
+}
+
+function workerBaseUrl(requestUrl: string) {
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? null;
+  if (configured) return configured.replace(/\/$/, "");
+  const parsed = new URL(requestUrl);
+  return parsed.origin;
 }

@@ -18,6 +18,8 @@ const SCAN_RECORD_SELECT = {
   url: true,
   userId: true,
   siteId: true,
+  projectId: true,
+  pageId: true,
 } satisfies Prisma.ScanSelect;
 
 type PersistedScan = Prisma.ScanGetPayload<{ select: typeof SCAN_RECORD_SELECT }>;
@@ -38,10 +40,9 @@ function disabledAiSummary(userId: string | null, plan: Plan | null): AiUsageSum
   };
 }
 
-// Scans are executed inline with maxDuration=60. If a function times out
-// mid-transaction, the Scan row stays in RUNNING forever and (pre-fix) its
-// AI reservation slot is permanently consumed. Before kicking off a new scan
-// we clean up any of the user's own stale RUNNING rows.
+// If a function times out mid-scan, the Scan row can stay in PENDING/RUNNING
+// forever and its AI reservation slot may remain consumed. Before kicking off
+// a new scan we clean up any of the user's own stale in-flight rows.
 const STALE_SCAN_THRESHOLD_MS = 5 * 60 * 1000;
 
 export async function reapStaleRunningScans(
@@ -52,12 +53,17 @@ export async function reapStaleRunningScans(
   const { count } = await prisma.scan.updateMany({
     where: {
       userId,
-      status: "RUNNING",
-      createdAt: { lt: cutoff },
+      status: { in: ["PENDING", "RUNNING"] },
+      OR: [
+        { startedAt: { lt: cutoff } },
+        { startedAt: null, createdAt: { lt: cutoff } },
+      ],
     },
     data: {
       status: "FAILED",
       error: "Scan timed out",
+      lastRunError: "Scan timed out",
+      completedAt: now,
       aiReservedMonth: null,
     },
   });
@@ -68,14 +74,18 @@ export async function createScanRecord(input: {
   url: string;
   userId: string | null;
   siteId: string | null;
+  projectId?: string | null;
+  pageId?: string | null;
 }): Promise<PersistedScan> {
   return prisma.scan.create({
     data: {
       url: input.url,
       score: 0,
-      status: "RUNNING",
+      status: "PENDING",
       userId: input.userId,
       siteId: input.siteId,
+      projectId: input.projectId ?? null,
+      pageId: input.pageId ?? null,
     },
     select: SCAN_RECORD_SELECT,
   });
@@ -91,32 +101,55 @@ export async function executeScanRecord(
     const ai = await maybeGenerateAiFixes(scan.id, scan.userId, userPlan, result.violations);
     const fixByAxeId = new Map(ai.fixes.map((fix) => [fix.axeId, fix]));
 
-    await prisma.$transaction([
-      prisma.violation.createMany({
-        data: result.violations.map((violation) => {
-          const first = violation.nodes[0];
-          const fix = fixByAxeId.get(violation.id);
-          return {
+    await prisma.$transaction(async (tx) => {
+      for (const violation of result.violations) {
+        const first = violation.nodes[0];
+        const fix = fixByAxeId.get(violation.id);
+        const persisted = await tx.violation.create({
+          data: {
             scanId: scan.id,
             axeId: violation.id,
             impact: violation.impact ?? "minor",
             description: violation.description,
             help: violation.help,
             helpUrl: violation.helpUrl,
+            // Keep the first node on the parent row for compatibility with
+            // existing reports/PDFs while storing all nodes below.
             element: first?.html?.slice(0, 4000) ?? "",
             selector: first?.target?.join(" ") ?? "",
             failureSummary: first?.failureSummary ?? null,
             legalRationale: fix?.legalRationale ?? null,
             plainEnglishFix: fix?.plainEnglishFix ?? null,
             codeExample: fix?.codeExample ?? null,
-          };
-        }),
-      }),
-      prisma.scan.update({
+          },
+          select: { id: true },
+        });
+
+        if (violation.nodes.length > 0) {
+          await tx.violationInstance.createMany({
+            data: violation.nodes.map((node, index) => ({
+              violationId: persisted.id,
+              ordinal: index,
+              element: node.html?.slice(0, 4000) ?? "",
+              selector: node.target?.join(" ") ?? "",
+              failureSummary: node.failureSummary ?? null,
+            })),
+          });
+        }
+      }
+
+      await tx.scan.update({
         where: { id: scan.id },
-        data: { score, status: "COMPLETED", url: result.finalUrl, error: null },
-      }),
-    ]);
+        data: {
+          score,
+          status: "COMPLETED",
+          url: result.finalUrl,
+          error: null,
+          lastRunError: null,
+          completedAt: new Date(),
+        },
+      });
+    });
 
     return { ok: true, scanId: scan.id, score, ai: ai.summary };
   } catch (error) {
@@ -124,7 +157,12 @@ export async function executeScanRecord(
     try {
       await prisma.scan.update({
         where: { id: scan.id },
-        data: { status: "FAILED", error: message },
+        data: {
+          status: "FAILED",
+          error: message,
+          lastRunError: message,
+          completedAt: new Date(),
+        },
       });
     } catch (updateError) {
       console.error(`[scan-jobs] failed to persist scan failure for ${scan.id}:`, updateError);
@@ -216,13 +254,15 @@ async function findCachedFixesForSite(
 
   const current = await prisma.scan.findUnique({
     where: { id: currentScanId },
-    select: { siteId: true },
+    select: { pageId: true, siteId: true },
   });
-  if (!current?.siteId) return null;
+  if (!current?.pageId && !current?.siteId) return null;
 
   const previous = await prisma.scan.findFirst({
     where: {
-      siteId: current.siteId,
+      ...(current.pageId
+        ? { pageId: current.pageId }
+        : { siteId: current.siteId }),
       status: "COMPLETED",
       id: { not: currentScanId },
     },
@@ -296,6 +336,8 @@ export async function reserveScheduledScan(input: {
             id: true,
             url: true,
             userId: true,
+            projectId: true,
+            pageId: true,
             user: { select: { plan: true } },
           },
         });
@@ -332,8 +374,13 @@ export async function reserveScheduledScan(input: {
             url: site.url,
             score: 0,
             status: "RUNNING",
+            source: "SCHEDULED",
+            startedAt: input.now,
+            attemptCount: 1,
             userId: site.userId,
             siteId: site.id,
+            projectId: site.projectId,
+            pageId: site.pageId,
           },
           select: SCAN_RECORD_SELECT,
         });

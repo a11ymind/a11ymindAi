@@ -20,6 +20,13 @@ enum ScanStatus {
   FAILED
 }
 
+enum ScanSource {
+  MANUAL
+  SCHEDULED
+  CI
+  WORKER_RETRY
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -37,6 +44,7 @@ model User {
 
   accounts Account[]
   sites    Site[]
+  projects Project[]
   scans    Scan[]
 }
 
@@ -70,18 +78,62 @@ model Site {
   lastAlertSentAt  DateTime?
   lastAlertScanId  String?
   lastDigestSentAt DateTime?
+  projectId        String?
+  pageId           String?
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  page     Page?     @relation(fields: [pageId], references: [id], onDelete: SetNull)
   scans    Scan[]
   ciChecks CiCheck[]
 
   @@unique([userId, url])
   @@index([userId])
+  @@index([projectId])
+  @@index([pageId])
+}
+
+model Project {
+  id               String   @id @default(cuid())
+  userId           String
+  name             String?
+  origin           String
+  ciIngestToken    String?  @unique
+  slackWebhookUrl  String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages Page[]
+  sites Site[]
+  scans Scan[]
+  ciChecks CiCheck[]
+
+  @@unique([userId, origin])
+  @@index([userId])
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  projectId String
+  url       String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sites   Site[]
+  scans   Scan[]
+
+  @@unique([projectId, url])
+  @@index([projectId])
+  @@index([url])
 }
 
 model CiCheck {
   id            String   @id @default(cuid())
-  siteId        String
+  siteId        String?
+  projectId     String?
   source        String
   status        String
   score         Int?
@@ -96,9 +148,11 @@ model CiCheck {
   reportUrl     String?  @db.Text
   createdAt     DateTime @default(now())
 
-  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site    Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([siteId, createdAt])
+  @@index([projectId, createdAt])
 }
 
 model Scan {
@@ -106,20 +160,31 @@ model Scan {
   url             String
   score           Int
   status          ScanStatus  @default(COMPLETED)
+  source          ScanSource  @default(MANUAL)
   error           String?
+  lastRunError    String?     @db.Text
+  startedAt       DateTime?
+  completedAt     DateTime?
+  attemptCount    Int         @default(0)
   aiReservedMonth String?
   shareToken      String?     @unique
   createdAt       DateTime    @default(now())
   userId          String?
   siteId          String?
+  projectId       String?
+  pageId          String?
   violations      Violation[]
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  site Site? @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  site    Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  page    Page?    @relation(fields: [pageId], references: [id], onDelete: SetNull)
 
   @@index([url])
   @@index([userId])
   @@index([siteId])
+  @@index([projectId])
+  @@index([pageId])
   @@index([createdAt])
   @@index([userId, createdAt])
   @@index([userId, aiReservedMonth])
@@ -149,8 +214,23 @@ model Violation {
   plainEnglishFix String? @db.Text
   codeExample     String? @db.Text
 
-  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scan      Scan                @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  instances ViolationInstance[]
 
   @@index([scanId])
   @@index([impact])
+}
+
+model ViolationInstance {
+  id             String  @id @default(cuid())
+  violationId    String
+  ordinal        Int
+  element        String  @db.Text
+  selector       String  @db.Text
+  failureSummary String? @db.Text
+
+  violation Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+
+  @@index([violationId])
+  @@unique([violationId, ordinal])
 }

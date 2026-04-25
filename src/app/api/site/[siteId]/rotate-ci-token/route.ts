@@ -22,6 +22,7 @@ export async function POST(
     select: {
       id: true,
       userId: true,
+      projectId: true,
       user: { select: { plan: true } },
     },
   });
@@ -38,9 +39,18 @@ export async function POST(
 
   const token = randomBytes(24).toString("base64url");
 
-  await prisma.site.update({
-    where: { id: site.id },
-    data: { ciIngestToken: token },
+  await prisma.$transaction(async (tx) => {
+    await tx.site.update({
+      where: { id: site.id },
+      data: { ciIngestToken: token },
+    });
+
+    if (site.projectId) {
+      await tx.project.update({
+        where: { id: site.projectId },
+        data: { ciIngestToken: token },
+      });
+    }
   });
 
   return NextResponse.json({ ok: true, token });
