@@ -201,6 +201,15 @@ async function launchBrowser(): Promise<Browser> {
 
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     const { default: chromium } = await import("@sparticuz/chromium");
+    // On Vercel the node_modules tree is relocated by the bundler so the
+    // bin/ directory inside @sparticuz/chromium is not available at the path
+    // the package expects. Pass an explicit URL so the library downloads,
+    // decompresses, and caches the binary on first invocation.
+    // Set CHROMIUM_EXECUTABLE_PATH to a Cloudflare R2 (or other CDN) URL for
+    // faster cold starts; falls back to the matching GitHub releases asset.
+    const chromiumUrl =
+      process.env.CHROMIUM_EXECUTABLE_PATH ??
+      "https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.tar";
     return puppeteer.launch({
       args: [
         ...chromium.args,
@@ -210,7 +219,7 @@ async function launchBrowser(): Promise<Browser> {
         "--disable-gpu",
       ],
       defaultViewport: DEFAULT_VIEWPORT,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(chromiumUrl),
       headless: true,
     });
   }
