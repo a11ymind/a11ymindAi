@@ -10,6 +10,21 @@ const nextConfig = {
     "@axe-core/puppeteer",
     "axe-core",
   ],
+  // Include the @sparticuz/chromium binary files (.br) in Vercel's output
+  // bundle. Without this, Vercel excludes non-JS assets from node_modules
+  // and the bin/ directory is missing at runtime, causing executablePath()
+  // to throw or fall back to a remote download.
+  outputFileTracingIncludes: {
+    "/api/internal/scan-worker": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+    "/api/scan": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+    "/api/cron/auto-scan": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+  },
 };
 
 const hasSentryCreds =

@@ -184,6 +184,32 @@ export async function scanUrl(url: string): Promise<ScanResult> {
   }
 }
 
+function chromiumBinPath(): string {
+  // Resolve the bin/ directory relative to the package root.
+  // Works when outputFileTracingIncludes copies the files into the bundle.
+  const { createRequire } = require("node:module") as typeof import("node:module");
+  const req = createRequire(import.meta.url ?? __filename);
+  const pkgRoot = require("node:path").dirname(
+    req.resolve("@sparticuz/chromium/package.json"),
+  );
+  return require("node:path").join(pkgRoot, "bin");
+}
+
+function chromiumPackUrl(): string {
+  // Read the installed package version at runtime so the URL stays in sync
+  // when the package is updated.
+  let version = "147.0.1";
+  try {
+    const { createRequire } = require("node:module") as typeof import("node:module");
+    const req = createRequire(import.meta.url ?? __filename);
+    const pkg = req("@sparticuz/chromium/package.json") as { version: string };
+    version = pkg.version;
+  } catch {
+    // fall through to hardcoded default
+  }
+  return `https://github.com/Sparticuz/chromium/releases/download/v${version}/chromium-v${version}-pack.tar`;
+}
+
 async function launchBrowser(): Promise<Browser> {
   if (process.env.GITHUB_ACTIONS === "true") {
     return puppeteer.launch({
@@ -201,15 +227,15 @@ async function launchBrowser(): Promise<Browser> {
 
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     const { default: chromium } = await import("@sparticuz/chromium");
-    // On Vercel the node_modules tree is relocated by the bundler so the
-    // bin/ directory inside @sparticuz/chromium is not available at the path
-    // the package expects. Pass an explicit URL so the library downloads,
-    // decompresses, and caches the binary on first invocation.
-    // Set CHROMIUM_EXECUTABLE_PATH to a Cloudflare R2 (or other CDN) URL for
-    // faster cold starts; falls back to the matching GitHub releases asset.
-    const chromiumUrl =
+    // outputFileTracingIncludes in next.config.js copies the bin/ directory
+    // (containing .br binary files) into the Vercel output bundle so
+    // executablePath() can find it without any network download.
+    // CHROMIUM_EXECUTABLE_PATH overrides with a CDN URL (e.g. Cloudflare R2)
+    // if the bin/ path is still missing after a build without tracing enabled.
+    const binPath = chromiumBinPath();
+    const execInput =
       process.env.CHROMIUM_EXECUTABLE_PATH ??
-      "https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.tar";
+      (existsSync(binPath) ? binPath : chromiumPackUrl());
     return puppeteer.launch({
       args: [
         ...chromium.args,
@@ -219,7 +245,7 @@ async function launchBrowser(): Promise<Browser> {
         "--disable-gpu",
       ],
       defaultViewport: DEFAULT_VIEWPORT,
-      executablePath: await chromium.executablePath(chromiumUrl),
+      executablePath: await chromium.executablePath(execInput),
       headless: true,
     });
   }
