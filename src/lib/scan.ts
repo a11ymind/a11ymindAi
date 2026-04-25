@@ -185,28 +185,19 @@ export async function scanUrl(url: string): Promise<ScanResult> {
 }
 
 function chromiumBinPath(): string {
-  // Resolve the bin/ directory relative to the package root.
-  // Works when outputFileTracingIncludes copies the files into the bundle.
+  // @sparticuz/chromium's exports map only exposes "." so we can't resolve
+  // "./package.json" directly. Instead resolve the main entry point and
+  // navigate up to the package root: build/cjs/index.cjs → ../../.. → root.
   const { createRequire } = require("node:module") as typeof import("node:module");
   const req = createRequire(import.meta.url ?? __filename);
-  const pkgRoot = require("node:path").dirname(
-    req.resolve("@sparticuz/chromium/package.json"),
-  );
-  return require("node:path").join(pkgRoot, "bin");
+  const main = req.resolve("@sparticuz/chromium");
+  return require("node:path").join(main, "../../..", "bin");
 }
 
 function chromiumPackUrl(): string {
-  // Read the installed package version at runtime so the URL stays in sync
-  // when the package is updated.
-  let version = "147.0.1";
-  try {
-    const { createRequire } = require("node:module") as typeof import("node:module");
-    const req = createRequire(import.meta.url ?? __filename);
-    const pkg = req("@sparticuz/chromium/package.json") as { version: string };
-    version = pkg.version;
-  } catch {
-    // fall through to hardcoded default
-  }
+  // Last-resort fallback URL when bin/ is not present in the bundle.
+  // Update this version string when upgrading @sparticuz/chromium.
+  const version = "147.0.1";
   return `https://github.com/Sparticuz/chromium/releases/download/v${version}/chromium-v${version}-pack.tar`;
 }
 
