@@ -180,11 +180,25 @@ async function maybeGenerateAiFixes(
   try {
     const summary = await getAiUsageSummary(userId, plan);
 
-    if (!summary.aiEnabled || violations.length === 0 || !userId) {
+    if (!userId) {
+      console.warn(`[scan-jobs] AI skipped for scan ${scanId}: no userId (anonymous scan)`);
+      return { fixes: [], summary };
+    }
+    if (!summary.aiEnabled) {
+      console.warn(
+        `[scan-jobs] AI skipped for scan ${scanId}: aiEnabled=false` +
+        ` (ANTHROPIC_API_KEY set=${Boolean(process.env.ANTHROPIC_API_KEY)},` +
+        ` plan=${plan}, limitReached=${summary.aiLimitReached},` +
+        ` requiresUpgrade=${summary.requiresUpgradeForAI})`,
+      );
+      return { fixes: [], summary };
+    }
+    if (violations.length === 0) {
       return { fixes: [], summary };
     }
 
     if (!plan || !entitlementsFor(plan).aiFixes) {
+      console.warn(`[scan-jobs] AI skipped for scan ${scanId}: plan=${plan} has no aiFixes entitlement`);
       return { fixes: [], summary };
     }
 
@@ -195,17 +209,20 @@ async function maybeGenerateAiFixes(
 
     const reservation = await reserveAiUsageSlot(scanId, userId, plan);
     if (!reservation.ok) {
+      console.warn(`[scan-jobs] AI reservation failed for scan ${scanId}: slot unavailable`);
       return { fixes: [], summary: reservation.summary };
     }
 
     let fixes: Awaited<ReturnType<typeof generateFixes>> = [];
     try {
       fixes = await generateFixes(violations, plan);
-    } catch {
+    } catch (genError) {
+      console.error(`[scan-jobs] generateFixes threw for scan ${scanId}:`, genError);
       fixes = [];
     }
 
     if (fixes.length === 0) {
+      console.warn(`[scan-jobs] generateFixes returned 0 fixes for scan ${scanId} (${violations.length} violations, plan=${plan})`);
       await clearAiReservation(scanId);
       return {
         fixes: [],
@@ -215,8 +232,7 @@ async function maybeGenerateAiFixes(
 
     return { fixes, summary: reservation.summary };
   } catch (error) {
-    // AI guidance is optional. If the paid-only remediation path throws at
-    // runtime, keep the scan itself successful and fall back to no fixes.
+    // AI guidance is optional — keep the scan successful and fall back to no fixes.
     console.error(`[scan-jobs] AI generation fallback for scan ${scanId}:`, error);
     try {
       await clearAiReservation(scanId);

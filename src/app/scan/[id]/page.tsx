@@ -1298,8 +1298,14 @@ function LockedAiPreview({
   totalViolations: number;
   isFreeOrAnonViewer: boolean;
 }) {
+  const upgradeGate = "upgradeGate" in state ? state.upgradeGate : true;
   const showUpgradeReassurance = isFreeOrAnonViewer && state.ctaHref === "/pricing";
-  const showReadyHeadline = isFreeOrAnonViewer && totalViolations > 0;
+  const showReadyHeadline = isFreeOrAnonViewer && totalViolations > 0 && upgradeGate;
+  const headline = showReadyHeadline
+    ? `${totalViolations} AI fix${totalViolations === 1 ? "" : "es"} ready for this scan`
+    : upgradeGate
+      ? "AI fix suggestions are locked"
+      : "AI fixes not available for this scan";
   return (
     <div className="relative border-t border-border/70 px-6 py-6">
       <div className="space-y-4">
@@ -1324,10 +1330,8 @@ function LockedAiPreview({
       </div>
       <div className="absolute inset-0 flex flex-col items-start justify-center bg-[linear-gradient(180deg,rgba(11,13,17,0.2),rgba(11,13,17,0.88)_30%,rgba(11,13,17,0.94))] p-6">
         <p className="flex items-center gap-2 text-sm font-semibold text-text">
-          <LockIcon />
-          {showReadyHeadline
-            ? `${totalViolations} AI fix${totalViolations === 1 ? "" : "es"} ready for this scan`
-            : "AI fix suggestions are locked"}
+          {upgradeGate && <LockIcon />}
+          {headline}
         </p>
         <p className="mt-1 max-w-md text-sm text-text-muted">
           {state.body}
@@ -1758,6 +1762,7 @@ function recommendedFixesState({
   if (hasPersistedAi && canSeeAiFixes) {
     return {
       mode: "visible" as const,
+      upgradeGate: false,
       aiUsageCurrent: apiAiFlags.aiUsageCurrent,
       aiUsageLimit: apiAiFlags.aiUsageLimit,
       aiUsageRemaining: apiAiFlags.aiUsageRemaining,
@@ -1768,6 +1773,7 @@ function recommendedFixesState({
   if (apiAiFlags.requiresLoginForAI || (!userId && claimable)) {
     return {
       mode: "locked" as const,
+      upgradeGate: true,
       body: "Log in to see recommended fixes, save your scan, and keep tracking new accessibility regressions over time.",
       ctaHref: `/login?scanId=${encodeURIComponent(scanId)}`,
       ctaLabel: "Log in to see recommended fixes",
@@ -1781,6 +1787,7 @@ function recommendedFixesState({
   if (apiAiFlags.requiresUpgradeForAI || userPlan === "FREE") {
     return {
       mode: "locked" as const,
+      upgradeGate: true,
       body: "Each fix ships with a plain-English explanation, pasteable code, and WCAG context for every violation on this scan.",
       ctaHref: "/pricing",
       ctaLabel: "Unlock AI fixes — from $25/month",
@@ -1794,6 +1801,7 @@ function recommendedFixesState({
   if (apiAiFlags.aiLimitReached) {
     return {
       mode: "locked" as const,
+      upgradeGate: userPlan === "STARTER",
       body:
         userPlan === "STARTER"
           ? "You reached your monthly AI fix limit on Starter. Upgrade to Pro for higher coverage."
@@ -1807,8 +1815,26 @@ function recommendedFixesState({
     };
   }
 
+  // Paid user (Starter/Pro) whose scan completed but AI fixes weren't generated.
+  // This happens when ANTHROPIC_API_KEY is unset or generation failed silently.
+  // Don't show an upgrade gate — this is not a plan issue.
+  if (canSeeAiFixes && userId && userPlan) {
+    return {
+      mode: "locked" as const,
+      upgradeGate: false,
+      body: "AI fixes weren't generated for this scan. Re-scan this page to get AI-powered recommendations.",
+      ctaHref: undefined,
+      ctaLabel: undefined,
+      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
+      aiUsageLimit: apiAiFlags.aiUsageLimit,
+      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+      aiLimitReached: false,
+    };
+  }
+
   return {
     mode: "locked" as const,
+    upgradeGate: false,
     body: "Recommended fixes are not available for this scan yet. Save it and re-scan from your dashboard to keep monitoring changes over time.",
     ctaHref: claimable ? `/login?scanId=${encodeURIComponent(scanId)}` : "/dashboard",
     ctaLabel: claimable ? "Create account to save" : "Open dashboard",
