@@ -22,7 +22,6 @@
       radial-gradient(1200px 600px at 50% -200px, rgba(6, 182, 212, 0.12), transparent 60%),
       radial-gradient(900px 500px at 90% 10%, rgba(139, 92, 246, 0.06), transparent 60%),
       radial-gradient(700px 400px at 5% 30%, rgba(6, 182, 212, 0.04), transparent 60%);
-    background-attachment: fixed;
   }
   ::selection {
     background: rgba(6, 182, 212, 0.35);
@@ -151,6 +150,8 @@
     border-radius: 9999px;
     filter: blur(80px);
     opacity: 0.55;
+    will-change: filter;
+    contain: strict;
   }
   .aurora::before {
     width: 520px;

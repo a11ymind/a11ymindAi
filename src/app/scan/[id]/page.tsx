@@ -197,7 +197,7 @@ export default async function ScanResultPage({
   const visibleIssues = scan.violations.slice(0, 6);
   const visibleFixes = scan.violations
     .filter((violation) =>
-      Boolean(violation.legalRationale || violation.plainEnglishFix || violation.codeExample),
+      Boolean(violation.legalRationale || violation.codeExample),
     )
     .slice(0, 3);
   const canSeeRegressionDiffs = ownedByMe && viewerEntitlements?.regressionDiffs === true;
@@ -988,7 +988,6 @@ function ViolationCard({
     selector: string;
     failureSummary: string | null;
     legalRationale: string | null;
-    plainEnglishFix: string | null;
     codeExample: string | null;
     instances: {
       id: string;
@@ -1135,7 +1134,6 @@ function RecommendedFixesPanel({
     selector: string;
     element: string;
     legalRationale: string | null;
-    plainEnglishFix: string | null;
     codeExample: string | null;
   }[];
   fallbackViolations: {
@@ -1197,14 +1195,13 @@ function VisibleFixCard({
     selector: string;
     element: string;
     legalRationale: string | null;
-    plainEnglishFix: string | null;
     codeExample: string | null;
   };
 }) {
   const beforeSnippet = fix.element || fix.selector || fix.description;
-  const afterSnippet = fix.codeExample || fix.plainEnglishFix || fix.legalRationale || "";
-  const copyText = fix.codeExample || fix.plainEnglishFix || afterSnippet;
-  const timeToFix = estimateFixTime(fix.help, fix.codeExample, fix.plainEnglishFix);
+  const afterSnippet = fix.codeExample || fix.legalRationale || "";
+  const copyText = fix.codeExample || afterSnippet;
+  const timeToFix = estimateFixTime(fix.help, fix.codeExample);
 
   return (
     <div className="rounded-[1.15rem] border border-border bg-bg-muted/30 p-4">
@@ -1224,8 +1221,8 @@ function VisibleFixCard({
         <FixBlock label="Before" value={beforeSnippet || "Current markup or behavior needs improvement."} />
         <FixBlock label="After" value={afterSnippet || "Apply the recommended accessibility fix to improve this experience."} />
       </div>
-      {fix.plainEnglishFix && (
-        <p className="mt-3 text-sm text-text">{fix.plainEnglishFix}</p>
+      {fix.description && (
+        <p className="mt-3 text-sm text-text">{fix.description}</p>
       )}
       {fix.legalRationale && (
         <p className="mt-2 text-xs text-text-muted">{fix.legalRationale}</p>
@@ -1487,9 +1484,8 @@ function lockedFixPreview(help: string): string {
 function estimateFixTime(
   help: string,
   codeExample: string | null,
-  plainEnglishFix: string | null,
 ) {
-  const text = `${help} ${codeExample ?? ""} ${plainEnglishFix ?? ""}`.toLowerCase();
+  const text = `${help} ${codeExample ?? ""}`.toLowerCase();
 
   if (text.includes("contrast") || text.includes("alt") || text.includes("label")) {
     return "1 minute";

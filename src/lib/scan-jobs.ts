@@ -119,7 +119,7 @@ export async function executeScanRecord(
             selector: first?.target?.join(" ") ?? "",
             failureSummary: first?.failureSummary ?? null,
             legalRationale: fix?.legalRationale ?? null,
-            plainEnglishFix: fix?.plainEnglishFix ?? null,
+            plainEnglishFix: null,
             codeExample: fix?.codeExample ?? null,
           },
           select: { id: true },
@@ -272,7 +272,6 @@ async function findCachedFixesForSite(
         select: {
           axeId: true,
           selector: true,
-          plainEnglishFix: true,
           legalRationale: true,
           codeExample: true,
         },
@@ -289,12 +288,11 @@ async function findCachedFixesForSite(
 
   const fixes: AiFix[] = [];
   for (const v of previous.violations) {
-    if (!v.plainEnglishFix || !v.legalRationale || !v.codeExample) {
+    if (!v.legalRationale || !v.codeExample) {
       return null;
     }
     fixes.push({
       axeId: v.axeId,
-      plainEnglishFix: v.plainEnglishFix,
       legalRationale: v.legalRationale,
       codeExample: v.codeExample,
     });

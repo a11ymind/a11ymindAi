@@ -4,7 +4,6 @@ import type { AxeViolation } from "./scan";
 
 export type AiFix = {
   axeId: string;
-  plainEnglishFix: string;
   legalRationale: string;
   codeExample: string;
 };
@@ -19,9 +18,8 @@ function modelForPlan(plan: Plan | null): string {
 const SYSTEM_PROMPT = `You are an expert web accessibility consultant advising small-business owners and developers on ADA / WCAG 2.1 compliance.
 
 For every axe-core violation the user provides, produce:
-1. plainEnglishFix — 2–3 sentences a non-expert can understand. Say *what* is wrong and *what* to change.
-2. legalRationale — 1–2 sentences naming the WCAG success criterion at risk (e.g. "WCAG 2.1 SC 1.1.1 Non-text Content") and the real-world ADA exposure (screen-reader users excluded, Title III demand letters, etc.). Keep it factual, not alarmist.
-3. codeExample — a short, concrete HTML/CSS/ARIA snippet showing the fix. Prefer before/after when it clarifies. Wrap in triple backticks with a language tag.
+1. legalRationale — 1–2 sentences naming the WCAG success criterion at risk (e.g. "WCAG 2.1 SC 1.1.1 Non-text Content") and the real-world ADA exposure (screen-reader users excluded, Title III demand letters, etc.). Keep it factual, not alarmist.
+2. codeExample — a short, concrete HTML/CSS/ARIA snippet showing the fix applied to the actual affected element. Prefer before/after when it clarifies. Wrap in triple backticks with a language tag.
 
 Respond via the report_fixes tool. Preserve the order and axeId of the input.`;
 
@@ -48,11 +46,10 @@ const TOOL = {
           type: "object",
           properties: {
             axeId: { type: "string" },
-            plainEnglishFix: { type: "string" },
             legalRationale: { type: "string" },
             codeExample: { type: "string" },
           },
-          required: ["axeId", "plainEnglishFix", "legalRationale", "codeExample"],
+          required: ["axeId", "legalRationale", "codeExample"],
         },
       },
     },

@@ -328,7 +328,7 @@ export default async function DashboardPage({
             detail={
               entitlements.pdfExport
                 ? "Download reports from monitored scans"
-                : "Upgrade to Pro to unlock"
+                : "Upgrade to Starter or Pro to unlock"
             }
           />
           </div>

@@ -5,7 +5,6 @@ type PdfViolation = {
   description: string;
   selector: string;
   legalRationale: string | null;
-  plainEnglishFix: string | null;
   codeExample: string | null;
 };
 
@@ -74,7 +73,7 @@ export function renderScanPdf(scan: PdfScan, options: RenderScanPdfOptions = {})
   const topIssues = sortViolations(scan.violations).slice(0, 5);
   const fixes = scan.violations
     .filter((violation) =>
-      Boolean(violation.plainEnglishFix || violation.legalRationale || violation.codeExample),
+      Boolean(violation.legalRationale || violation.codeExample),
     )
     .slice(0, 4);
 
@@ -386,7 +385,7 @@ function addIssueCard(pages: Page[], issue: PdfViolation, index: number) {
 }
 
 function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
-  const recommendedFix = fix.plainEnglishFix || "No plain-English remediation note was stored for this issue.";
+  const recommendedFix = fix.description || "See the code example below for remediation guidance.";
   const rationale = fix.legalRationale || "Based on accessibility guidelines and saved scan context.";
   const codeExample = stripFences(fix.codeExample || "").slice(0, 500);
   const fixLines = wrapText(recommendedFix, charsForWidth(CONTENT_WIDTH - 36, 10));
@@ -405,7 +404,7 @@ function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
   page.ops.push(fillRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.soft));
   page.ops.push(strokeRect(MARGIN_X, y, CONTENT_WIDTH, height, COLORS.border, 1));
   page.ops.push(textOp(MARGIN_X + 16, y + height - 22, `Fix ${index}. ${fix.help}`, 12, "F2", COLORS.text));
-  page.ops.push(textOp(MARGIN_X + 16, y + height - 38, `Estimated effort: ${estimateFixTime(fix.help, fix.codeExample, fix.plainEnglishFix)}`, 8, "F1", COLORS.subtle));
+  page.ops.push(textOp(MARGIN_X + 16, y + height - 38, `Estimated effort: ${estimateFixTime(fix.help, fix.codeExample)}`, 8, "F1", COLORS.subtle));
   page.ops.push(...wrappedTextOps(MARGIN_X + 16, y + height - 56, CONTENT_WIDTH - 32, recommendedFix, 10, "F1", COLORS.text, 13));
   const rationaleY = y + height - 56 - fixLines.length * 13 - 8;
   page.ops.push(textOp(MARGIN_X + 16, rationaleY, "Based on accessibility guidelines", 8, "F2", COLORS.subtle));
@@ -596,9 +595,8 @@ function formatTimestamp(value: Date) {
 function estimateFixTime(
   help: string,
   codeExample: string | null,
-  plainEnglishFix: string | null,
 ) {
-  const text = `${help} ${codeExample ?? ""} ${plainEnglishFix ?? ""}`.toLowerCase();
+  const text = `${help} ${codeExample ?? ""}`.toLowerCase();
 
   if (text.includes("contrast") || text.includes("alt") || text.includes("label")) {
     return "1 minute";

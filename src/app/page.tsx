@@ -60,7 +60,7 @@ export default async function LandingPage() {
                 className="mt-6 max-w-2xl animate-fade-in-up text-base text-text-muted sm:text-lg"
                 style={{ animationDelay: "80ms" }}
               >
-                Scan live pages, catch regressions, generate plain-English fixes, and share reports
+                Scan live pages, catch regressions, get AI-powered fix guidance, and share reports
                 teams can act on before accessibility work turns into last-minute cleanup.
               </p>
 
@@ -77,7 +77,7 @@ export default async function LandingPage() {
               >
                 <TrustItem>No signup for first scan</TrustItem>
                 <TrustItem>Preview and production workflows</TrustItem>
-                <TrustItem>Plain-English remediation</TrustItem>
+                <TrustItem>AI-powered fix guidance</TrustItem>
                 <TrustItem>Reports for teams and clients</TrustItem>
               </div>
 
@@ -101,9 +101,8 @@ export default async function LandingPage() {
             <span className="gradient-text">a11ymind AI fixes it.</span>
           </h2>
           <p className="mt-4 text-base text-text-muted">
-            Traditional scanners spit out a wall of technical violations. We translate each
-            one into plain English, help your team act on it, and keep checking after the
-            next release.
+            Traditional scanners spit out a wall of technical violations. We rank them by
+            severity, surface AI-powered fix guidance, and keep checking after the next release.
           </p>
         </div>
 
@@ -122,7 +121,7 @@ export default async function LandingPage() {
             tone="accent"
             label="a11ymind AI"
             points={[
-              "Plain-English explanation for every accessibility risk",
+              "WCAG violation explanations with ADA legal context on paid plans",
               "Actionable fix guidance your team can ship quickly",
               "Built for operators, agencies, and developers",
               "Ongoing monitoring instead of one-shot audits",
@@ -139,7 +138,7 @@ export default async function LandingPage() {
             Three steps. No setup.
           </h2>
           <p className="mt-4 text-base text-text-muted">
-            From URL to pasteable fix in under a minute.
+            From URL to actionable fix guidance in under a minute.
           </p>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
@@ -158,7 +157,7 @@ export default async function LandingPage() {
           <FeatureCard
             step="03"
             title="Paste the fix"
-            body="Each risk comes with a plain-English explanation and a concrete code snippet you can drop in."
+            body="Each risk shows the WCAG criterion, a concrete code snippet, and ADA legal context on paid plans."
             icon={<CodeIcon />}
           />
         </div>
@@ -310,7 +309,7 @@ export default async function LandingPage() {
           />
           <FAQItem
             q="Can I really fix issues without being an expert?"
-            a="Yes. Every violation gets a plain-English explanation and a concrete code snippet. Copy, paste, re-scan."
+            a="Yes. Every violation shows the WCAG criterion and a concrete code snippet. Paid plans add ADA legal context and code examples tailored to your actual markup. Copy, paste, re-scan."
           />
           <FAQItem
             q="Who is a11ymind best for?"
@@ -395,7 +394,7 @@ function TrustItem({ children }: { children: React.ReactNode }) {
 function HeroProofStrip() {
   const steps = [
     { title: "Scan", body: "Real-browser checks against live and preview URLs." },
-    { title: "Fix", body: "Plain-English guidance and pasteable remediation." },
+    { title: "Fix", body: "WCAG context and pasteable code fix for every violation." },
     { title: "Monitor", body: "Scheduled page checks with regression history." },
     { title: "Report", body: "Shareable proof for teams, clients, and releases." },
   ];

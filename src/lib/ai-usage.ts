@@ -231,7 +231,6 @@ function aiGeneratedViolationFilter(): Prisma.ViolationWhereInput {
   return {
     OR: [
       { legalRationale: { not: null } },
-      { plainEnglishFix: { not: null } },
       { codeExample: { not: null } },
     ],
   };

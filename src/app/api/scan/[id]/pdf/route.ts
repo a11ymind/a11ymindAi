@@ -33,7 +33,6 @@ export async function GET(
           description: true,
           selector: true,
           legalRationale: true,
-          plainEnglishFix: true,
           codeExample: true,
         },
       },
