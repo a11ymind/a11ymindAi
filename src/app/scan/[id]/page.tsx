@@ -19,6 +19,7 @@ import {
   entitlementsFor,
   planLabel,
 } from "@/lib/entitlements";
+import { getAiUsageSummary, type AiUsageSummary } from "@/lib/ai-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +48,6 @@ export default async function ScanResultPage({
     plan?: string;
     pdf?: string;
     claimed?: string;
-    aiEnabled?: string;
-    aiUsageCurrent?: string;
-    aiUsageLimit?: string;
-    aiUsageRemaining?: string;
-    requiresLoginForAI?: string;
-    requiresUpgradeForAI?: string;
-    aiLimitReached?: string;
   }>;
 }) {
   const { id } = await params;
@@ -178,7 +172,10 @@ export default async function ScanResultPage({
   const canSeeAiFixes = !savedScanRequiresAiUpgrade;
   const canExportPdf = ownedByMe && viewerEntitlements?.pdfExport === true;
   const limitPlan = parsePlan(resolvedSearchParams?.plan);
-  const apiAiFlags = parseAiFlags(resolvedSearchParams);
+  const aiUsage =
+    userId && effectiveOwnerPlan
+      ? await getAiUsageSummary(userId, effectiveOwnerPlan)
+      : null;
   const coverageTease = singlePageCoverageTease({
     host: hostOf(scan.url),
     loggedIn: !!userId,
@@ -208,7 +205,7 @@ export default async function ScanResultPage({
     claimable,
     canSeeAiFixes,
     hasPersistedAi: visibleFixes.length > 0,
-    apiAiFlags,
+    aiUsage,
   });
 
   return (
@@ -1718,30 +1715,6 @@ function singlePageCoverageTease({
   };
 }
 
-function parseAiFlags(
-  searchParams:
-    | {
-        aiEnabled?: string;
-        aiUsageCurrent?: string;
-        aiUsageLimit?: string;
-        aiUsageRemaining?: string;
-        requiresLoginForAI?: string;
-        requiresUpgradeForAI?: string;
-        aiLimitReached?: string;
-      }
-    | undefined,
-) {
-  return {
-    aiEnabled: searchParams?.aiEnabled === "1",
-    aiUsageCurrent: parseNonNegativeInt(searchParams?.aiUsageCurrent),
-    aiUsageLimit: parseNonNegativeInt(searchParams?.aiUsageLimit),
-    aiUsageRemaining: parseNonNegativeInt(searchParams?.aiUsageRemaining),
-    requiresLoginForAI: searchParams?.requiresLoginForAI === "1",
-    requiresUpgradeForAI: searchParams?.requiresUpgradeForAI === "1",
-    aiLimitReached: searchParams?.aiLimitReached === "1",
-  };
-}
-
 function recommendedFixesState({
   scanId,
   userId,
@@ -1749,7 +1722,7 @@ function recommendedFixesState({
   claimable,
   canSeeAiFixes,
   hasPersistedAi,
-  apiAiFlags,
+  aiUsage,
 }: {
   scanId: string;
   userId: string | undefined;
@@ -1757,20 +1730,20 @@ function recommendedFixesState({
   claimable: boolean;
   canSeeAiFixes: boolean;
   hasPersistedAi: boolean;
-  apiAiFlags: ReturnType<typeof parseAiFlags>;
+  aiUsage: AiUsageSummary | null;
 }) {
   if (hasPersistedAi && canSeeAiFixes) {
     return {
       mode: "visible" as const,
       upgradeGate: false,
-      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
-      aiUsageLimit: apiAiFlags.aiUsageLimit,
-      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
-      aiLimitReached: apiAiFlags.aiLimitReached,
+      aiUsageCurrent: aiUsage?.aiUsageCurrent ?? null,
+      aiUsageLimit: aiUsage?.aiUsageLimit ?? null,
+      aiUsageRemaining: aiUsage?.aiUsageRemaining ?? null,
+      aiLimitReached: aiUsage?.aiLimitReached ?? false,
     };
   }
 
-  if (apiAiFlags.requiresLoginForAI || (!userId && claimable)) {
+  if (!userId && claimable) {
     return {
       mode: "locked" as const,
       upgradeGate: true,
@@ -1784,7 +1757,7 @@ function recommendedFixesState({
     };
   }
 
-  if (apiAiFlags.requiresUpgradeForAI || userPlan === "FREE") {
+  if (!canSeeAiFixes || userPlan === "FREE") {
     return {
       mode: "locked" as const,
       upgradeGate: true,
@@ -1798,7 +1771,7 @@ function recommendedFixesState({
     };
   }
 
-  if (apiAiFlags.aiLimitReached) {
+  if (aiUsage?.aiLimitReached) {
     return {
       mode: "locked" as const,
       upgradeGate: userPlan === "STARTER",
@@ -1808,9 +1781,9 @@ function recommendedFixesState({
           : "You reached your monthly AI fix limit for now. New AI fixes will become available again next month.",
       ctaHref: userPlan === "STARTER" ? "/pricing" : undefined,
       ctaLabel: userPlan === "STARTER" ? "Upgrade to Pro" : undefined,
-      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
-      aiUsageLimit: apiAiFlags.aiUsageLimit,
-      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+      aiUsageCurrent: aiUsage.aiUsageCurrent,
+      aiUsageLimit: aiUsage.aiUsageLimit,
+      aiUsageRemaining: aiUsage.aiUsageRemaining,
       aiLimitReached: true,
     };
   }
@@ -1825,9 +1798,9 @@ function recommendedFixesState({
       body: "AI fixes weren't generated for this scan. Re-scan this page to get AI-powered recommendations.",
       ctaHref: undefined,
       ctaLabel: undefined,
-      aiUsageCurrent: apiAiFlags.aiUsageCurrent,
-      aiUsageLimit: apiAiFlags.aiUsageLimit,
-      aiUsageRemaining: apiAiFlags.aiUsageRemaining,
+      aiUsageCurrent: aiUsage?.aiUsageCurrent ?? null,
+      aiUsageLimit: aiUsage?.aiUsageLimit ?? null,
+      aiUsageRemaining: aiUsage?.aiUsageRemaining ?? null,
       aiLimitReached: false,
     };
   }
@@ -1838,15 +1811,9 @@ function recommendedFixesState({
     body: "Recommended fixes are not available for this scan yet. Save it and re-scan from your dashboard to keep monitoring changes over time.",
     ctaHref: claimable ? `/login?scanId=${encodeURIComponent(scanId)}` : "/dashboard",
     ctaLabel: claimable ? "Create account to save" : "Open dashboard",
-    aiUsageCurrent: apiAiFlags.aiUsageCurrent,
-    aiUsageLimit: apiAiFlags.aiUsageLimit,
-    aiUsageRemaining: apiAiFlags.aiUsageRemaining,
-    aiLimitReached: apiAiFlags.aiLimitReached,
+    aiUsageCurrent: aiUsage?.aiUsageCurrent ?? null,
+    aiUsageLimit: aiUsage?.aiUsageLimit ?? null,
+    aiUsageRemaining: aiUsage?.aiUsageRemaining ?? null,
+    aiLimitReached: aiUsage?.aiLimitReached ?? false,
   };
-}
-
-function parseNonNegativeInt(value: string | undefined): number | null {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }

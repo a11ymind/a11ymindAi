@@ -7,12 +7,14 @@ test("extractSitemapUrls reads loc entries and decodes XML entities", () => {
     <urlset>
       <url><loc>https://example.com/</loc></url>
       <url><loc>https://example.com/pricing?a=1&amp;b=2</loc></url>
+      <url><loc>https://example.com/search?q=&quot;button&quot;</loc></url>
     </urlset>
   `);
 
   assert.deepEqual(urls, [
     "https://example.com/",
     "https://example.com/pricing?a=1&b=2",
+    "https://example.com/search?q=&quot;button&quot;",
   ]);
 });
 

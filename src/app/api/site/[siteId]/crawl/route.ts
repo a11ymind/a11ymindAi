@@ -5,13 +5,14 @@ import { createScanRecord } from "@/lib/scan-jobs";
 import { entitlementsFor } from "@/lib/entitlements";
 import { ensureProjectPageForUrl } from "@/lib/projects";
 import { prisma } from "@/lib/prisma";
+import { internalWorkerUrl } from "@/lib/internal-worker-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ siteId: string }> },
 ) {
   const { siteId } = await params;
@@ -92,10 +93,14 @@ export async function POST(
   const currentPageCount = projectId
     ? await prisma.page.count({ where: { projectId } })
     : 0;
+  const currentSiteCount = await prisma.site.count({
+    where: { userId: session.user.id },
+  });
   const remainingPageSlots = Math.max(
     0,
     entitlements.maxPagesPerProject - currentPageCount,
   );
+  const remainingSiteSlots = Math.max(0, entitlements.maxSites - currentSiteCount);
   const discoveryLimit = entitlements.maxPagesPerProject;
   const discovered = await discoverSameOriginPages({
     siteUrl: site.url,
@@ -132,6 +137,10 @@ export async function POST(
     }
 
     if (!targetSite) {
+      if (createdSites >= remainingSiteSlots) {
+        skippedForLimit += 1;
+        continue;
+      }
       if (createdPages >= remainingPageSlots) {
         skippedForLimit += 1;
         continue;
@@ -185,7 +194,7 @@ export async function POST(
       pageId: pageRef?.pageId ?? null,
     });
     createdScans.push({ scanId: scan.id, url: page.url, siteId: targetSite.id });
-    enqueueScanWorker(scan.id, req.url);
+    enqueueScanWorker(scan.id);
   }
 
   return NextResponse.json({
@@ -200,14 +209,14 @@ export async function POST(
   });
 }
 
-function enqueueScanWorker(scanId: string, requestUrl: string) {
+function enqueueScanWorker(scanId: string) {
   const secret = process.env.SCAN_WORKER_SECRET;
   if (!secret) return;
 
-  const baseUrl = workerBaseUrl(requestUrl);
+  const workerUrl = internalWorkerUrl("/api/internal/scan-worker");
   after(async () => {
     try {
-      const res = await fetch(`${baseUrl}/api/internal/scan-worker`, {
+      const res = await fetch(workerUrl, {
         method: "POST",
         headers: {
           authorization: `Bearer ${secret}`,
@@ -223,11 +232,4 @@ function enqueueScanWorker(scanId: string, requestUrl: string) {
       console.error(`[site/crawl] failed to enqueue worker for ${scanId}:`, error);
     }
   });
-}
-
-function workerBaseUrl(requestUrl: string) {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? null;
-  if (configured) return configured.replace(/\/$/, "");
-  return new URL(requestUrl).origin;
 }

@@ -448,17 +448,6 @@ function LogoStrip() {
   );
 }
 
-function StatCell({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="relative bg-bg-elevated/60 px-6 py-6 text-center sm:px-8 sm:py-7">
-      <div className="text-2xl font-semibold tracking-tight text-text sm:text-3xl">
-        <span className="gradient-text">{value}</span>
-      </div>
-      <p className="mt-1 text-xs uppercase tracking-wider text-text-subtle">{label}</p>
-    </div>
-  );
-}
-
 function FeatureCard({
   step,
   title,
@@ -740,38 +729,6 @@ function FAQItem({ q, a }: { q: string; a: string }) {
       </summary>
       <p className="mt-3 text-sm leading-relaxed text-text-muted">{a}</p>
     </details>
-  );
-}
-
-function AudienceCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-bg-elevated/30 p-6">
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-text">{title}</p>
-      <p className="mt-3 text-sm leading-relaxed text-text-muted">{body}</p>
-    </div>
-  );
-}
-
-function QuoteCard({
-  quote,
-  person,
-  role,
-}: {
-  quote: string;
-  person: string;
-  role: string;
-}) {
-  return (
-    <figure className="rounded-2xl border border-border bg-bg-elevated/20 p-6">
-      <blockquote className="text-sm leading-relaxed text-text">
-        <span className="text-accent">&ldquo;</span>
-        {quote}
-        <span className="text-accent">&rdquo;</span>
-      </blockquote>
-      <figcaption className="mt-5 text-xs text-text-muted">
-        <span className="font-medium text-text">{person}</span> — {role}
-      </figcaption>
-    </figure>
   );
 }
 
@@ -1066,40 +1023,6 @@ function PricingAnchor({ className = "" }: { className?: string }) {
         <span aria-hidden>→</span>
       </Link>
     </div>
-  );
-}
-
-/* ---------------- Stack row ---------------- */
-
-function StackRow() {
-  const stacks = [
-    "GitHub Actions",
-    "Next.js",
-    "Vercel",
-    "Netlify",
-    "React",
-    "Vue",
-    "Shopify",
-    "Webflow",
-    "WordPress",
-    "Cloudflare",
-  ];
-  return (
-    <section aria-label="Supported stacks" className="container-page pb-12 pt-4 sm:pt-6">
-      <p className="text-center text-xs uppercase tracking-[0.18em] text-text-subtle">
-        Works with any stack — we scan what you ship
-      </p>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:gap-x-8">
-        {stacks.map((s) => (
-          <span
-            key={s}
-            className="font-mono text-xs text-text-muted/80 transition-colors hover:text-text"
-          >
-            {s}
-          </span>
-        ))}
-      </div>
-    </section>
   );
 }
 

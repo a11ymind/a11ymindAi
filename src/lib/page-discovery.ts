@@ -1,4 +1,4 @@
-import { normalizeUrl } from "@/lib/scan";
+import { assertPublicHostname, normalizeUrl } from "@/lib/scan";
 
 const DEFAULT_DISCOVERY_LIMIT = 10;
 
@@ -13,7 +13,9 @@ export async function discoverSameOriginPages(input: {
 }): Promise<DiscoveredPage[]> {
   const limit = Math.max(1, Math.min(input.limit ?? DEFAULT_DISCOVERY_LIMIT, 50));
   const root = normalizeUrl(input.siteUrl);
-  const origin = new URL(root).origin;
+  const rootUrl = new URL(root);
+  await assertPublicHostname(rootUrl.hostname);
+  const origin = rootUrl.origin;
   const discovered = new Map<string, DiscoveredPage>();
 
   for (const page of await discoverFromSitemap(origin, limit)) {
@@ -35,6 +37,7 @@ async function discoverFromSitemap(
   origin: string,
   limit: number,
 ): Promise<DiscoveredPage[]> {
+  await assertPublicHostname(new URL(origin).hostname);
   const sitemapUrl = `${origin}/sitemap.xml`;
   const res = await fetch(sitemapUrl, {
     headers: { "user-agent": "a11ymindBot/1.0 (+https://www.a11ymind.ai)" },
@@ -52,6 +55,7 @@ async function discoverFromLinks(
   rootUrl: string,
   limit: number,
 ): Promise<DiscoveredPage[]> {
+  await assertPublicHostname(new URL(rootUrl).hostname);
   const res = await fetch(rootUrl, {
     headers: { "user-agent": "a11ymindBot/1.0 (+https://www.a11ymind.ai)" },
     signal: AbortSignal.timeout(10_000),
@@ -112,10 +116,5 @@ function addPage(
 }
 
 function decodeXmlEntities(value: string): string {
-  return value
-    .replaceAll("&amp;", "&")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&apos;", "'");
+  return value.replaceAll("&amp;", "&");
 }

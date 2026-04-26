@@ -10,6 +10,7 @@ import {
   rateLimitUserAction,
 } from "@/lib/rate-limit";
 import { entitlementsFor } from "@/lib/entitlements";
+import { internalWorkerUrl } from "@/lib/internal-worker-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -220,7 +221,7 @@ export async function POST(req: Request) {
       projectId: projectPage?.projectId ?? null,
       pageId: projectPage?.pageId ?? null,
     });
-    enqueueScanWorker(scan.id, req.url);
+    enqueueScanWorker(scan.id);
 
     return NextResponse.json({
       scanId: scan.id,
@@ -240,17 +241,17 @@ export async function POST(req: Request) {
   }
 }
 
-function enqueueScanWorker(scanId: string, requestUrl: string) {
+function enqueueScanWorker(scanId: string) {
   const secret = process.env.SCAN_WORKER_SECRET;
   if (!secret) {
     console.warn("[api/scan] SCAN_WORKER_SECRET missing; client fallback will start scan");
     return;
   }
 
-  const baseUrl = workerBaseUrl(requestUrl);
+  const workerUrl = internalWorkerUrl("/api/internal/scan-worker");
   after(async () => {
     try {
-      const res = await fetch(`${baseUrl}/api/internal/scan-worker`, {
+      const res = await fetch(workerUrl, {
         method: "POST",
         headers: {
           authorization: `Bearer ${secret}`,
@@ -269,12 +270,4 @@ function enqueueScanWorker(scanId: string, requestUrl: string) {
       console.error(`[api/scan] failed to enqueue scan worker for ${scanId}:`, error);
     }
   });
-}
-
-function workerBaseUrl(requestUrl: string) {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? null;
-  if (configured) return configured.replace(/\/$/, "");
-  const parsed = new URL(requestUrl);
-  return parsed.origin;
 }

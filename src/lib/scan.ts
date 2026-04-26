@@ -139,11 +139,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
 
     // Re-check the landed URL in case of redirect to a private address.
     const finalParsed = new URL(page.url());
-    if (isBlockedHostname(finalParsed.hostname)) {
-      throw new Error(
-        "Target redirected to a private or local address and cannot be scanned",
-      );
-    }
+    await assertPublicHostname(finalParsed.hostname);
 
     // Prefer <script> injection (more reliable in headless Chromium on
     // minified builds). If the page still doesn't expose window.axe — some
@@ -288,7 +284,7 @@ function resolveExecutable(candidate: string): string | null {
   }
 }
 
-async function assertPublicHostname(hostname: string) {
+export async function assertPublicHostname(hostname: string) {
   if (isBlockedHostname(hostname)) {
     throw new Error("That URL points to a private or local address and cannot be scanned");
   }

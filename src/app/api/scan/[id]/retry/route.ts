@@ -6,12 +6,13 @@ import {
   MAX_SCAN_ATTEMPTS,
   retryAttemptsRemaining,
 } from "@/lib/scan-retry";
+import { internalWorkerUrl } from "@/lib/internal-worker-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -68,7 +69,7 @@ export async function POST(
     );
   }
 
-  enqueueScanWorker(scan.id, req.url);
+  enqueueScanWorker(scan.id);
 
   return NextResponse.json({
     scanId: scan.id,
@@ -77,14 +78,14 @@ export async function POST(
   });
 }
 
-function enqueueScanWorker(scanId: string, requestUrl: string) {
+function enqueueScanWorker(scanId: string) {
   const secret = process.env.SCAN_WORKER_SECRET;
   if (!secret) return;
 
-  const baseUrl = workerBaseUrl(requestUrl);
+  const workerUrl = internalWorkerUrl("/api/internal/scan-worker");
   after(async () => {
     try {
-      const res = await fetch(`${baseUrl}/api/internal/scan-worker`, {
+      const res = await fetch(workerUrl, {
         method: "POST",
         headers: {
           authorization: `Bearer ${secret}`,
@@ -103,11 +104,4 @@ function enqueueScanWorker(scanId: string, requestUrl: string) {
       console.error(`[scan/retry] failed to enqueue worker for ${scanId}:`, error);
     }
   });
-}
-
-function workerBaseUrl(requestUrl: string) {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? null;
-  if (configured) return configured.replace(/\/$/, "");
-  return new URL(requestUrl).origin;
 }

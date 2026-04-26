@@ -131,7 +131,7 @@ export function SettingsClient({
               value={email}
             />
             <p className="text-xs text-text-muted">
-              Email is tied to your authentication provider and can't be changed here.
+              Email is tied to your authentication provider and cannot be changed here.
             </p>
           </div>
 
