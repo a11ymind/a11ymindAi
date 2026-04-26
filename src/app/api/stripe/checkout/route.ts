@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimitUserAction } from "@/lib/rate-limit";
 import { appUrl, isStripeMissingCustomerError, priceIdFor, stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -19,6 +20,18 @@ export async function GET(req: Request) {
     return NextResponse.redirect(
       new URL(`/login?callbackUrl=${encodeURIComponent(callback)}`, req.url),
     );
+  }
+
+  // Cap checkout-session creation: prevents Stripe-customer spam if a logged-in
+  // attacker hammers this endpoint.
+  const limit = await rateLimitUserAction({
+    userId: session.user.id,
+    action: "stripe_checkout",
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.allowed) {
+    return redirectWithError("/pricing", "rate_limited");
   }
 
   const user = await prisma.user.findUnique({

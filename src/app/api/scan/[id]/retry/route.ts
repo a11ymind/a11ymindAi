@@ -16,6 +16,9 @@ export async function POST(
 ) {
   const { id } = await params;
   const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
   const scan = await prisma.scan.findUnique({
     where: { id },
@@ -30,7 +33,7 @@ export async function POST(
   if (!scan) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (scan.userId && scan.userId !== session?.user?.id) {
+  if (scan.userId !== session.user.id) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (!canRetryScan(scan)) {

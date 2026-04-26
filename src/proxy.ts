@@ -3,7 +3,13 @@ import { getToken } from "next-auth/jwt";
 import { getHostPolicy } from "@/lib/host-policy";
 
 function isProtectedPath(pathname: string) {
-  return pathname.startsWith("/dashboard") || pathname.startsWith("/claim");
+  return (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/claim") ||
+    pathname.startsWith("/scans") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/api/user")
+  );
 }
 
 function applyNoindexHeader(response: NextResponse, noindex: boolean): NextResponse {
@@ -13,7 +19,15 @@ function applyNoindexHeader(response: NextResponse, noindex: boolean): NextRespo
   return response;
 }
 
-function createLoginRedirectResponse(req: NextRequest, noindex: boolean): NextResponse {
+function createUnauthorizedResponse(req: NextRequest, noindex: boolean): NextResponse {
+  // API clients want JSON 401, not an HTML redirect to /login.
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    const response = NextResponse.json(
+      { error: "unauthorized" },
+      { status: 401 },
+    );
+    return applyNoindexHeader(response, noindex);
+  }
   const loginUrl = new URL("/login", req.url);
   loginUrl.searchParams.set(
     "callbackUrl",
@@ -41,12 +55,12 @@ export async function proxy(req: NextRequest) {
   if (isProtectedPath(req.nextUrl.pathname)) {
     const nextAuthSecret = process.env.NEXTAUTH_SECRET;
     if (!nextAuthSecret) {
-      return createLoginRedirectResponse(req, policy.noindex);
+      return createUnauthorizedResponse(req, policy.noindex);
     }
 
     const token = await getToken({ req, secret: nextAuthSecret });
     if (!token) {
-      return createLoginRedirectResponse(req, policy.noindex);
+      return createUnauthorizedResponse(req, policy.noindex);
     }
   }
 

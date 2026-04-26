@@ -176,26 +176,29 @@ export async function POST(req: Request) {
         );
       }
 
-      const existing = await prisma.site.findUnique({
-        where: { userId_url: { userId, url: target } },
-        select: { id: true },
-      });
+      const { isAtSiteLimit } = await import("@/lib/entitlements");
+      // Atomic: either find an existing Site or create one if under limit.
+      // Wrapping in a serializable transaction prevents two concurrent scans
+      // from racing past `maxSites`.
+      siteId = await prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.site.findUnique({
+            where: { userId_url: { userId, url: target } },
+            select: { id: true },
+          });
+          if (existing) return existing.id;
 
-      if (existing) {
-        siteId = existing.id;
-      } else {
-        // Auto-create a Site so the scan appears on the dashboard.
-        // Only do this when the user is within their plan's site limit.
-        const { isAtSiteLimit } = await import("@/lib/entitlements");
-        const siteCount = await prisma.site.count({ where: { userId } });
-        if (!isAtSiteLimit(userPlan, siteCount)) {
-          const created = await prisma.site.create({
+          const siteCount = await tx.site.count({ where: { userId } });
+          if (isAtSiteLimit(userPlan ?? "FREE", siteCount)) return null;
+
+          const created = await tx.site.create({
             data: { userId, url: target },
             select: { id: true },
           });
-          siteId = created.id;
-        }
-      }
+          return created.id;
+        },
+        { isolationLevel: "Serializable" },
+      );
     }
 
     const { createScanRecord } = await import("@/lib/scan-jobs");
