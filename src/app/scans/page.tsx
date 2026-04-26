@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
+import type { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { Logo } from "@/components/Logo";
+import { ScansFilters } from "./ScansFilters";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Scan history — a11ymind AI" };
@@ -43,10 +46,7 @@ function statusStyle(status: string): { label: string; className: string } {
   if (status in STATUS_STYLES) {
     return STATUS_STYLES[status as StatusKey];
   }
-  return {
-    label: status,
-    className: "bg-white/5 text-white/70 ring-1 ring-white/10",
-  };
+  return { label: status, className: "bg-white/5 text-white/70 ring-1 ring-white/10" };
 }
 
 function relativeTime(date: Date): string {
@@ -61,8 +61,7 @@ function relativeTime(date: Date): string {
   if (diffDay < 30) return `${diffDay}d ago`;
   const diffMonth = Math.floor(diffDay / 30);
   if (diffMonth < 12) return `${diffMonth}mo ago`;
-  const diffYear = Math.floor(diffDay / 365);
-  return `${diffYear}y ago`;
+  return `${Math.floor(diffDay / 365)}y ago`;
 }
 
 function truncateUrl(url: string, max = 64): string {
@@ -77,10 +76,53 @@ function parsePage(raw: string | undefined, totalPages: number): number {
   return parsed;
 }
 
+const VALID_STATUSES: StatusKey[] = ["COMPLETED", "FAILED", "PENDING", "RUNNING"];
+const VALID_SORTS = ["newest", "oldest", "score_desc", "score_asc"] as const;
+type SortKey = (typeof VALID_SORTS)[number];
+
+function parseStatus(raw: string | undefined): StatusKey | undefined {
+  if (raw && VALID_STATUSES.includes(raw as StatusKey)) return raw as StatusKey;
+  return undefined;
+}
+
+function parseSort(raw: string | undefined): SortKey {
+  if (raw && VALID_SORTS.includes(raw as SortKey)) return raw as SortKey;
+  return "newest";
+}
+
+function parseScore(raw: string | undefined): { gte: number; lte: number } | undefined {
+  if (raw === "good") return { gte: 75, lte: 100 };
+  if (raw === "warn") return { gte: 50, lte: 74 };
+  if (raw === "bad") return { gte: 0, lte: 49 };
+  return undefined;
+}
+
+function buildOrderBy(sort: SortKey): Prisma.ScanOrderByWithRelationInput {
+  if (sort === "oldest") return { createdAt: "asc" };
+  if (sort === "score_desc") return { score: "desc" };
+  if (sort === "score_asc") return { score: "asc" };
+  return { createdAt: "desc" };
+}
+
+function buildPaginationHref(
+  page: number,
+  status: string,
+  score: string,
+  sort: string,
+): string {
+  const params = new URLSearchParams();
+  if (page > 0) params.set("page", String(page));
+  if (status !== "all") params.set("status", status);
+  if (score !== "all") params.set("score", score);
+  if (sort !== "newest") params.set("sort", sort);
+  const qs = params.toString();
+  return `/scans${qs ? `?${qs}` : ""}`;
+}
+
 export default async function ScansPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; status?: string; score?: string; sort?: string }>;
 }) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -90,13 +132,25 @@ export default async function ScansPage({
   const userId = session.user.id;
   const resolved = searchParams ? await searchParams : undefined;
 
-  const total = await prisma.scan.count({ where: { userId } });
+  const statusFilter = parseStatus(resolved?.status);
+  const scoreFilter = parseScore(resolved?.score);
+  const sort = parseSort(resolved?.sort);
+  const statusParam = statusFilter ?? "all";
+  const scoreParam = resolved?.score && scoreFilter ? resolved.score : "all";
+
+  const where: Prisma.ScanWhereInput = {
+    userId,
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(scoreFilter ? { score: scoreFilter } : {}),
+  };
+
+  const total = await prisma.scan.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = parsePage(resolved?.page, totalPages);
 
-  const scans = await prisma.scan.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+  const scanRows = await prisma.scan.findMany({
+    where,
+    orderBy: buildOrderBy(sort),
     take: PAGE_SIZE,
     skip: page * PAGE_SIZE,
     select: {
@@ -109,9 +163,11 @@ export default async function ScansPage({
   });
 
   const startIndex = total === 0 ? 0 : page * PAGE_SIZE + 1;
-  const endIndex = Math.min(total, page * PAGE_SIZE + scans.length);
+  const endIndex = Math.min(total, page * PAGE_SIZE + scanRows.length);
   const hasPrev = page > 0;
   const hasNext = page + 1 < totalPages;
+
+  const activeFilters = statusParam !== "all" || scoreParam !== "all" || sort !== "newest";
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
@@ -120,41 +176,70 @@ export default async function ScansPage({
           <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
             <Logo />
           </Link>
-          <Link href="/dashboard" className="btn-ghost">
-            Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/settings" className="btn-ghost text-sm">
+              Settings
+            </Link>
+            <Link href="/dashboard" className="btn-ghost text-sm">
+              Dashboard
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="container-page py-12">
-        <section className="mb-10 max-w-3xl">
+        <section className="mb-8 max-w-3xl">
           <p className="section-kicker">Scan history</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
             All past scans
           </h1>
           <p className="mt-4 text-base text-white/60">
-            Every accessibility scan you have run, newest first. Open any report
-            to revisit violations, AI-suggested fixes, and remediation progress.
+            Every accessibility scan you have run. Open any report to revisit violations,
+            AI-suggested fixes, and remediation progress.
           </p>
         </section>
 
-        {scans.length === 0 ? (
-          <div className="surface-premium card flex flex-col items-start gap-4 p-10">
-            <div className="text-2xl font-medium">No scans yet</div>
-            <p className="max-w-md text-white/60">
-              No scans yet. Run your first scan to see results here.
-            </p>
-            <Link href="/" className="btn-primary mt-2">
-              Run a scan
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <Suspense fallback={<div className="h-10" />}>
+            <ScansFilters status={statusParam} score={scoreParam} sort={sort} />
+          </Suspense>
+          {activeFilters && (
+            <Link
+              href="/scans"
+              className="text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+            >
+              Clear filters
             </Link>
+          )}
+        </div>
+
+        {scanRows.length === 0 ? (
+          <div className="surface-premium card flex flex-col items-start gap-4 p-10">
+            <div className="text-2xl font-medium">
+              {activeFilters ? "No scans match these filters" : "No scans yet"}
+            </div>
+            <p className="max-w-md text-white/60">
+              {activeFilters
+                ? "Try adjusting the filters above to see more results."
+                : "Run your first scan to see results here."}
+            </p>
+            {activeFilters ? (
+              <Link href="/scans" className="btn-ghost mt-2">
+                Clear filters
+              </Link>
+            ) : (
+              <Link href="/" className="btn-primary mt-2">
+                Run a scan
+              </Link>
+            )}
           </div>
         ) : (
           <>
             <div className="surface-premium card overflow-hidden p-0">
               <ul className="divide-y divide-white/5">
-                {scans.map((scan) => {
+                {scanRows.map((scan) => {
                   const band = scoreBand(scan.score);
-                  const status = statusStyle(scan.status);
+                  const s = statusStyle(scan.status);
                   const scoreColor = SCORE_COLOR[band.tone];
                   return (
                     <li
@@ -188,9 +273,9 @@ export default async function ScansPage({
 
                       <div className="hidden sm:block">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${s.className}`}
                         >
-                          {status.label}
+                          {s.label}
                         </span>
                       </div>
 
@@ -228,17 +313,14 @@ export default async function ScansPage({
               <div className="flex items-center gap-2">
                 {hasPrev ? (
                   <Link
-                    href={`/scans?page=${page - 1}`}
+                    href={buildPaginationHref(page - 1, statusParam, scoreParam, sort)}
                     className="btn-ghost text-sm"
                     rel="prev"
                   >
                     ← Previous
                   </Link>
                 ) : (
-                  <span
-                    className="btn-ghost cursor-not-allowed text-sm opacity-40"
-                    aria-disabled="true"
-                  >
+                  <span className="btn-ghost cursor-not-allowed text-sm opacity-40" aria-disabled="true">
                     ← Previous
                   </span>
                 )}
@@ -247,17 +329,14 @@ export default async function ScansPage({
                 </span>
                 {hasNext ? (
                   <Link
-                    href={`/scans?page=${page + 1}`}
+                    href={buildPaginationHref(page + 1, statusParam, scoreParam, sort)}
                     className="btn-primary text-sm"
                     rel="next"
                   >
                     Next →
                   </Link>
                 ) : (
-                  <span
-                    className="btn-ghost cursor-not-allowed text-sm opacity-40"
-                    aria-disabled="true"
-                  >
+                  <span className="btn-ghost cursor-not-allowed text-sm opacity-40" aria-disabled="true">
                     Next →
                   </span>
                 )}
