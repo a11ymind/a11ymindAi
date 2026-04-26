@@ -162,7 +162,7 @@ export default async function DashboardPage({
     color: SERIES_COLORS[i % SERIES_COLORS.length],
   }));
 
-  const chartData = buildChartData(sites);
+  const chartData = buildChartData(sites).slice(-24);
   const projectGroups = groupSitesByProject(sites);
   const weekly = await buildWeeklySummary(session.user.id);
   const entitlements = entitlementsFor(user.plan);
@@ -446,12 +446,20 @@ export default async function DashboardPage({
             </div>
           </section>
           <section className="container-page mt-10">
-            <div className="overflow-hidden rounded-[1.4rem] border border-border bg-bg-elevated/45">
-              <div className="flex items-center justify-between border-b border-border/70 px-6 py-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-subtle">
-                  Score history
-                </h2>
-                <span className="text-xs text-text-subtle">0–100, higher is better</span>
+            <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-bg-elevated/45 shadow-card">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-6 py-5">
+                <div>
+                  <p className="section-kicker">Score history</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
+                    Accessibility trend across monitored pages
+                  </h2>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Latest 24 completed scan timestamps. Green is healthy, amber needs review, red needs attention.
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-text-subtle">
+                  0–100, higher is better
+                </span>
               </div>
               <div className="p-6">
                 <ScoreHistoryChart data={chartData} series={series} />
@@ -795,23 +803,55 @@ function ProjectHealthSummary<TSite extends ProjectGroupSite>({
     homeUrl: group.origin,
     badgeUrl,
   });
+  const badgeStatus = entitlements.monitoringBadge ? "Live badge" : "Badge locked";
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,27,0.78),rgba(12,14,19,0.74))] shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5">
-        <div>
-          <p className="section-kicker">
-            Website project
+    <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,27,0.86),rgba(12,14,19,0.76))] shadow-card">
+      <div className="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+          <ProjectHealthDial score={health.averageScore} tone={band?.tone} />
+          <div className="min-w-0">
+            <p className="section-kicker">
+              Website project
+            </p>
+            <h3 className="mt-1 truncate text-2xl font-semibold tracking-tight text-text">
+              {group.label}
+            </h3>
+            <p className="mt-1 truncate text-sm text-text-muted">
+              {group.origin}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-subtle">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                {group.sites.length} monitored page{group.sites.length === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                {health.scannedPages}/{group.sites.length} scanned
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                {badgeStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 lg:w-72">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+            Needs attention
           </p>
-          <h3 className="mt-1 text-xl font-semibold tracking-tight text-text">{group.label}</h3>
+          <p
+            className="mt-2 truncate text-lg font-semibold text-text"
+            title={attentionLabel}
+          >
+            {attentionLabel}
+          </p>
           <p className="mt-1 text-xs text-text-muted">
-            {group.sites.length} monitored page{group.sites.length === 1 ? "" : "s"} · {group.origin}
+            {health.openIssues === 0
+              ? "No automated issues detected in latest scans."
+              : `${health.openIssues} latest issue${health.openIssues === 1 ? "" : "s"} across this website.`}
           </p>
         </div>
-        {canDiscoverPages && <CrawlSiteButton siteId={group.sites[0].id} />}
       </div>
 
-      <div className="grid gap-px border-t border-white/10 bg-white/10 md:grid-cols-5">
+      <div className="grid gap-px border-t border-white/10 bg-white/10 md:grid-cols-4">
         <ProjectMiniMetric
           label="Project health"
           value={health.averageScore === null ? "Waiting" : `${health.averageScore}/100`}
@@ -822,12 +862,6 @@ function ProjectHealthSummary<TSite extends ProjectGroupSite>({
           label="Coverage"
           value={`${health.scannedPages}/${group.sites.length}`}
           detail="Monitored pages with scans"
-        />
-        <ProjectMiniMetric
-          label="Needs attention"
-          value={attentionLabel}
-          detail={health.openIssues === 0 ? "No automated issues detected" : `${health.openIssues} latest issue${health.openIssues === 1 ? "" : "s"}`}
-          tone={health.worstScore !== null ? scoreBand(health.worstScore).tone : undefined}
         />
         <ProjectMiniMetric
           label="Regressions"
@@ -841,8 +875,8 @@ function ProjectHealthSummary<TSite extends ProjectGroupSite>({
           detail="Applied to each monitored page"
         />
       </div>
-      <div className="grid gap-px border-t border-white/10 bg-white/10 lg:grid-cols-3">
-        <ProjectControlPanel title="Page discovery">
+      <div className="grid gap-px border-t border-white/10 bg-white/10 xl:grid-cols-[0.9fr_1.2fr_1.1fr]">
+        <ProjectControlPanel title="Coverage actions">
           {canDiscoverPages ? (
             <>
               <p className="text-sm text-text-muted">
@@ -930,6 +964,37 @@ function UpgradeControl({ body, cta }: { body: string; cta: string }) {
       <Link href="/pricing" className="mt-3 inline-flex text-xs text-accent hover:underline">
         {cta} →
       </Link>
+    </div>
+  );
+}
+
+function ProjectHealthDial({
+  score,
+  tone,
+}: {
+  score: number | null;
+  tone?: "good" | "warn" | "bad";
+}) {
+  const value = score ?? 0;
+  const color = tone ? bandColor(tone) : "#737373";
+  return (
+    <div
+      className="grid h-24 w-24 shrink-0 place-items-center rounded-full p-1 shadow-[0_0_40px_-28px_rgba(6,182,212,0.9)]"
+      style={{
+        background: `conic-gradient(${color} ${value * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+      }}
+      aria-label={score === null ? "Project health waiting for scans" : `Project health ${score} out of 100`}
+    >
+      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-bg">
+        <div className="text-center">
+          <p className="text-2xl font-semibold tabular-nums text-text">
+            {score ?? "—"}
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+            Health
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { scoreBand } from "@/lib/score";
 // render 404; worst-case a revoked token stays viewable for up to 5 min.
 export const revalidate = 300;
 export const metadata = {
-  title: "Shared accessibility report — a11ymind",
+  title: "Shared accessibility report — A11ymindAi",
   robots: { index: false, follow: false },
 };
 
@@ -67,7 +67,7 @@ export default async function SharedReportPage({
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="page-shell-gradient min-h-screen">
       <header className="container-page flex items-center justify-between py-6">
         <Link href="/">
           <Logo />
@@ -78,74 +78,151 @@ export default async function SharedReportPage({
       </header>
 
       <section className="container-page mt-4">
-        <div className="card p-8">
-          <p className="text-xs uppercase tracking-wider text-text-subtle">
-            Shared accessibility report
-          </p>
-          <p className="mt-2 break-all font-mono text-sm text-text">{scan.url}</p>
-          <p className="mt-2 text-xs text-text-subtle">
-            Scanned {new Date(scan.createdAt).toLocaleDateString()} ·{" "}
-            {scan.violations.length} risk
-            {scan.violations.length === 1 ? "" : "s"}
-          </p>
-          <div className="mt-6 flex items-center gap-6">
-            <div>
-              <p
-                className="text-5xl font-semibold tabular-nums"
-                style={{ color: bandColor(band.tone) }}
-              >
-                {scan.score}
+        <div className="surface-premium rounded-[1.8rem]">
+          <div className="grid gap-8 px-6 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="min-w-0">
+              <p className="section-kicker">Shared accessibility report</p>
+              <p className="mt-3 break-all font-mono text-sm text-text-muted">{scan.url}</p>
+              <h1 className="mt-5 max-w-3xl text-balance text-3xl font-semibold tracking-[-0.03em] text-text sm:text-5xl">
+                {scan.violations.length === 0
+                  ? "No automated accessibility risks were detected."
+                  : `${scan.violations.length} accessibility risk${scan.violations.length === 1 ? "" : "s"} need review.`}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
+                This read-only report summarizes automated WCAG findings, affected page locations,
+                and priority severity so teams can act without opening the dashboard.
               </p>
-              <p className="text-sm text-text-subtle">out of 100 · {band.label}</p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs text-text-subtle">
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+                  Scanned {new Date(scan.createdAt).toLocaleDateString()}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+                  1 page scanned
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+                  Read-only share link
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {IMPACT_ORDER.map((impact) => (
-                <div
-                  key={impact}
-                  className="rounded-md border border-border px-3 py-2"
-                >
-                  <span
-                    className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
-                    style={{ backgroundColor: severityColor(impact) }}
-                  />
-                  {IMPACT_LABELS[impact]}:{" "}
-                  <strong>{grouped.get(impact)?.length ?? 0}</strong>
-                </div>
-              ))}
-            </div>
+            <SharedScorePanel score={scan.score} band={band} />
+          </div>
+          <div className="grid gap-px border-t border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+            {IMPACT_ORDER.map((impact) => (
+              <SharedMetric
+                key={impact}
+                label={IMPACT_LABELS[impact]}
+                value={`${grouped.get(impact)?.length ?? 0}`}
+                color={severityColor(impact)}
+              />
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="container-page mt-8 space-y-6 pb-24">
+      <section className="container-page mt-8">
+        <div className="rounded-[1.5rem] border border-white/10 bg-bg-elevated/45 p-5 shadow-card">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-kicker">How to use this report</p>
+              <p className="mt-2 text-sm text-text-muted">
+                Start with critical and serious items, copy the affected selectors, then re-scan after fixes ship.
+              </p>
+            </div>
+            <Link href="/" className="btn-ghost text-sm">
+              Scan another URL
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <GuidanceStep label="1" title="Prioritize" body="Resolve critical and serious issues first." />
+            <GuidanceStep label="2" title="Locate" body="Use selectors and HTML snippets to find failing code." />
+            <GuidanceStep label="3" title="Verify" body="Re-scan after deployment to catch regressions." />
+          </div>
+        </div>
+      </section>
+
+      {scan.violations.length > 0 && (
+        <section className="container-page mt-8">
+          <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 bg-bg/85 px-1 py-3 backdrop-blur">
+            {IMPACT_ORDER.map((impact) => {
+              const count = grouped.get(impact)?.length ?? 0;
+              if (count === 0) return null;
+              return (
+                <a
+                  key={impact}
+                  href={`#shared-impact-${impact}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-muted/60 px-3 py-1 text-xs text-text hover:border-accent-muted"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: severityColor(impact) }}
+                  />
+                  {IMPACT_LABELS[impact]}
+                  <span className="tabular-nums text-text-subtle">{count}</span>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="container-page mt-6 space-y-8 pb-24">
+        {scan.violations.length === 0 && (
+          <div className="card p-10 text-center">
+            <h2 className="text-2xl font-semibold text-text">No WCAG violations found</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-sm text-text-muted">
+              Automated testing did not flag failures on this page. Manual keyboard and screen-reader testing is still recommended for full confidence.
+            </p>
+          </div>
+        )}
+
         {IMPACT_ORDER.map((impact) => {
           const items = grouped.get(impact) ?? [];
           if (items.length === 0) return null;
           return (
-            <div key={impact}>
-              <h2 className="mb-3 text-lg font-semibold">
+            <div key={impact} id={`shared-impact-${impact}`}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="section-kicker">{IMPACT_LABELS[impact]} findings</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-text">
+                    {items.length} issue{items.length === 1 ? "" : "s"} to review
+                  </h2>
+                </div>
                 <span
-                  className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
-                  style={{ backgroundColor: severityColor(impact) }}
-                />
-                {IMPACT_LABELS[impact]}
-                <span className="ml-2 text-sm font-normal text-text-muted">
-                  ({items.length})
+                  className="rounded-full border px-3 py-1 text-xs"
+                  style={{
+                    borderColor: `${severityColor(impact)}55`,
+                    color: severityColor(impact),
+                    backgroundColor: `${severityColor(impact)}18`,
+                  }}
+                >
+                  {IMPACT_LABELS[impact]}
                 </span>
-              </h2>
+              </div>
               <div className="space-y-3">
                 {items.map((v) => (
                   <div
                     key={v.id}
-                    className="rounded-xl border border-border bg-bg-muted/40 p-4"
+                    className="overflow-hidden rounded-2xl border border-white/10 bg-bg-elevated/45 shadow-card"
                   >
-                    <p className="text-sm font-semibold text-text">{v.help}</p>
-                    <p className="mt-1 text-sm text-text-muted">
-                      {v.description}
-                    </p>
-                    <p className="mt-1 font-mono text-xs text-text-subtle">
-                      {v.axeId}
-                    </p>
+                    <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <p className="text-base font-semibold text-text">{v.help}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                          {v.description}
+                        </p>
+                        <p className="mt-3 font-mono text-xs text-text-subtle">
+                          {v.axeId}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-bg/60 px-4 py-3 text-sm text-text-muted md:min-w-36">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                          Locations
+                        </p>
+                        <p className="mt-1 text-2xl font-semibold text-text">
+                          {affectedLocationCount(v)}
+                        </p>
+                      </div>
+                    </div>
                     <SharedAffectedLocations violation={v} />
                   </div>
                 ))}
@@ -153,11 +230,18 @@ export default async function SharedReportPage({
             </div>
           );
         })}
-        <div className="card mt-8 flex flex-col items-start gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-muted">
-            Want to check your own page? a11ymind scans any public URL in seconds.
-          </p>
-          <Link href="/" className="btn-primary text-sm">
+
+        <div className="surface-premium rounded-[1.5rem] px-6 py-6 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <p className="section-kicker">Turn reports into monitoring</p>
+            <h2 className="mt-2 text-xl font-semibold text-text">
+              Want to check your own page?
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-text-muted">
+              A11ymindAi scans public URLs, tracks regressions, and helps teams share fixes people can actually act on.
+            </p>
+          </div>
+          <Link href="/" className="btn-primary mt-5 text-sm sm:mt-0">
             Run a free scan
           </Link>
         </div>
@@ -201,13 +285,13 @@ function SharedAffectedLocations({
   if (locations.length === 0) return null;
 
   return (
-    <details className="mt-3 rounded-lg border border-border bg-bg/50 p-3">
+    <details className="border-t border-white/10 bg-bg/35 px-5 py-4">
       <summary className="cursor-pointer text-xs font-medium text-accent">
         Show {locations.length} affected location{locations.length === 1 ? "" : "s"}
       </summary>
       <div className="mt-3 space-y-3">
         {locations.map((location, index) => (
-          <div key={location.id} className="rounded-md border border-border bg-bg-muted/40 p-3">
+          <div key={location.id} className="rounded-xl border border-white/10 bg-bg-muted/40 p-3">
             <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
               Location {index + 1}
             </p>
@@ -229,6 +313,89 @@ function SharedAffectedLocations({
       </div>
     </details>
   );
+}
+
+function SharedScorePanel({
+  score,
+  band,
+}: {
+  score: number;
+  band: { label: string; tone: "good" | "warn" | "bad" };
+}) {
+  const color = bandColor(band.tone);
+  return (
+    <div className="rounded-[1.4rem] border border-white/10 bg-bg/55 p-5 text-center shadow-card lg:min-w-56">
+      <div
+        className="mx-auto grid h-28 w-28 place-items-center rounded-full p-1"
+        style={{
+          background: `conic-gradient(${color} ${score * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+        }}
+      >
+        <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-bg">
+          <div>
+            <p className="text-4xl font-semibold tabular-nums text-text">{score}</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle">Score</p>
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 text-sm font-semibold" style={{ color }}>
+        {band.label}
+      </p>
+      <p className="mt-1 text-xs text-text-subtle">Automated score out of 100</p>
+    </div>
+  );
+}
+
+function SharedMetric({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div className="bg-bg/70 p-4 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs uppercase tracking-wider text-text-subtle">{label}</p>
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+      </div>
+      <p className="mt-2 text-2xl font-semibold text-text">{value}</p>
+    </div>
+  );
+}
+
+function GuidanceStep({
+  label,
+  title,
+  body,
+}: {
+  label: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-bg/55 p-4">
+      <div className="flex items-center gap-3">
+        <span className="grid h-7 w-7 place-items-center rounded-full border border-accent/30 bg-accent/10 text-xs font-semibold text-accent">
+          {label}
+        </span>
+        <p className="font-semibold text-text">{title}</p>
+      </div>
+      <p className="mt-3 text-sm text-text-muted">{body}</p>
+    </div>
+  );
+}
+
+function affectedLocationCount(violation: {
+  selector: string;
+  element: string;
+  failureSummary: string | null;
+  instances: unknown[];
+}) {
+  if (violation.instances.length > 0) return violation.instances.length;
+  return violation.selector || violation.element || violation.failureSummary ? 1 : 0;
 }
 
 function severityColor(impact: Impact): string {

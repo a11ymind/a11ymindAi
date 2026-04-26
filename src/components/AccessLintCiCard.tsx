@@ -34,7 +34,7 @@ export function AccessLintCiCard({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
       {!compact && (
-        <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-background p-3 text-xs leading-5 text-text-subtle">
+        <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-bg p-3 text-xs leading-5 text-text-subtle">
           <code>{SNIPPET}</code>
         </pre>
       )}

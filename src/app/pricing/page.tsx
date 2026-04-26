@@ -18,7 +18,7 @@ export default async function PricingPage({
   return (
     <>
       <SiteHeader />
-      <main id="main" className="min-h-screen">
+      <main id="main" className="page-shell-gradient min-h-screen">
 
       {banner && (
         <section className="container-page pt-4">
@@ -88,7 +88,7 @@ export default async function PricingPage({
 
       {/* Why subscribe / monitoring justification */}
       <section className="container-page pb-16">
-        <div className="card mx-auto max-w-4xl p-8 sm:p-10">
+        <div className="surface-premium mx-auto max-w-4xl rounded-[1.7rem] p-8 sm:p-10">
           <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start">
             <div>
               <p className="text-xs uppercase tracking-wider text-accent">
@@ -135,7 +135,7 @@ export default async function PricingPage({
       </section>
 
       <section className="container-page pb-24">
-        <div className="card p-6 text-sm text-text-muted">
+        <div className="premium-panel p-6 text-sm text-text-muted">
           <p className="font-medium text-text">All plans include</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             <li>• axe-core WCAG 2.1 A + AA rule coverage</li>
@@ -236,7 +236,7 @@ function PricingCard({
     : "border-border";
 
   return (
-    <div className={`card relative flex flex-col p-6 transition-transform ${highlightCls}`}>
+    <div className={`card relative flex flex-col p-6 transition-[transform,border-color,box-shadow] hover:-translate-y-1 ${highlightCls}`}>
       {tier.highlight && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-accent bg-accent px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-bg">
           Most popular
@@ -258,7 +258,7 @@ function PricingCard({
 
       <p className="mt-2 text-xs text-text-subtle">{copy.bestFor}</p>
 
-      <div className="mt-6 rounded-xl border border-border bg-bg-muted/40 p-4">
+      <div className="mt-6 rounded-xl border border-white/10 bg-bg-muted/40 p-4">
         <p className="text-[10px] uppercase tracking-[0.18em] text-accent">Outcome</p>
         <p className="mt-2 text-sm font-medium text-text">{outcome.outcome}</p>
         <p className="mt-3 text-sm text-text-muted">{outcome.rhythm}</p>

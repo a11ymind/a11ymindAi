@@ -58,7 +58,7 @@ export function CiHistoryCard({
       <div className="mt-4 space-y-3">
         {checks.length > 0 ? (
           checks.slice(0, compact ? 2 : checks.length).map((check) => (
-            <div key={check.id} className="rounded-xl border border-white/10 bg-background/70 p-4">
+            <div key={check.id} className="rounded-xl border border-white/10 bg-bg/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -107,7 +107,7 @@ export function CiHistoryCard({
             </div>
           ))
         ) : (
-          <p className="rounded-xl border border-white/10 bg-background/60 p-4 text-sm text-text-muted">
+          <p className="rounded-xl border border-white/10 bg-bg/60 p-4 text-sm text-text-muted">
             No CI checks have been posted for this website project yet.
           </p>
         )}

@@ -371,7 +371,7 @@ export default async function ScanResultPage({
             />
           )}
 
-          <div className="overflow-hidden rounded-[1.5rem] border border-border bg-bg-elevated/50">
+          <div className="premium-panel overflow-hidden">
             <div className="flex items-start justify-between gap-4">
               <div className="px-6 py-6 sm:px-7">
                 <p className="text-xs uppercase tracking-wider text-text-subtle">Detected risks</p>
@@ -424,7 +424,7 @@ export default async function ScanResultPage({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border/60 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/10 md:grid-cols-4">
             {IMPACT_ORDER.map((impact) => (
               <SeverityPill
                 key={impact}
@@ -1013,7 +1013,13 @@ function ViolationCard({
         : [];
 
   return (
-    <article className="rounded-[1.25rem] border border-border bg-bg-elevated/45 p-6">
+    <article className="group overflow-hidden rounded-[1.35rem] border border-white/10 bg-bg-elevated/45 shadow-card transition-colors hover:border-white/20">
+      <div
+        aria-hidden="true"
+        className="h-1 w-full"
+        style={{ backgroundColor: severityColor((violation.impact as Impact) || "minor") }}
+      />
+      <div className="p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1071,6 +1077,7 @@ function ViolationCard({
           </p>
         )}
       </Section>
+      </div>
     </article>
   );
 }
@@ -1150,9 +1157,9 @@ function RecommendedFixesPanel({
       : null;
 
   return (
-    <aside className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(16,20,26,0.95),rgba(14,17,22,0.82))] lg:sticky lg:top-6">
-      <div className="border-b border-border/70 px-6 py-5">
-        <p className="text-xs uppercase tracking-wider text-text-subtle">Recommended Fixes</p>
+    <aside className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(16,20,26,0.98),rgba(14,17,22,0.86))] shadow-card lg:sticky lg:top-6">
+      <div className="border-b border-white/10 px-6 py-5">
+        <p className="section-kicker">Recommended fixes</p>
         <h2 className="mt-2 text-2xl font-semibold text-text">What to fix next</h2>
         <p className="mt-4 text-sm text-text-muted">
           Prioritized remediation guidance for this scan. Re-scan after each fix to confirm the issue is gone.
@@ -1201,7 +1208,7 @@ function VisibleFixCard({
   const timeToFix = estimateFixTime(fix.help, fix.codeExample);
 
   return (
-    <div className="rounded-[1.15rem] border border-border bg-bg-muted/30 p-4">
+    <div className="rounded-[1.2rem] border border-white/10 bg-bg-muted/30 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-text">{fix.help}</p>
         {copyText ? <CopyFixButton text={copyText} /> : null}
