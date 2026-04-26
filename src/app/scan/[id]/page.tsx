@@ -1791,7 +1791,7 @@ function recommendedFixesState({
   // Paid user (Starter/Pro) whose scan completed but AI fixes weren't generated.
   // This happens when ANTHROPIC_API_KEY is unset or generation failed silently.
   // Don't show an upgrade gate — this is not a plan issue.
-  if (canSeeAiFixes && userId && userPlan) {
+  if (userId && (userPlan === "STARTER" || userPlan === "PRO")) {
     return {
       mode: "locked" as const,
       upgradeGate: false,

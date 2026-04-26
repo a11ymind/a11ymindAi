@@ -12,21 +12,21 @@ function isProtectedPath(pathname: string) {
   );
 }
 
-function applyNoindexHeader(response: NextResponse, noindex: boolean): NextResponse {
-  if (noindex) {
+function applyNoindexHeader(response: NextResponse, shouldNoindex: boolean): NextResponse {
+  if (shouldNoindex) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
   return response;
 }
 
-function createUnauthorizedResponse(req: NextRequest, noindex: boolean): NextResponse {
+function createUnauthorizedResponse(req: NextRequest, shouldNoindex: boolean): NextResponse {
   // API clients want JSON 401, not an HTML redirect to /login.
   if (req.nextUrl.pathname.startsWith("/api/")) {
     const response = NextResponse.json(
       { error: "unauthorized" },
       { status: 401 },
     );
-    return applyNoindexHeader(response, noindex);
+    return applyNoindexHeader(response, shouldNoindex);
   }
   const loginUrl = new URL("/login", req.url);
   loginUrl.searchParams.set(
@@ -34,7 +34,25 @@ function createUnauthorizedResponse(req: NextRequest, noindex: boolean): NextRes
     `${req.nextUrl.pathname}${req.nextUrl.search}`,
   );
   const response = NextResponse.redirect(loginUrl);
-  return applyNoindexHeader(response, noindex);
+  return applyNoindexHeader(response, shouldNoindex);
+}
+
+function createServerConfigErrorResponse(
+  req: NextRequest,
+  shouldNoindex: boolean,
+): NextResponse {
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    const response = NextResponse.json(
+      { error: "server_configuration_error" },
+      { status: 500 },
+    );
+    return applyNoindexHeader(response, shouldNoindex);
+  }
+
+  const errorUrl = new URL("/error", req.url);
+  errorUrl.searchParams.set("error", "server_configuration_error");
+  const response = NextResponse.redirect(errorUrl);
+  return applyNoindexHeader(response, shouldNoindex);
 }
 
 export async function proxy(req: NextRequest) {
@@ -55,7 +73,7 @@ export async function proxy(req: NextRequest) {
   if (isProtectedPath(req.nextUrl.pathname)) {
     const nextAuthSecret = process.env.NEXTAUTH_SECRET;
     if (!nextAuthSecret) {
-      return createUnauthorizedResponse(req, policy.noindex);
+      return createServerConfigErrorResponse(req, policy.noindex);
     }
 
     const token = await getToken({ req, secret: nextAuthSecret });

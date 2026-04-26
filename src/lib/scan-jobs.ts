@@ -96,11 +96,17 @@ export async function createScanRecord(input: {
 // marked FAILED before the function is killed and the scan would otherwise
 // stay RUNNING until the stale-scan reaper fires.
 const SCAN_TIMEOUT_MS = 240_000;
+const SCAN_TIMEOUT_ERROR_MESSAGE = "Scan timed out";
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+  timeoutMessage?: string,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error(`${label} exceeded ${ms / 1000}s timeout`)),
+      () => reject(new Error(timeoutMessage ?? `${label} exceeded ${ms / 1000}s timeout`)),
       ms,
     );
     promise.then(
@@ -121,7 +127,12 @@ export async function executeScanRecord(
   userPlan: Plan | null,
 ): Promise<ExecuteScanResult> {
   try {
-    const result = await withTimeout(scanUrl(scan.url), SCAN_TIMEOUT_MS, "Scan");
+    const result = await withTimeout(
+      scanUrl(scan.url),
+      SCAN_TIMEOUT_MS,
+      "Scan",
+      SCAN_TIMEOUT_ERROR_MESSAGE,
+    );
     const score = computeScore(result.violations);
     const ai = await maybeGenerateAiFixes(scan.id, scan.userId, userPlan, result.violations);
     const fixByAxeId = new Map(ai.fixes.map((fix) => [fix.axeId, fix]));
@@ -235,6 +246,14 @@ async function maybeGenerateAiFixes(
     const reservation = await reserveAiUsageSlot(scanId, userId, plan);
     if (!reservation.ok) {
       console.warn(`[scan-jobs] AI reservation failed for scan ${scanId}: slot unavailable`);
+      try {
+        await clearAiReservation(scanId);
+      } catch (clearError) {
+        console.warn(
+          `[scan-jobs] failed to clear AI reservation after failed reserve for scan ${scanId}:`,
+          clearError,
+        );
+      }
       return { fixes: [], summary: reservation.summary };
     }
 
@@ -280,13 +299,6 @@ async function maybeGenerateAiFixes(
   }
 }
 
-function violationSignature(violations: Pick<AxeViolation, "id" | "nodes">[]): string {
-  return violations
-    .map((v) => `${v.id}|${v.nodes[0]?.target?.join(" ") ?? ""}`)
-    .sort()
-    .join("\n");
-}
-
 async function findCachedFixesForSite(
   currentScanId: string,
   violations: AxeViolation[],
@@ -325,7 +337,11 @@ async function findCachedFixesForSite(
     .map((v) => `${v.axeId}|${v.selector}`)
     .sort()
     .join("\n");
-  if (prevSig !== violationSignature(violations)) return null;
+  const currentSig = violations
+    .map((v) => `${v.id}|${v.nodes[0]?.target?.join(" ") ?? ""}`)
+    .sort()
+    .join("\n");
+  if (prevSig !== currentSig) return null;
 
   const fixes: AiFix[] = [];
   for (const v of previous.violations) {

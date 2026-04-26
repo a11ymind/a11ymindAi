@@ -39,7 +39,7 @@ const config: Config = {
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
-          "Segoe UI",
+          "\"Segoe UI\"",
           "Roboto",
           "sans-serif",
         ],
@@ -58,7 +58,7 @@ const config: Config = {
       },
       backgroundImage: {
         "grid-fade":
-          "linear-gradient(to bottom, transparent, #0a0a0b 90%), linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          "linear-gradient(to bottom, transparent, var(--color-bg, #0a0a0b) 90%), linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
       },
       keyframes: {
         "fade-in-up": {

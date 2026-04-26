@@ -1,3 +1,3 @@
 export function buildScanResultHref(scanId: string) {
-  return `/scan/${scanId}`;
+  return `/scan/${encodeURIComponent(scanId)}`;
 }
