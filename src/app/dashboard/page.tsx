@@ -49,10 +49,11 @@ const SERIES_COLORS = [
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: { upgraded?: string; error?: string };
+  searchParams?: Promise<{ upgraded?: string; error?: string }>;
 }) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -106,7 +107,10 @@ export default async function DashboardPage({
       slackWebhookUrl: true,
       scans: {
         where: { status: "COMPLETED" },
-        orderBy: { createdAt: "asc" },
+        // Most-recent 50 are enough for the trend chart; older history
+        // remains available on /scans without inflating dashboard payload.
+        orderBy: { createdAt: "desc" },
+        take: 50,
         select: {
           id: true,
           score: true,
@@ -140,6 +144,10 @@ export default async function DashboardPage({
       where: { userId: session.user.id, status: "COMPLETED" },
     }),
   ]);
+
+  // Scans were fetched newest-first to bound the take(50). Flip to ascending
+  // so trend chart and `scans[length-1] = latest` consumers stay correct.
+  for (const site of sites) site.scans.reverse();
 
   const hasScans = completedScanCount > 0;
   const hasSite = sites.length > 0;
@@ -187,7 +195,7 @@ export default async function DashboardPage({
 
   return (
     <>
-      <BillingStateRefresh enabled={searchParams?.upgraded === "1"} />
+      <BillingStateRefresh enabled={resolvedSearchParams?.upgraded === "1"} />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
         <div className="container-page flex flex-wrap items-center justify-between gap-3 py-4">
           <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
@@ -231,7 +239,7 @@ export default async function DashboardPage({
       </header>
       <main id="main" className="page-shell-gradient min-h-screen">
 
-      {searchParams?.upgraded === "1" && (
+      {resolvedSearchParams?.upgraded === "1" && (
         <section className="container-page">
           <div className="card flex flex-col gap-2 border-accent-muted bg-accent-muted/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -247,7 +255,7 @@ export default async function DashboardPage({
         </section>
       )}
 
-      {searchParams?.error === "portal_failed" && (
+      {resolvedSearchParams?.error === "portal_failed" && (
         <section className="container-page">
           <div className="card flex flex-col gap-2 border-severity-critical/40 bg-severity-critical/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -263,7 +271,7 @@ export default async function DashboardPage({
         </section>
       )}
 
-      {searchParams?.error === "claim_unavailable" && (
+      {resolvedSearchParams?.error === "claim_unavailable" && (
         <section className="container-page">
           <div className="card flex flex-col gap-2 border-severity-critical/40 bg-severity-critical/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

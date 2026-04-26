@@ -140,6 +140,9 @@ export async function reserveAiUsageSlot(
         }
 
         const current = await countAiUsagesThisMonth(userId, now, tx, month);
+        // `current` already includes this scan's just-set reservation, so
+        // strict `>` is the right comparison: when the reservation lands
+        // exactly at limit (e.g., 100th of 100), we keep the slot.
         const aiLimitReached = current > limit;
 
         if (aiLimitReached) {

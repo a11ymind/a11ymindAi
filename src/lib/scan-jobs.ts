@@ -91,12 +91,37 @@ export async function createScanRecord(input: {
   });
 }
 
+// Hard cap the entire scan, including AI fix generation. The Vercel function
+// `maxDuration` is 300s; we time out at 240s so the scan can be cleanly
+// marked FAILED before the function is killed and the scan would otherwise
+// stay RUNNING until the stale-scan reaper fires.
+const SCAN_TIMEOUT_MS = 240_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} exceeded ${ms / 1000}s timeout`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export async function executeScanRecord(
   scan: PersistedScan,
   userPlan: Plan | null,
 ): Promise<ExecuteScanResult> {
   try {
-    const result = await scanUrl(scan.url);
+    const result = await withTimeout(scanUrl(scan.url), SCAN_TIMEOUT_MS, "Scan");
     const score = computeScore(result.violations);
     const ai = await maybeGenerateAiFixes(scan.id, scan.userId, userPlan, result.violations);
     const fixByAxeId = new Map(ai.fixes.map((fix) => [fix.axeId, fix]));

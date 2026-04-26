@@ -36,12 +36,17 @@ export const githubEnabled = Boolean(
   process.env.GITHUB_ID && process.env.GITHUB_SECRET,
 );
 
+// Account linking is intentionally OFF: enabling it would let an attacker
+// who registers Google/GitHub with a victim's email take over an existing
+// credentials-based account silently. Users who want to link providers must
+// log in with their original method first and connect the second from
+// settings (TODO: build that flow). Email-collision errors surface as the
+// `OAuthAccountNotLinked` error on the sign-in page.
 if (googleEnabled) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
     }),
   );
 }
@@ -51,7 +56,6 @@ if (githubEnabled) {
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
-      allowDangerousEmailAccountLinking: true,
     }),
   );
 }
