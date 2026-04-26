@@ -41,6 +41,8 @@ model User {
   stripeCurrentPeriodEnd DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  emailWeeklyDigest      Boolean   @default(true)
+  emailScanAlerts        Boolean   @default(true)
 
   accounts Account[]
   sites    Site[]

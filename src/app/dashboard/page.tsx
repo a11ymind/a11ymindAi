@@ -7,6 +7,7 @@ import { CiHistoryCard } from "@/components/CiHistoryCard";
 import { AccessLintCiCard } from "@/components/AccessLintCiCard";
 import { CrawlSiteButton } from "@/components/CrawlSiteButton";
 import { Logo } from "@/components/Logo";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PlanBadge } from "@/components/PlanBadge";
 import { SignOutButton } from "@/components/UserMenu";
 import { RescanButton } from "@/components/RescanButton";
@@ -58,7 +59,8 @@ export default async function DashboardPage({
   });
   if (!user) redirect("/login");
 
-  const sites = await prisma.site.findMany({
+  const [sites, completedScanCount] = await Promise.all([
+    prisma.site.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "asc" },
     select: {
@@ -132,7 +134,18 @@ export default async function DashboardPage({
         },
       },
     },
-  });
+    }),
+    prisma.scan.count({
+      where: { userId: session.user.id, status: "COMPLETED" },
+    }),
+  ]);
+
+  const hasScans = completedScanCount > 0;
+  const hasSite = sites.length > 0;
+  const hasCiToken = sites.some(
+    (s) => Boolean(s.ciIngestToken) || Boolean(s.project?.ciIngestToken),
+  );
+  const showOnboarding = !(hasScans && hasSite && hasCiToken);
 
   const series: ChartSeries[] = sites.map((s, i) => ({
     key: s.id,
@@ -196,6 +209,18 @@ export default async function DashboardPage({
                 Manage billing
               </a>
             )}
+            <Link
+              href="/scans"
+              className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
+            >
+              History
+            </Link>
+            <Link
+              href="/settings"
+              className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
+            >
+              Settings
+            </Link>
             <span className="hidden max-w-[14rem] truncate text-sm text-text-muted md:inline">
               {user.name || user.email}
             </span>
@@ -365,6 +390,17 @@ export default async function DashboardPage({
           </div>
         )}
       </section>
+
+      {showOnboarding && (
+        <section className="container-page mt-6">
+          <OnboardingChecklist
+            hasScans={hasScans}
+            hasSite={hasSite}
+            hasCiToken={hasCiToken}
+            plan={user.plan}
+          />
+        </section>
+      )}
 
       {sites.length > 0 && (
         <>
