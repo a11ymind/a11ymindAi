@@ -183,6 +183,18 @@ export async function POST(req: Request) {
 
       if (existing) {
         siteId = existing.id;
+      } else {
+        // Auto-create a Site so the scan appears on the dashboard.
+        // Only do this when the user is within their plan's site limit.
+        const { isAtSiteLimit } = await import("@/lib/entitlements");
+        const siteCount = await prisma.site.count({ where: { userId } });
+        if (!isAtSiteLimit(userPlan, siteCount)) {
+          const created = await prisma.site.create({
+            data: { userId, url: target },
+            select: { id: true },
+          });
+          siteId = created.id;
+        }
       }
     }
 
