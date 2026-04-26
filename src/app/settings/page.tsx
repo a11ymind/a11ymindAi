@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,7 @@ export default async function SettingsPage(): Promise<JSX.Element> {
           />
         </div>
       </main>
+      <SiteFooter />
     </>
   );
 }

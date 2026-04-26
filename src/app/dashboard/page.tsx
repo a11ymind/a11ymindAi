@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { SiteFooter } from "@/components/SiteFooter";
 import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { CiHistoryCard } from "@/components/CiHistoryCard";
@@ -599,6 +600,7 @@ export default async function DashboardPage({
         ))}
       </section>
     </main>
+    <SiteFooter />
     </>
   );
 }

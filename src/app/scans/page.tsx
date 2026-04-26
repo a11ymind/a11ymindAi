@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
 import { Logo } from "@/components/Logo";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ScansFilters } from "./ScansFilters";
 
 export const dynamic = "force-dynamic";
@@ -345,6 +346,7 @@ export default async function ScansPage({
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }
