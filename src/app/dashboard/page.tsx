@@ -70,32 +70,36 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
   const userEntitlements = entitlementsFor(user.plan);
   const workspace = await ensureDefaultWorkspaceForUser(session.user.id);
-  const workspaceDetails = await prisma.workspace.findUnique({
-    where: { id: workspace.id },
-    select: {
-      id: true,
-      name: true,
-      members: {
-        orderBy: { createdAt: "asc" },
+  // Only Pro plans unlock the team-members panel — skip the deep members +
+  // invites join for Free/Starter dashboards entirely.
+  const workspaceDetails = userEntitlements.teamMembers
+    ? await prisma.workspace.findUnique({
+        where: { id: workspace.id },
         select: {
           id: true,
-          role: true,
-          user: { select: { name: true, email: true } },
+          name: true,
+          members: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              role: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+          invites: {
+            where: { status: "PENDING" },
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              expiresAt: true,
+            },
+          },
         },
-      },
-      invites: {
-        where: { status: "PENDING" },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          expiresAt: true,
-        },
-      },
-    },
-  });
+      })
+    : null;
 
   const [sites, completedScanCount] = await Promise.all([
     prisma.site.findMany({
@@ -145,53 +149,15 @@ export default async function DashboardPage({
         where: { status: "COMPLETED" },
         // Most-recent 50 are enough for the trend chart; older history
         // remains available on /scans without inflating dashboard payload.
+        // Violations are fetched separately (lean) for only the latest +
+        // previous scan per site — those are the only scans whose violations
+        // the dashboard widgets actually consume.
         orderBy: { createdAt: "desc" },
         take: 50,
         select: {
           id: true,
           score: true,
           createdAt: true,
-          violations: {
-            select: {
-              id: true,
-              axeId: true,
-              impact: true,
-              help: true,
-              status: true,
-              statusUpdatedAt: true,
-              assigneeName: true,
-              assigneeEmail: true,
-              assigneeUserId: true,
-              assignee: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-              events: {
-                orderBy: { createdAt: "desc" },
-                take: 2,
-                select: {
-                  id: true,
-                  fromStatus: true,
-                  toStatus: true,
-                  note: true,
-                  createdAt: true,
-                  user: { select: { name: true, email: true } },
-                },
-              },
-              comments: {
-                orderBy: { createdAt: "desc" },
-                take: 2,
-                select: {
-                  id: true,
-                  body: true,
-                  createdAt: true,
-                  user: { select: { name: true, email: true } },
-                },
-              },
-            },
-          },
         },
       },
       ciChecks: {
@@ -225,6 +191,105 @@ export default async function DashboardPage({
   // so trend chart and `scans[length-1] = latest` consumers stay correct.
   for (const site of sites) site.scans.reverse();
 
+  // Lean violation fetch: only the latest + previous scan per site need
+  // violations. Pulling them inside the sites query (50 scans × N violations
+  // × events × comments × assignee) was the dashboard's biggest cost.
+  const violationScanIds: string[] = [];
+  for (const site of sites) {
+    const latest = site.scans[site.scans.length - 1];
+    const previous = site.scans[site.scans.length - 2];
+    if (latest) violationScanIds.push(latest.id);
+    if (previous) violationScanIds.push(previous.id);
+  }
+  const latestScanIds = sites
+    .map((s) => s.scans[s.scans.length - 1]?.id)
+    .filter((id): id is string => Boolean(id));
+
+  const [violationRows, eventRows, commentRows] = await Promise.all([
+    violationScanIds.length
+      ? prisma.violation.findMany({
+          where: { scanId: { in: violationScanIds } },
+          select: {
+            id: true,
+            axeId: true,
+            impact: true,
+            help: true,
+            status: true,
+            statusUpdatedAt: true,
+            scanId: true,
+          },
+        })
+      : Promise.resolve([] as { id: string; axeId: string; impact: string; help: string; status: ViolationStatus; statusUpdatedAt: Date | null; scanId: string }[]),
+    latestScanIds.length
+      ? prisma.violationEvent.findMany({
+          where: { violation: { scanId: { in: latestScanIds } } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true,
+            fromStatus: true,
+            toStatus: true,
+            createdAt: true,
+            user: { select: { name: true, email: true } },
+            violation: { select: { help: true, scanId: true } },
+          },
+        })
+      : Promise.resolve([] as Array<{
+          id: string;
+          fromStatus: ViolationStatus | null;
+          toStatus: ViolationStatus;
+          createdAt: Date;
+          user: { name: string | null; email: string | null } | null;
+          violation: { help: string; scanId: string };
+        }>),
+    latestScanIds.length
+      ? prisma.violationComment.findMany({
+          where: { violation: { scanId: { in: latestScanIds } } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true,
+            body: true,
+            createdAt: true,
+            user: { select: { name: true, email: true } },
+            violation: { select: { help: true, scanId: true } },
+          },
+        })
+      : Promise.resolve([] as Array<{
+          id: string;
+          body: string;
+          createdAt: Date;
+          user: { name: string | null; email: string | null } | null;
+          violation: { help: string; scanId: string };
+        }>),
+  ]);
+
+  // Index violations by scanId, and attach to each scan in-place. Scans we
+  // didn't query violations for keep an empty array; consumers only read
+  // latest/previous so this is correct.
+  const violationsByScanId = new Map<string, typeof violationRows>();
+  for (const v of violationRows) {
+    const arr = violationsByScanId.get(v.scanId) ?? [];
+    arr.push(v);
+    violationsByScanId.set(v.scanId, arr);
+  }
+  const sitesWithViolations = sites.map((site) => ({
+    ...site,
+    scans: site.scans.map((scan) => ({
+      ...scan,
+      violations: violationsByScanId.get(scan.id) ?? [],
+    })),
+  }));
+
+  // Build a scan -> { siteUrl, projectLabel } lookup for the activity feed.
+  const scanContext = new Map<string, { siteUrl: string; projectLabel: string }>();
+  for (const site of sitesWithViolations) {
+    const projectLabel = site.project?.name || hostOf(site.project?.origin ?? originOf(site.url));
+    for (const scan of site.scans) {
+      scanContext.set(scan.id, { siteUrl: site.url, projectLabel });
+    }
+  }
+
   const hasScans = completedScanCount > 0;
   const hasSite = sites.length > 0;
   const hasCiToken = sites.some(
@@ -232,7 +297,7 @@ export default async function DashboardPage({
   );
   const showOnboarding = !(hasScans && hasSite && hasCiToken);
 
-  const series: ChartSeries[] = sites.map((s, i) => ({
+  const series: ChartSeries[] = sitesWithViolations.map((s, i) => ({
     key: s.id,
     label: hostOf(s.url),
     color: SERIES_COLORS[i % SERIES_COLORS.length],
@@ -241,15 +306,15 @@ export default async function DashboardPage({
   // Keep the last 24 scans per page before merging into the chart's shared
   // timeline. Slicing the merged result instead would cut the early history
   // of pages that haven't been scanned recently and make their lines vanish.
-  const chartSites = sites.map((s) => ({
+  const chartSites = sitesWithViolations.map((s) => ({
     ...s,
     scans: s.scans.slice(-24),
   }));
   const chartData = buildChartData(chartSites);
-  const projectGroups = groupSitesByProject(sites);
+  const projectGroups = groupSitesByProject(sitesWithViolations);
   const fixQueue = buildFixQueue(projectGroups);
   const workflowOverview = buildWorkflowOverview(projectGroups);
-  const activityItems = buildProjectActivity(projectGroups);
+  const activityItems = buildProjectActivityFromRows(eventRows, commentRows, scanContext);
   const weekly = await buildWeeklySummary(session.user.id);
   const entitlements = entitlementsFor(user.plan);
   const atSiteLimit = isAtSiteLimit(user.plan, sites.length);
@@ -1507,24 +1572,6 @@ type ProjectGroupSite = {
       help: string;
       status: ViolationStatus;
       statusUpdatedAt: Date | null;
-      assigneeName: string | null;
-      assigneeEmail: string | null;
-      assigneeUserId: string | null;
-      assignee: { name: string | null; email: string } | null;
-      events: {
-        id: string;
-        fromStatus: ViolationStatus | null;
-        toStatus: ViolationStatus;
-        note: string | null;
-        createdAt: Date;
-        user: { name: string | null; email: string | null } | null;
-      }[];
-      comments: {
-        id: string;
-        body: string;
-        createdAt: Date;
-        user: { name: string | null; email: string | null } | null;
-      }[];
     }[];
   }[];
 };
@@ -1652,49 +1699,67 @@ function buildWorkflowOverview<TSite extends ProjectGroupSite>(
   return { statusCounts, needsVerification };
 }
 
-function buildProjectActivity<TSite extends ProjectGroupSite>(
-  groups: ProjectGroup<TSite>[],
+type ActivityEventRow = {
+  id: string;
+  fromStatus: ViolationStatus | null;
+  toStatus: ViolationStatus;
+  createdAt: Date;
+  user: { name: string | null; email: string | null } | null;
+  violation: { help: string; scanId: string };
+};
+
+type ActivityCommentRow = {
+  id: string;
+  body: string;
+  createdAt: Date;
+  user: { name: string | null; email: string | null } | null;
+  violation: { help: string; scanId: string };
+};
+
+// Activity feed used to be derived from the deeply-nested sites query (events
+// and comments fetched per violation per scan). It now consumes flat lists
+// pulled by their own queries, scoped to the latest scan per site, so each
+// dashboard load reads at most ~60 rows instead of thousands.
+function buildProjectActivityFromRows(
+  events: ActivityEventRow[],
+  comments: ActivityCommentRow[],
+  scanContext: Map<string, { siteUrl: string; projectLabel: string }>,
 ): ProjectActivityItem[] {
   const items: ProjectActivityItem[] = [];
 
-  for (const group of groups) {
-    for (const site of group.sites) {
-      const latest = site.scans[site.scans.length - 1];
-      if (!latest) continue;
+  for (const event of events) {
+    const ctx = scanContext.get(event.violation.scanId);
+    if (!ctx) continue;
+    const from = event.fromStatus
+      ? VIOLATION_STATUS_LABELS[event.fromStatus]
+      : "Created";
+    items.push({
+      id: `event:${event.id}`,
+      scanId: event.violation.scanId,
+      projectLabel: ctx.projectLabel,
+      pageUrl: ctx.siteUrl,
+      help: event.violation.help,
+      kind: "status",
+      body: `${from} -> ${VIOLATION_STATUS_LABELS[event.toStatus]}`,
+      actor: event.user?.name || event.user?.email || "System",
+      createdAt: event.createdAt,
+    });
+  }
 
-      for (const violation of latest.violations) {
-        for (const event of violation.events) {
-          const from = event.fromStatus
-            ? VIOLATION_STATUS_LABELS[event.fromStatus]
-            : "Created";
-          items.push({
-            id: `event:${event.id}`,
-            scanId: latest.id,
-            projectLabel: group.label,
-            pageUrl: site.url,
-            help: violation.help,
-            kind: "status",
-            body: `${from} -> ${VIOLATION_STATUS_LABELS[event.toStatus]}`,
-            actor: event.user?.name || event.user?.email || "System",
-            createdAt: event.createdAt,
-          });
-        }
-
-        for (const comment of violation.comments) {
-          items.push({
-            id: `comment:${comment.id}`,
-            scanId: latest.id,
-            projectLabel: group.label,
-            pageUrl: site.url,
-            help: violation.help,
-            kind: "comment",
-            body: comment.body,
-            actor: comment.user?.name || comment.user?.email || "Team",
-            createdAt: comment.createdAt,
-          });
-        }
-      }
-    }
+  for (const comment of comments) {
+    const ctx = scanContext.get(comment.violation.scanId);
+    if (!ctx) continue;
+    items.push({
+      id: `comment:${comment.id}`,
+      scanId: comment.violation.scanId,
+      projectLabel: ctx.projectLabel,
+      pageUrl: ctx.siteUrl,
+      help: comment.violation.help,
+      kind: "comment",
+      body: comment.body,
+      actor: comment.user?.name || comment.user?.email || "Team",
+      createdAt: comment.createdAt,
+    });
   }
 
   return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
