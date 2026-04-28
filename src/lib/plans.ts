@@ -29,6 +29,7 @@ export const PLAN_TIERS: PlanTier[] = [
       { text: "Auto re-scans", included: false },
       { text: "PDF report + shareable link", included: false },
       { text: "Public monitoring badge", included: false },
+      { text: "Team workspace + invites", included: false },
     ],
   },
   {
@@ -44,6 +45,7 @@ export const PLAN_TIERS: PlanTier[] = [
       { text: "AI fix suggestions (100 / month)", included: true },
       { text: "PDF report + shareable link", included: true },
       { text: "Public monitoring badge", included: true },
+      { text: "Team workspace + invites", included: false },
     ],
     highlight: true,
   },
@@ -61,6 +63,8 @@ export const PLAN_TIERS: PlanTier[] = [
       { text: "CI check history in your dashboard", included: true },
       { text: "Regression diffs across scans", included: true },
       { text: "Slack alerts for new regressions", included: true },
+      { text: "Team workspace — invite up to 10 members", included: true },
+      { text: "Assign issues to teammates with status workflow", included: true },
     ],
   },
 ];

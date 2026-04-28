@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; canceled?: string };
+  searchParams?: Promise<{ error?: string; canceled?: string }>;
 }) {
   const session = await getSession();
   const currentPlan = session?.user?.plan ?? null;
-  const banner = pricingBanner(searchParams?.error, searchParams?.canceled);
+  const resolved = searchParams ? await searchParams : undefined;
+  const banner = pricingBanner(resolved?.error, resolved?.canceled);
 
   return (
     <>
@@ -47,9 +48,9 @@ export default async function PricingPage({
             <span className="gradient-text">how seriously you manage risk.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base text-text-muted">
-            Free is for fast visibility. Starter monitors one website across its important pages. Pro is for
-            teams and agencies that need monitoring across multiple websites, AI remediation, and reports worth
-            sending onward.
+            Free is for fast visibility. Starter monitors one website across its important pages. Pro adds team
+            workspaces, assignable issues, monitoring across multiple websites, AI remediation, and reports
+            worth sending onward.
           </p>
         </div>
       </section>
@@ -68,8 +69,8 @@ export default async function PricingPage({
           />
           <PlanModeCard
             title="Pro"
-            eyebrow="Operate at scale"
-            body="Monitor up to 5 websites with 100 pages each, generate reports, and give stakeholders proof you are staying on top of changes."
+            eyebrow="Operate as a team"
+            body="Monitor up to 5 websites with 100 pages each, invite teammates into a shared workspace, and assign accessibility issues like any other ticket."
             highlight
           />
         </div>
@@ -205,9 +206,9 @@ const PLAN_OUTCOMES: Record<
     proof: "Best first paid step when a handful of pages drive revenue or reputation.",
   },
   PRO: {
-    outcome: "Run accessibility across up to 5 websites like an operating discipline.",
-    rhythm: "Daily monitoring, AI remediation, and shareable reporting.",
-    proof: "Best for agencies, multi-page teams, and customer-facing operations.",
+    outcome: "Run accessibility as a team across up to 5 websites with shared workflow.",
+    rhythm: "Daily monitoring, AI remediation, assignable issues, and shareable reporting.",
+    proof: "Best for agencies, product teams, and anyone who needs to delegate fixes.",
   },
 };
 
