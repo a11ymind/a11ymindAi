@@ -97,6 +97,13 @@ export default async function ScanResultPage({
                 },
               },
             },
+            assignee: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         user: { select: { plan: true } },
@@ -202,6 +209,30 @@ export default async function ScanResultPage({
 
   const userId = session?.user?.id;
   const ownedByMe = !!userId && scan.userId === userId;
+  const workspaceMembership = userId && scan.workspaceId
+    ? await prisma.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId: scan.workspaceId,
+            userId,
+          },
+        },
+        select: {
+          role: true,
+          workspace: {
+            select: {
+              members: {
+                orderBy: { createdAt: "asc" },
+                select: {
+                  userId: true,
+                  user: { select: { name: true, email: true } },
+                },
+              },
+            },
+          },
+        },
+      })
+    : null;
   const savedToDashboard = ownedByMe && !!scan.siteId;
   const claimable = !scan.siteId && (!scan.userId || ownedByMe);
   const savedScanOwnerPlan = scan.user?.plan ?? null;
@@ -212,6 +243,15 @@ export default async function ScanResultPage({
   const userPlan = session?.user?.plan ?? null;
   const effectiveOwnerPlan = ownedByMe ? savedScanOwnerPlan : userPlan;
   const viewerEntitlements = effectiveOwnerPlan ? entitlementsFor(effectiveOwnerPlan) : null;
+  const canEditWorkflow = ownedByMe || Boolean(workspaceMembership);
+  const workspaceAssignees =
+    viewerEntitlements?.teamMembers
+      ? workspaceMembership?.workspace.members.map((member) => ({
+          userId: member.userId,
+          label: member.user.name || member.user.email,
+          email: member.user.email,
+        })) ?? []
+      : [];
   const canSeeAiFixes = !savedScanRequiresAiUpgrade;
   const canExportPdf = ownedByMe && viewerEntitlements?.pdfExport === true;
   const limitPlan = parsePlan(resolvedSearchParams?.plan);
@@ -237,7 +277,7 @@ export default async function ScanResultPage({
   const visibleIssues = scan.violations.slice(0, 6);
   const visibleFixes = scan.violations
     .filter((violation) =>
-      Boolean(violation.legalRationale || violation.codeExample),
+      Boolean(violation.legalRationale || violation.plainEnglishFix || violation.codeExample),
     )
     .slice(0, 3);
   const canSeeRegressionDiffs = ownedByMe && viewerEntitlements?.regressionDiffs === true;
@@ -506,7 +546,7 @@ export default async function ScanResultPage({
             activeStatus={activeStatusFilter}
             counts={workflowCounts}
           />
-          {ownedByMe ? (
+          {canEditWorkflow ? (
             <div className="mt-4">
               <ViolationBulkStatusPanel
                 scanId={scan.id}
@@ -569,7 +609,8 @@ export default async function ScanResultPage({
                     violation={v}
                     isNew={previousScan ? !previousAxeIds.has(v.axeId) : false}
                     hasBaseline={!!previousScan}
-                    canEditStatus={ownedByMe}
+                    canEditStatus={canEditWorkflow}
+                    workspaceAssignees={workspaceAssignees}
                   />
                 ))}
               </div>
@@ -1132,6 +1173,7 @@ function ViolationCard({
   isNew,
   hasBaseline,
   canEditStatus,
+  workspaceAssignees,
 }: {
   violation: {
     id: string;
@@ -1144,12 +1186,20 @@ function ViolationCard({
     selector: string;
     failureSummary: string | null;
     legalRationale: string | null;
+    plainEnglishFix: string | null;
     codeExample: string | null;
+    aiDetails: unknown;
     status: "OPEN" | "IN_PROGRESS" | "IGNORED" | "FIXED" | "VERIFIED";
     statusUpdatedAt: Date | null;
     assigneeName: string | null;
     assigneeEmail: string | null;
+    assigneeUserId: string | null;
     assignedAt: Date | null;
+    assignee: {
+      id: string;
+      name: string | null;
+      email: string;
+    } | null;
     events: {
       id: string;
       fromStatus: ViolationStatus | null;
@@ -1181,6 +1231,11 @@ function ViolationCard({
   isNew: boolean;
   hasBaseline: boolean;
   canEditStatus: boolean;
+  workspaceAssignees: {
+    userId: string;
+    label: string;
+    email: string;
+  }[];
 }) {
   const instances =
     violation.instances.length > 0
@@ -1242,13 +1297,15 @@ function ViolationCard({
         {canEditStatus ? (
           <IssueAssigneeForm
             violationId={violation.id}
+            initialUserId={violation.assigneeUserId}
             initialName={violation.assigneeName}
             initialEmail={violation.assigneeEmail}
+            members={workspaceAssignees}
           />
         ) : (
           <IssueAssigneeSummary
-            assigneeName={violation.assigneeName}
-            assigneeEmail={violation.assigneeEmail}
+            assigneeName={violation.assignee?.name ?? violation.assigneeName}
+            assigneeEmail={violation.assignee?.email ?? violation.assigneeEmail}
             assignedAt={violation.assignedAt}
           />
         )}
@@ -1521,7 +1578,9 @@ function RecommendedFixesPanel({
     selector: string;
     element: string;
     legalRationale: string | null;
+    plainEnglishFix: string | null;
     codeExample: string | null;
+    aiDetails: unknown;
   }[];
   fallbackViolations: {
     id: string;
@@ -1582,12 +1641,15 @@ function VisibleFixCard({
     selector: string;
     element: string;
     legalRationale: string | null;
+    plainEnglishFix: string | null;
     codeExample: string | null;
+    aiDetails: unknown;
   };
 }) {
   const beforeSnippet = fix.element || fix.selector || fix.description;
-  const afterSnippet = fix.codeExample || fix.legalRationale || "";
-  const copyText = fix.codeExample || afterSnippet;
+  const details = parseAiDetails(fix.aiDetails);
+  const afterSnippet = fix.codeExample || fix.plainEnglishFix || fix.legalRationale || "";
+  const copyText = details.developerTicket || fix.codeExample || afterSnippet;
   const timeToFix = estimateFixTime(fix.help, fix.codeExample);
 
   return (
@@ -1601,13 +1663,36 @@ function VisibleFixCard({
           Takes ~{timeToFix}
         </span>
         <span className="rounded-full border border-border px-2.5 py-1">
-          Based on accessibility guidelines
+          Confidence: {details.confidence}
         </span>
       </div>
+      {fix.plainEnglishFix ? (
+        <div className="mt-4 rounded-lg border border-accent/20 bg-accent/10 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
+            Recommended change
+          </p>
+          <p className="mt-2 text-sm text-text">{fix.plainEnglishFix}</p>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <FixBlock label="Before" value={beforeSnippet || "Current markup or behavior needs improvement."} />
         <FixBlock label="After" value={afterSnippet || "Apply the recommended accessibility fix to improve this experience."} />
       </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <FixListBlock
+          label="Verification steps"
+          items={details.verificationSteps}
+          fallback="Re-scan this page and manually test the affected interaction."
+        />
+        <FixListBlock
+          label="Acceptance criteria"
+          items={details.acceptanceCriteria}
+          fallback="The automated violation no longer appears and the affected UI works with keyboard and assistive technology."
+        />
+      </div>
+      {details.developerTicket ? (
+        <FixBlock label="Copy-ready ticket" value={details.developerTicket} />
+      ) : null}
       {fix.description && (
         <p className="mt-3 text-sm text-text">{fix.description}</p>
       )}
@@ -1618,6 +1703,41 @@ function VisibleFixCard({
   );
 }
 
+function parseAiDetails(value: unknown): {
+  verificationSteps: string[];
+  acceptanceCriteria: string[];
+  developerTicket: string;
+  confidence: "low" | "medium" | "high";
+} {
+  if (!value || typeof value !== "object") {
+    return {
+      verificationSteps: [],
+      acceptanceCriteria: [],
+      developerTicket: "",
+      confidence: "medium",
+    };
+  }
+  const details = value as {
+    verificationSteps?: unknown;
+    acceptanceCriteria?: unknown;
+    developerTicket?: unknown;
+    confidence?: unknown;
+  };
+  return {
+    verificationSteps: Array.isArray(details.verificationSteps)
+      ? details.verificationSteps.filter((item): item is string => typeof item === "string")
+      : [],
+    acceptanceCriteria: Array.isArray(details.acceptanceCriteria)
+      ? details.acceptanceCriteria.filter((item): item is string => typeof item === "string")
+      : [],
+    developerTicket: typeof details.developerTicket === "string" ? details.developerTicket : "",
+    confidence:
+      details.confidence === "low" || details.confidence === "medium" || details.confidence === "high"
+        ? details.confidence
+        : "medium",
+  };
+}
+
 function FixBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border bg-bg/50 p-3">
@@ -1625,6 +1745,28 @@ function FixBlock({ label, value }: { label: string; value: string }) {
       <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-text">
         {value}
       </pre>
+    </div>
+  );
+}
+
+function FixListBlock({
+  label,
+  items,
+  fallback,
+}: {
+  label: string;
+  items: string[];
+  fallback: string;
+}) {
+  const visibleItems = items.length > 0 ? items : [fallback];
+  return (
+    <div className="rounded-lg border border-border bg-bg/50 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">{label}</p>
+      <ul className="mt-2 space-y-1 text-xs text-text">
+        {visibleItems.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

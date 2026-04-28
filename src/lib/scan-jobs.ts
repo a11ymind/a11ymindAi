@@ -17,6 +17,7 @@ const SCAN_RECORD_SELECT = {
   id: true,
   url: true,
   userId: true,
+  workspaceId: true,
   siteId: true,
   projectId: true,
   pageId: true,
@@ -73,6 +74,7 @@ export async function reapStaleRunningScans(
 export async function createScanRecord(input: {
   url: string;
   userId: string | null;
+  workspaceId?: string | null;
   siteId: string | null;
   projectId?: string | null;
   pageId?: string | null;
@@ -83,6 +85,7 @@ export async function createScanRecord(input: {
       score: 0,
       status: "PENDING",
       userId: input.userId,
+      workspaceId: input.workspaceId ?? null,
       siteId: input.siteId,
       projectId: input.projectId ?? null,
       pageId: input.pageId ?? null,
@@ -216,8 +219,16 @@ export async function executeScanRecord(
             selector,
             failureSummary: first?.failureSummary ?? null,
             legalRationale: fix?.legalRationale ?? null,
-            plainEnglishFix: null,
+            plainEnglishFix: fix?.plainEnglishFix ?? null,
             codeExample: fix?.codeExample ?? null,
+            aiDetails: fix
+              ? {
+                  verificationSteps: fix.verificationSteps,
+                  acceptanceCriteria: fix.acceptanceCriteria,
+                  developerTicket: fix.developerTicket,
+                  confidence: fix.confidence,
+                }
+              : undefined,
             status: statusForRecurringViolation(previousStatus),
             statusUpdatedAt: previousStatus ? new Date() : null,
           },
@@ -419,7 +430,9 @@ async function findCachedFixesForSite(
           axeId: true,
           selector: true,
           legalRationale: true,
+          plainEnglishFix: true,
           codeExample: true,
+          aiDetails: true,
         },
       },
     },
@@ -438,16 +451,44 @@ async function findCachedFixesForSite(
 
   const fixes: AiFix[] = [];
   for (const v of previous.violations) {
-    if (!v.legalRationale || !v.codeExample) {
+    if (!v.legalRationale || !v.plainEnglishFix || !v.codeExample) {
       return null;
     }
+    const details = cachedAiDetails(v.aiDetails);
+    if (!details) return null;
     fixes.push({
       axeId: v.axeId,
       legalRationale: v.legalRationale,
+      plainEnglishFix: v.plainEnglishFix,
       codeExample: v.codeExample,
+      ...details,
     });
   }
   return fixes;
+}
+
+function cachedAiDetails(value: unknown): Omit<AiFix, "axeId" | "legalRationale" | "plainEnglishFix" | "codeExample"> | null {
+  if (!value || typeof value !== "object") return null;
+  const details = value as {
+    verificationSteps?: unknown;
+    acceptanceCriteria?: unknown;
+    developerTicket?: unknown;
+    confidence?: unknown;
+  };
+  if (
+    !Array.isArray(details.verificationSteps) ||
+    !Array.isArray(details.acceptanceCriteria) ||
+    typeof details.developerTicket !== "string" ||
+    (details.confidence !== "low" && details.confidence !== "medium" && details.confidence !== "high")
+  ) {
+    return null;
+  }
+  return {
+    verificationSteps: details.verificationSteps.filter((item): item is string => typeof item === "string"),
+    acceptanceCriteria: details.acceptanceCriteria.filter((item): item is string => typeof item === "string"),
+    developerTicket: details.developerTicket,
+    confidence: details.confidence,
+  };
 }
 
 export function cadenceWindowStart(cadence: AutoScan, now: Date): Date | null {

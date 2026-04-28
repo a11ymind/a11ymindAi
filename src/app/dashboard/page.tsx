@@ -15,6 +15,7 @@ import { SignOutButton } from "@/components/UserMenu";
 import { RescanButton } from "@/components/RescanButton";
 import { SlackWebhookCard } from "@/components/SlackWebhookCard";
 import { URLScanner } from "@/components/URLScanner";
+import { WorkspaceInviteForm } from "@/components/WorkspaceInviteForm";
 import {
   ScoreHistoryChart,
   type ChartPoint,
@@ -35,6 +36,7 @@ import {
   VIOLATION_STATUS_LABELS,
   VIOLATION_STATUS_OPTIONS,
 } from "@/lib/violation-status";
+import { ensureDefaultWorkspaceForUser } from "@/lib/workspaces";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard — a11ymind AI" };
@@ -66,6 +68,34 @@ export default async function DashboardPage({
     select: { email: true, name: true, plan: true },
   });
   if (!user) redirect("/login");
+  const userEntitlements = entitlementsFor(user.plan);
+  const workspace = await ensureDefaultWorkspaceForUser(session.user.id);
+  const workspaceDetails = await prisma.workspace.findUnique({
+    where: { id: workspace.id },
+    select: {
+      id: true,
+      name: true,
+      members: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          role: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
+      invites: {
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          expiresAt: true,
+        },
+      },
+    },
+  });
 
   const [sites, completedScanCount] = await Promise.all([
     prisma.site.findMany({
@@ -131,6 +161,13 @@ export default async function DashboardPage({
               statusUpdatedAt: true,
               assigneeName: true,
               assigneeEmail: true,
+              assigneeUserId: true,
+              assignee: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
               events: {
                 orderBy: { createdAt: "desc" },
                 take: 2,
@@ -514,6 +551,15 @@ export default async function DashboardPage({
           <section className="container-page mt-10">
             <ProjectActivityFeed items={activityItems} />
           </section>
+          {workspaceDetails ? (
+            <section className="container-page mt-10">
+              <WorkspacePanel
+                workspace={workspaceDetails}
+                teamMembersEnabled={userEntitlements.teamMembers}
+                maxWorkspaceMembers={userEntitlements.maxWorkspaceMembers}
+              />
+            </section>
+          ) : null}
         </>
       )}
 
@@ -1209,6 +1255,102 @@ function ProjectActivityFeed({ items }: { items: ProjectActivityItem[] }) {
   );
 }
 
+function WorkspacePanel({
+  workspace,
+  teamMembersEnabled,
+  maxWorkspaceMembers,
+}: {
+  workspace: {
+    id: string;
+    name: string;
+    members: {
+      id: string;
+      role: string;
+      user: { name: string | null; email: string };
+    }[];
+    invites: {
+      id: string;
+      email: string;
+      role: string;
+      expiresAt: Date;
+    }[];
+  };
+  teamMembersEnabled: boolean;
+  maxWorkspaceMembers: number;
+}) {
+  return (
+    <div className="premium-panel overflow-hidden">
+      <div className="border-b border-white/10 px-6 py-5">
+        <p className="section-kicker">Workspace</p>
+        <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
+          {workspace.name}
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-text-muted">
+          {teamMembersEnabled
+            ? "Invite teammates so comments, assignments, and issue ownership can move from free-text to real users."
+            : "Team members are available on Pro. Starter is built for individual monitoring workflows."}
+        </p>
+        {teamMembersEnabled ? (
+          <WorkspaceInviteForm />
+        ) : (
+          <Link href="/pricing" className="btn-primary mt-4 text-sm">
+            Upgrade to Pro for team workspaces
+          </Link>
+        )}
+      </div>
+      <div className="grid gap-px bg-white/10 md:grid-cols-2">
+        <div className="bg-bg/70 px-6 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Members</p>
+            <p className="text-xs text-text-subtle">
+              {workspace.members.length}/{maxWorkspaceMembers}
+            </p>
+          </div>
+          <div className="mt-3 space-y-2">
+            {workspace.members.map((member) => (
+              <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-text">
+                    {member.user.name || member.user.email}
+                  </span>
+                  {member.user.name ? (
+                    <span className="block truncate text-xs text-text-muted">{member.user.email}</span>
+                  ) : null}
+                </span>
+                <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                  {member.role}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-bg/70 px-6 py-5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Pending invites</p>
+          <div className="mt-3 space-y-2">
+            {workspace.invites.length > 0 ? (
+              workspace.invites.map((invite) => (
+                <div key={invite.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-text">{invite.email}</span>
+                    <span className="block text-xs text-text-muted">
+                      Expires {invite.expiresAt.toLocaleDateString()}
+                    </span>
+                  </span>
+                  <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+                    {invite.role}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-text-muted">No pending invites.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectControlPanel({
   title,
   children,
@@ -1360,6 +1502,8 @@ type ProjectGroupSite = {
       statusUpdatedAt: Date | null;
       assigneeName: string | null;
       assigneeEmail: string | null;
+      assigneeUserId: string | null;
+      assignee: { name: string | null; email: string } | null;
       events: {
         id: string;
         fromStatus: ViolationStatus | null;

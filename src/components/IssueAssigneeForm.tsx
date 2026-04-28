@@ -5,14 +5,23 @@ import { useRouter } from "next/navigation";
 
 export function IssueAssigneeForm({
   violationId,
+  initialUserId,
   initialName,
   initialEmail,
+  members,
 }: {
   violationId: string;
+  initialUserId: string | null;
   initialName: string | null;
   initialEmail: string | null;
+  members: {
+    userId: string;
+    label: string;
+    email: string;
+  }[];
 }) {
   const router = useRouter();
+  const [assigneeUserId, setAssigneeUserId] = useState(initialUserId ?? "");
   const [name, setName] = useState(initialName ?? "");
   const [email, setEmail] = useState(initialEmail ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -29,8 +38,9 @@ export function IssueAssigneeForm({
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          assigneeName: name,
-          assigneeEmail: email,
+          assigneeUserId: assigneeUserId || null,
+          assigneeName: assigneeUserId ? "" : name,
+          assigneeEmail: assigneeUserId ? "" : email,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -48,20 +58,37 @@ export function IssueAssigneeForm({
       <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
         Assignee
       </p>
+      {members.length > 0 ? (
+        <select
+          value={assigneeUserId}
+          onChange={(event) => setAssigneeUserId(event.target.value)}
+          className="mt-3 w-full rounded-md border border-border bg-bg-elevated px-3 py-2 text-xs text-text outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/30"
+          aria-label="Assign to workspace member"
+        >
+          <option value="">External / unassigned</option>
+          {members.map((member) => (
+            <option key={member.userId} value={member.userId}>
+              {member.label} ({member.email})
+            </option>
+          ))}
+        </select>
+      ) : null}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
+          disabled={Boolean(assigneeUserId)}
           maxLength={120}
           placeholder="Name"
-          className="rounded-md border border-border bg-bg-elevated px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-subtle focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="rounded-md border border-border bg-bg-elevated px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-subtle focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
         />
         <input
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          disabled={Boolean(assigneeUserId)}
           maxLength={254}
           placeholder="email@example.com"
-          className="rounded-md border border-border bg-bg-elevated px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-subtle focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="rounded-md border border-border bg-bg-elevated px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-subtle focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
         />
       </div>
       <div className="mt-3 flex justify-end">

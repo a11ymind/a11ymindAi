@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canAccessWorkspaceResource } from "@/lib/workspaces";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,11 +31,18 @@ export async function POST(
     where: { id },
     select: {
       id: true,
-      scan: { select: { userId: true } },
+      scan: { select: { userId: true, workspaceId: true } },
     },
   });
 
-  if (!violation || violation.scan.userId !== session.user.id) {
+  if (
+    !violation ||
+    !(await canAccessWorkspaceResource({
+      userId: session.user.id,
+      ownerUserId: violation.scan.userId,
+      workspaceId: violation.scan.workspaceId,
+    }))
+  ) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

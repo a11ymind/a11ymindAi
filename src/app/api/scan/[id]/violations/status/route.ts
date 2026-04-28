@@ -3,6 +3,7 @@ import type { ViolationStatus } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canAccessWorkspaceResource } from "@/lib/workspaces";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +31,16 @@ export async function PATCH(
 
   const scan = await prisma.scan.findUnique({
     where: { id },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, workspaceId: true },
   });
-  if (!scan || scan.userId !== session.user.id) {
+  if (
+    !scan ||
+    !(await canAccessWorkspaceResource({
+      userId: session.user.id,
+      ownerUserId: scan.userId,
+      workspaceId: scan.workspaceId,
+    }))
+  ) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

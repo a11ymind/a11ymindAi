@@ -5,7 +5,9 @@ type PdfViolation = {
   description: string;
   selector: string;
   legalRationale: string | null;
+  plainEnglishFix?: string | null;
   codeExample: string | null;
+  aiDetails?: unknown;
 };
 
 type PdfScan = {
@@ -73,7 +75,7 @@ export function renderScanPdf(scan: PdfScan, options: RenderScanPdfOptions = {})
   const topIssues = sortViolations(scan.violations).slice(0, 5);
   const fixes = scan.violations
     .filter((violation) =>
-      Boolean(violation.legalRationale || violation.codeExample),
+      Boolean(violation.legalRationale || violation.plainEnglishFix || violation.codeExample),
     )
     .slice(0, 4);
 
@@ -385,11 +387,16 @@ function addIssueCard(pages: Page[], issue: PdfViolation, index: number) {
 }
 
 function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
-  const recommendedFix = fix.description || "See the code example below for remediation guidance.";
+  const details = parseAiDetails(fix.aiDetails);
+  const recommendedFix = fix.plainEnglishFix || fix.description || "See the code example below for remediation guidance.";
   const rationale = fix.legalRationale || "Based on accessibility guidelines and saved scan context.";
   const codeExample = stripFences(fix.codeExample || "").slice(0, 500);
+  const verification = details.verificationSteps.slice(0, 2).join(" ");
   const fixLines = wrapText(recommendedFix, charsForWidth(CONTENT_WIDTH - 36, 10));
   const rationaleLines = wrapText(rationale, charsForWidth(CONTENT_WIDTH - 36, 9));
+  const verificationLines = verification
+    ? wrapText(verification, charsForWidth(CONTENT_WIDTH - 36, 9)).slice(0, 3)
+    : [];
   const codeLines = codeExample
     ? wrapText(codeExample, charsForWidth(CONTENT_WIDTH - 48, 8), true).slice(0, 8)
     : [];
@@ -397,6 +404,7 @@ function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
     64 +
     fixLines.length * 13 +
     rationaleLines.length * 12 +
+    (verificationLines.length > 0 ? verificationLines.length * 12 + 18 : 0) +
     (codeLines.length > 0 ? codeLines.length * 10 + 26 : 0);
   const page = ensureSpace(pages, height + 14);
   const y = page.cursorY - height;
@@ -409,8 +417,15 @@ function addFixCard(pages: Page[], fix: PdfViolation, index: number) {
   const rationaleY = y + height - 56 - fixLines.length * 13 - 8;
   page.ops.push(textOp(MARGIN_X + 16, rationaleY, "Based on accessibility guidelines", 8, "F2", COLORS.subtle));
   page.ops.push(...wrappedTextOps(MARGIN_X + 16, rationaleY - 12, CONTENT_WIDTH - 32, rationale, 9, "F1", COLORS.muted, 12));
+  const verificationY = rationaleY - 12 - rationaleLines.length * 12 - 8;
+  if (verificationLines.length > 0) {
+    page.ops.push(textOp(MARGIN_X + 16, verificationY, "Verification", 8, "F2", COLORS.subtle));
+    page.ops.push(...wrappedTextOps(MARGIN_X + 16, verificationY - 12, CONTENT_WIDTH - 32, verification, 9, "F1", COLORS.muted, 12));
+  }
   if (codeLines.length > 0) {
-    const codeY = rationaleY - 12 - rationaleLines.length * 12 - 10;
+    const codeY = verificationLines.length > 0
+      ? verificationY - 12 - verificationLines.length * 12 - 10
+      : rationaleY - 12 - rationaleLines.length * 12 - 10;
     const codeHeight = codeLines.length * 10 + 18;
     page.ops.push(fillRect(MARGIN_X + 16, codeY - codeHeight + 10, CONTENT_WIDTH - 32, codeHeight, COLORS.white));
     page.ops.push(strokeRect(MARGIN_X + 16, codeY - codeHeight + 10, CONTENT_WIDTH - 32, codeHeight, COLORS.border, 1));
@@ -608,6 +623,18 @@ function estimateFixTime(
     return "5 minutes";
   }
   return "2 minutes";
+}
+
+function parseAiDetails(value: unknown): {
+  verificationSteps: string[];
+} {
+  if (!value || typeof value !== "object") return { verificationSteps: [] };
+  const details = value as { verificationSteps?: unknown };
+  return {
+    verificationSteps: Array.isArray(details.verificationSteps)
+      ? details.verificationSteps.filter((item): item is string => typeof item === "string")
+      : [],
+  };
 }
 
 function plainEnglishRiskMeaning(help: string, description: string): string {

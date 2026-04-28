@@ -178,6 +178,8 @@ export async function POST(req: Request) {
       }
 
       const { isAtSiteLimit } = await import("@/lib/entitlements");
+      const { ensureDefaultWorkspaceForUser } = await import("@/lib/workspaces");
+      const workspace = await ensureDefaultWorkspaceForUser(userId);
       // Atomic: either find an existing Site or create one if under limit.
       // Wrapping in a serializable transaction prevents two concurrent scans
       // from racing past `maxSites`.
@@ -185,15 +187,23 @@ export async function POST(req: Request) {
         async (tx) => {
           const existing = await tx.site.findUnique({
             where: { userId_url: { userId, url: target } },
-            select: { id: true },
+            select: { id: true, workspaceId: true },
           });
-          if (existing) return existing.id;
+          if (existing) {
+            if (!existing.workspaceId) {
+              await tx.site.update({
+                where: { id: existing.id },
+                data: { workspaceId: workspace.id },
+              });
+            }
+            return existing.id;
+          }
 
           const siteCount = await tx.site.count({ where: { userId } });
           if (isAtSiteLimit(userPlan ?? "FREE", siteCount)) return null;
 
           const created = await tx.site.create({
-            data: { userId, url: target },
+            data: { userId, workspaceId: workspace.id, url: target },
             select: { id: true },
           });
           return created.id;
@@ -211,12 +221,14 @@ export async function POST(req: Request) {
         data: {
           projectId: projectPage.projectId,
           pageId: projectPage.pageId,
+          workspaceId: projectPage.workspaceId,
         },
       });
     }
     const scan = await createScanRecord({
       url: target,
       userId,
+      workspaceId: projectPage?.workspaceId ?? null,
       siteId,
       projectId: projectPage?.projectId ?? null,
       pageId: projectPage?.pageId ?? null,

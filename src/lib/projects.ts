@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeUrl } from "@/lib/scan";
+import { ensureDefaultWorkspaceForUser } from "@/lib/workspaces";
 
 export type ProjectPageRef = {
   projectId: string;
   pageId: string;
+  workspaceId: string;
 };
 
 export async function ensureProjectPageForUrl(input: {
@@ -16,6 +18,7 @@ export async function ensureProjectPageForUrl(input: {
   const parsed = new URL(normalizedUrl);
   const origin = parsed.origin;
   const host = parsed.hostname.replace(/^www\./, "");
+  const workspace = await ensureDefaultWorkspaceForUser(input.userId);
 
   const project = await prisma.project.upsert({
     where: {
@@ -26,10 +29,13 @@ export async function ensureProjectPageForUrl(input: {
     },
     create: {
       userId: input.userId,
+      workspaceId: workspace.id,
       origin,
       name: host,
     },
-    update: {},
+    update: {
+      workspaceId: workspace.id,
+    },
     select: { id: true },
   });
 
@@ -51,5 +57,6 @@ export async function ensureProjectPageForUrl(input: {
   return {
     projectId: project.id,
     pageId: page.id,
+    workspaceId: workspace.id,
   };
 }

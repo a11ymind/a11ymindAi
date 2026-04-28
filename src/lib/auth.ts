@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth/next";
 import bcrypt from "bcryptjs";
 import { sendAuthWelcomeEmail } from "./email";
 import { prisma } from "./prisma";
+import { ensureDefaultWorkspaceForUser } from "./workspaces";
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -68,6 +69,9 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       if (!user.email) return;
+      if (user.id) {
+        await ensureDefaultWorkspaceForUser(user.id);
+      }
       await sendAuthWelcomeEmail({
         to: user.email,
         name: user.name,

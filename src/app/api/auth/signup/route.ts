@@ -112,13 +112,31 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      name: parsed.data.name || null,
-    },
-    select: { id: true, email: true, name: true },
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+        name: parsed.data.name || null,
+      },
+      select: { id: true, email: true, name: true },
+    });
+
+    await tx.workspace.create({
+      data: {
+        name: created.name?.trim()
+          ? `${created.name.trim()}'s workspace`
+          : `${created.email.split("@")[0]}'s workspace`,
+        members: {
+          create: {
+            userId: created.id,
+            role: "OWNER",
+          },
+        },
+      },
+    });
+
+    return created;
   });
 
   await sendAuthWelcomeEmail({

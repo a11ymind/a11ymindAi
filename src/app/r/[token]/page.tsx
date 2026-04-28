@@ -46,6 +46,12 @@ export default async function SharedReportPage({
           statusUpdatedAt: true,
           assigneeName: true,
           assigneeEmail: true,
+          assignee: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
           assignedAt: true,
           comments: {
             orderBy: { createdAt: "desc" },
@@ -352,6 +358,7 @@ function SharedWorkflowContext({
     statusUpdatedAt: Date | null;
     assigneeName: string | null;
     assigneeEmail: string | null;
+    assignee: { name: string | null; email: string } | null;
     assignedAt: Date | null;
     comments: {
       id: string;
@@ -369,7 +376,7 @@ function SharedWorkflowContext({
     }[];
   };
 }) {
-  const assignee = violation.assigneeName || violation.assigneeEmail;
+  const assignee = violation.assignee?.name || violation.assigneeName || violation.assignee?.email || violation.assigneeEmail;
 
   return (
     <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -389,8 +396,10 @@ function SharedWorkflowContext({
         <p className="mt-2 text-sm font-medium text-text">
           {assignee || "Unassigned"}
         </p>
-        {violation.assigneeEmail && violation.assigneeName ? (
-          <p className="mt-1 text-xs text-text-muted">{violation.assigneeEmail}</p>
+        {(violation.assignee?.email || violation.assigneeEmail) && assignee ? (
+          <p className="mt-1 text-xs text-text-muted">
+            {violation.assignee?.email || violation.assigneeEmail}
+          </p>
         ) : null}
         {violation.assignedAt ? (
           <p className="mt-1 text-xs text-text-subtle">

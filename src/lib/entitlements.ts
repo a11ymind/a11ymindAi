@@ -16,6 +16,8 @@ export type Entitlements = {
   regressionDiffs: boolean;
   slackAlerts: boolean;
   ciIntegration: boolean;
+  teamMembers: boolean;
+  maxWorkspaceMembers: number;
 };
 
 export const ENTITLEMENTS: Record<Plan, Entitlements> = {
@@ -33,6 +35,8 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     regressionDiffs: false,
     slackAlerts: false,
     ciIntegration: false,
+    teamMembers: false,
+    maxWorkspaceMembers: 1,
   },
   STARTER: {
     maxProjects: 1,
@@ -48,6 +52,8 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     regressionDiffs: false,
     slackAlerts: false,
     ciIntegration: false,
+    teamMembers: false,
+    maxWorkspaceMembers: 1,
   },
   PRO: {
     maxProjects: 5,
@@ -63,6 +69,8 @@ export const ENTITLEMENTS: Record<Plan, Entitlements> = {
     regressionDiffs: true,
     slackAlerts: true,
     ciIntegration: true,
+    teamMembers: true,
+    maxWorkspaceMembers: 10,
   },
 };
 
