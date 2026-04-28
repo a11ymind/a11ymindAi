@@ -238,7 +238,14 @@ export default async function DashboardPage({
     color: SERIES_COLORS[i % SERIES_COLORS.length],
   }));
 
-  const chartData = buildChartData(sites).slice(-24);
+  // Keep the last 24 scans per page before merging into the chart's shared
+  // timeline. Slicing the merged result instead would cut the early history
+  // of pages that haven't been scanned recently and make their lines vanish.
+  const chartSites = sites.map((s) => ({
+    ...s,
+    scans: s.scans.slice(-24),
+  }));
+  const chartData = buildChartData(chartSites);
   const projectGroups = groupSitesByProject(sites);
   const fixQueue = buildFixQueue(projectGroups);
   const workflowOverview = buildWorkflowOverview(projectGroups);
@@ -530,10 +537,10 @@ export default async function DashboardPage({
                 <div>
                   <p className="section-kicker">Score history</p>
                   <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
-                    Accessibility trend across monitored pages
+                    Accessibility trend, one line per monitored page
                   </h2>
                   <p className="mt-1 text-sm text-text-muted">
-                    Latest 24 completed scan timestamps. Green is healthy, amber needs review, red needs attention.
+                    Latest 24 completed scans per page. Green is healthy, amber needs review, red needs attention.
                   </p>
                 </div>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-text-subtle">

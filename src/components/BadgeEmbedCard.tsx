@@ -81,11 +81,13 @@ export function BadgeEmbedCard({
               {copied ? "Copied" : "Copy snippet"}
             </button>
           </div>
-          {!compact && (
-            <pre className="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-bg p-3 text-xs leading-5 text-text-subtle">
-              <code>{snippet}</code>
-            </pre>
-          )}
+          <pre
+            className={`mt-2 overflow-x-auto rounded-xl border border-white/10 bg-bg text-xs leading-5 text-text-subtle ${
+              compact ? "max-h-28 p-2" : "p-3"
+            }`}
+          >
+            <code>{snippet}</code>
+          </pre>
         </div>
       </div>
     </div>
