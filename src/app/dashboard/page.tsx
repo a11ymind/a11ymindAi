@@ -2,25 +2,18 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import type { ViolationStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BadgeEmbedCard } from "@/components/BadgeEmbedCard";
 import { BillingStateRefresh } from "@/components/BillingStateRefresh";
 import { CiHistoryCard } from "@/components/CiHistoryCard";
 import { AccessLintCiCard } from "@/components/AccessLintCiCard";
 import { CrawlSiteButton } from "@/components/CrawlSiteButton";
-import { Logo } from "@/components/Logo";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { PlanBadge } from "@/components/PlanBadge";
-import { SignOutButton } from "@/components/UserMenu";
 import { RescanButton } from "@/components/RescanButton";
 import { SlackWebhookCard } from "@/components/SlackWebhookCard";
 import { URLScanner } from "@/components/URLScanner";
 import { WorkspaceInviteForm } from "@/components/WorkspaceInviteForm";
-import {
-  ScoreHistoryChart,
-  type ChartPoint,
-  type ChartSeries,
-} from "@/components/ScoreHistoryChart";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
@@ -32,27 +25,18 @@ import {
 } from "@/lib/entitlements";
 import { getAiUsageSummary } from "@/lib/ai-usage";
 import {
-  isActionableViolationStatus,
-  VIOLATION_STATUS_LABELS,
-  VIOLATION_STATUS_OPTIONS,
-} from "@/lib/violation-status";
+  bandColor,
+  formatRelative,
+  hostOf,
+  normalizeImpact,
+  originOf,
+  severityColor,
+} from "@/lib/dashboard-format";
+import { isActionableViolationStatus } from "@/lib/violation-status";
 import { ensureDefaultWorkspaceForUser } from "@/lib/workspaces";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard — a11ymind AI" };
-
-const SERIES_COLORS = [
-  "#06b6d4",
-  "#a78bfa",
-  "#f59e0b",
-  "#22c55e",
-  "#ec4899",
-  "#3b82f6",
-  "#f97316",
-  "#10b981",
-  "#8b5cf6",
-  "#ef4444",
-];
 
 export default async function DashboardPage({
   searchParams,
@@ -192,8 +176,10 @@ export default async function DashboardPage({
   for (const site of sites) site.scans.reverse();
 
   // Lean violation fetch: only the latest + previous scan per site need
-  // violations. Pulling them inside the sites query (50 scans × N violations
-  // × events × comments × assignee) was the dashboard's biggest cost.
+  // violations on the dashboard (the project cards use them for openIssues
+  // and regression diff). Activity feed, fix queue, and trend chart now live
+  // on /monitoring and /issues, so the dashboard does not pull events,
+  // comments, or extra scan history any more.
   const violationScanIds: string[] = [];
   for (const site of sites) {
     const latest = site.scans[site.scans.length - 1];
@@ -201,72 +187,22 @@ export default async function DashboardPage({
     if (latest) violationScanIds.push(latest.id);
     if (previous) violationScanIds.push(previous.id);
   }
-  const latestScanIds = sites
-    .map((s) => s.scans[s.scans.length - 1]?.id)
-    .filter((id): id is string => Boolean(id));
 
-  const [violationRows, eventRows, commentRows] = await Promise.all([
-    violationScanIds.length
-      ? prisma.violation.findMany({
-          where: { scanId: { in: violationScanIds } },
-          select: {
-            id: true,
-            axeId: true,
-            impact: true,
-            help: true,
-            status: true,
-            statusUpdatedAt: true,
-            scanId: true,
-          },
-        })
-      : Promise.resolve([] as { id: string; axeId: string; impact: string; help: string; status: ViolationStatus; statusUpdatedAt: Date | null; scanId: string }[]),
-    latestScanIds.length
-      ? prisma.violationEvent.findMany({
-          where: { violation: { scanId: { in: latestScanIds } } },
-          orderBy: { createdAt: "desc" },
-          take: 30,
-          select: {
-            id: true,
-            fromStatus: true,
-            toStatus: true,
-            createdAt: true,
-            user: { select: { name: true, email: true } },
-            violation: { select: { help: true, scanId: true } },
-          },
-        })
-      : Promise.resolve([] as Array<{
-          id: string;
-          fromStatus: ViolationStatus | null;
-          toStatus: ViolationStatus;
-          createdAt: Date;
-          user: { name: string | null; email: string | null } | null;
-          violation: { help: string; scanId: string };
-        }>),
-    latestScanIds.length
-      ? prisma.violationComment.findMany({
-          where: { violation: { scanId: { in: latestScanIds } } },
-          orderBy: { createdAt: "desc" },
-          take: 30,
-          select: {
-            id: true,
-            body: true,
-            createdAt: true,
-            user: { select: { name: true, email: true } },
-            violation: { select: { help: true, scanId: true } },
-          },
-        })
-      : Promise.resolve([] as Array<{
-          id: string;
-          body: string;
-          createdAt: Date;
-          user: { name: string | null; email: string | null } | null;
-          violation: { help: string; scanId: string };
-        }>),
-  ]);
+  const violationRows = violationScanIds.length
+    ? await prisma.violation.findMany({
+        where: { scanId: { in: violationScanIds } },
+        select: {
+          id: true,
+          axeId: true,
+          impact: true,
+          help: true,
+          status: true,
+          statusUpdatedAt: true,
+          scanId: true,
+        },
+      })
+    : [];
 
-  // Index violations by scanId, and attach to each scan in-place. Scans we
-  // didn't query violations for keep an empty array; consumers only read
-  // latest/previous so this is correct.
   const violationsByScanId = new Map<string, typeof violationRows>();
   for (const v of violationRows) {
     const arr = violationsByScanId.get(v.scanId) ?? [];
@@ -281,15 +217,6 @@ export default async function DashboardPage({
     })),
   }));
 
-  // Build a scan -> { siteUrl, projectLabel } lookup for the activity feed.
-  const scanContext = new Map<string, { siteUrl: string; projectLabel: string }>();
-  for (const site of sitesWithViolations) {
-    const projectLabel = site.project?.name || hostOf(site.project?.origin ?? originOf(site.url));
-    for (const scan of site.scans) {
-      scanContext.set(scan.id, { siteUrl: site.url, projectLabel });
-    }
-  }
-
   const hasScans = completedScanCount > 0;
   const hasSite = sites.length > 0;
   const hasCiToken = sites.some(
@@ -297,24 +224,7 @@ export default async function DashboardPage({
   );
   const showOnboarding = !(hasScans && hasSite && hasCiToken);
 
-  const series: ChartSeries[] = sitesWithViolations.map((s, i) => ({
-    key: s.id,
-    label: hostOf(s.url),
-    color: SERIES_COLORS[i % SERIES_COLORS.length],
-  }));
-
-  // Keep the last 24 scans per page before merging into the chart's shared
-  // timeline. Slicing the merged result instead would cut the early history
-  // of pages that haven't been scanned recently and make their lines vanish.
-  const chartSites = sitesWithViolations.map((s) => ({
-    ...s,
-    scans: s.scans.slice(-24),
-  }));
-  const chartData = buildChartData(chartSites);
   const projectGroups = groupSitesByProject(sitesWithViolations);
-  const fixQueue = buildFixQueue(projectGroups);
-  const workflowOverview = buildWorkflowOverview(projectGroups);
-  const activityItems = buildProjectActivityFromRows(eventRows, commentRows, scanContext);
   const weekly = await buildWeeklySummary(session.user.id);
   const entitlements = entitlementsFor(user.plan);
   const atSiteLimit = isAtSiteLimit(user.plan, sites.length);
@@ -347,47 +257,7 @@ export default async function DashboardPage({
   return (
     <>
       <BillingStateRefresh enabled={resolvedSearchParams?.upgraded === "1"} />
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
-        <div className="container-page flex flex-wrap items-center justify-between gap-3 py-4">
-          <Link href="/" aria-label="a11ymind AI home" className="flex items-center">
-            <Logo />
-          </Link>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
-            <PlanBadge plan={user.plan} />
-            {user.plan === "FREE" ? (
-              <Link
-                href="/pricing"
-                className="hidden rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:inline-flex"
-              >
-                Unlock AI fixes
-              </Link>
-            ) : (
-              <a
-                href="/api/stripe/portal"
-                className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
-              >
-                Manage billing
-              </a>
-            )}
-            <Link
-              href="/scans"
-              className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
-            >
-              History
-            </Link>
-            <Link
-              href="/settings"
-              className="hidden text-sm text-text-muted transition-colors hover:text-text sm:inline"
-            >
-              Settings
-            </Link>
-            <span className="hidden max-w-[14rem] truncate text-sm text-text-muted md:inline">
-              {user.name || user.email}
-            </span>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
+      <AppHeader user={user} active="dashboard" />
       <main id="main" className="page-shell-gradient min-h-screen">
 
       {resolvedSearchParams?.upgraded === "1" && (
@@ -596,33 +466,44 @@ export default async function DashboardPage({
               />
             </div>
           </section>
-          <section className="container-page mt-10">
-            <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-bg-elevated/45 shadow-card">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-6 py-5">
-                <div>
-                  <p className="section-kicker">Score history</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
-                    Accessibility trend, one line per monitored page
+          {sites.length > 0 && (
+            <section className="container-page mt-10">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Link
+                  href="/monitoring"
+                  className="group rounded-[1.35rem] border border-white/10 bg-bg-elevated/45 p-6 shadow-card transition-colors hover:border-accent/40"
+                >
+                  <p className="section-kicker">Monitoring</p>
+                  <h2 className="mt-2 text-lg font-semibold text-text">
+                    See trends and recent activity
                   </h2>
-                  <p className="mt-1 text-sm text-text-muted">
-                    Latest 24 completed scans per page. Green is healthy, amber needs review, red needs attention.
+                  <p className="mt-2 text-sm text-text-muted">
+                    Score history per website, daily averages, and a feed of comments and status changes from the latest
+                    scans.
                   </p>
-                </div>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-text-subtle">
-                  0–100, higher is better
-                </span>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm text-accent transition-colors group-hover:underline">
+                    Open monitoring <span aria-hidden>→</span>
+                  </span>
+                </Link>
+                <Link
+                  href="/issues"
+                  className="group rounded-[1.35rem] border border-white/10 bg-bg-elevated/45 p-6 shadow-card transition-colors hover:border-accent/40"
+                >
+                  <p className="section-kicker">Issues</p>
+                  <h2 className="mt-2 text-lg font-semibold text-text">
+                    Work the queue
+                  </h2>
+                  <p className="mt-2 text-sm text-text-muted">
+                    Critical and serious findings from the latest scan of every monitored page, ordered by impact and
+                    workflow status.
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm text-accent transition-colors group-hover:underline">
+                    Open issues <span aria-hidden>→</span>
+                  </span>
+                </Link>
               </div>
-              <div className="p-6">
-                <ScoreHistoryChart data={chartData} series={series} />
-              </div>
-            </div>
-          </section>
-          <section className="container-page mt-10">
-            <FixQueueCard items={fixQueue} overview={workflowOverview} />
-          </section>
-          <section className="container-page mt-10">
-            <ProjectActivityFeed items={activityItems} />
-          </section>
+            </section>
+          )}
           {workspaceDetails ? (
             <section className="container-page mt-10">
               <WorkspacePanel
@@ -803,77 +684,6 @@ function DashboardStat({
       <p className="mt-1 text-xs text-text-muted">{detail}</p>
     </div>
   );
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function bandColor(tone: "good" | "warn" | "bad"): string {
-  return tone === "good" ? "#22c55e" : tone === "warn" ? "#f59e0b" : "#ef4444";
-}
-
-function severityColor(impact: string): string {
-  const normalized = normalizeImpact(impact);
-  return {
-    critical: "#ef4444",
-    serious: "#f97316",
-    moderate: "#eab308",
-    minor: "#3b82f6",
-  }[normalized];
-}
-
-function normalizeImpact(impact: string): "critical" | "serious" | "moderate" | "minor" {
-  return impact === "critical" ||
-    impact === "serious" ||
-    impact === "moderate" ||
-    impact === "minor"
-    ? impact
-    : "minor";
-}
-
-function formatRelative(date: Date): string {
-  const diff = Date.now() - date.getTime();
-  const min = 60_000,
-    hour = 60 * min,
-    day = 24 * hour;
-  if (diff < hour) return `${Math.max(1, Math.round(diff / min))}m ago`;
-  if (diff < day) return `${Math.round(diff / hour)}h ago`;
-  if (diff < 14 * day) return `${Math.round(diff / day)}d ago`;
-  return date.toLocaleDateString();
-}
-
-function buildChartData(
-  sites: { id: string; url: string; scans: { createdAt: Date; score: number }[] }[],
-): ChartPoint[] {
-  const allDates = new Set<number>();
-  for (const site of sites) {
-    for (const scan of site.scans) allDates.add(scan.createdAt.getTime());
-  }
-  const sorted = Array.from(allDates).sort((a, b) => a - b);
-
-  const lookup = new Map<string, Map<number, number>>();
-  for (const site of sites) {
-    const m = new Map<number, number>();
-    for (const scan of site.scans) m.set(scan.createdAt.getTime(), scan.score);
-    lookup.set(site.id, m);
-  }
-
-  return sorted.map((ts): ChartPoint => {
-    const point: ChartPoint = {
-      ts,
-      label: new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-    };
-    for (const site of sites) {
-      const score = lookup.get(site.id)?.get(ts);
-      if (score !== undefined) point[site.id] = score;
-    }
-    return point;
-  });
 }
 
 function normalizeBaseUrl(url: string) {
@@ -1127,205 +937,6 @@ function ProjectHealthSummary<TSite extends ProjectGroupSite>({
   );
 }
 
-type FixQueueItem = {
-  id: string;
-  scanId: string;
-  pageUrl: string;
-  projectLabel: string;
-  help: string;
-  impact: string;
-  status: ViolationStatus;
-  statusUpdatedAt: Date | null;
-};
-
-type WorkflowOverview = {
-  statusCounts: Record<ViolationStatus, number>;
-  needsVerification: FixQueueItem[];
-};
-
-type ProjectActivityItem = {
-  id: string;
-  scanId: string;
-  projectLabel: string;
-  pageUrl: string;
-  help: string;
-  kind: "status" | "comment";
-  body: string;
-  actor: string;
-  createdAt: Date;
-};
-
-function FixQueueCard({
-  items,
-  overview,
-}: {
-  items: FixQueueItem[];
-  overview: WorkflowOverview;
-}) {
-  const openCount = items.filter((item) => item.status === "OPEN").length;
-  const inProgressCount = items.filter((item) => item.status === "IN_PROGRESS").length;
-
-  return (
-    <div className="premium-panel overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-        <div>
-          <p className="section-kicker">Fix queue</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
-            Critical and serious issues needing action
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-text-muted">
-            This queue turns scan results into a workflow: open, in progress, fixed, verified, or ignored.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs text-text-subtle">
-          {VIOLATION_STATUS_OPTIONS.map((status) => (
-            <span
-              key={status}
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-text-subtle"
-            >
-              {overview.statusCounts[status]} {VIOLATION_STATUS_LABELS[status].toLowerCase()}
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="grid border-b border-white/10 bg-bg/35 md:grid-cols-3">
-        <div className="px-6 py-4">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Open</p>
-          <p className="mt-1 text-2xl font-semibold text-severity-critical">{openCount}</p>
-        </div>
-        <div className="border-white/10 px-6 py-4 md:border-l">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">In progress</p>
-          <p className="mt-1 text-2xl font-semibold text-accent">{inProgressCount}</p>
-        </div>
-        <div className="border-white/10 px-6 py-4 md:border-l">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Needs verification</p>
-          <p className="mt-1 text-2xl font-semibold text-severity-moderate">
-            {overview.needsVerification.length}
-          </p>
-        </div>
-      </div>
-      {overview.needsVerification.length > 0 ? (
-        <div className="border-b border-white/10 px-6 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-text">Ready to verify</p>
-              <p className="mt-1 text-xs text-text-muted">
-                These issues are marked fixed. Re-scan the page to confirm they disappear.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-2">
-            {overview.needsVerification.slice(0, 4).map((item) => (
-              <Link
-                key={item.id}
-                href={`/scan/${item.scanId}?status=FIXED#impact-${normalizeImpact(item.impact)}`}
-                className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition-colors hover:border-severity-moderate/40 sm:grid-cols-[1fr_auto] sm:items-center"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-text">{item.help}</span>
-                  <span className="mt-1 block truncate text-xs text-text-muted">
-                    {item.projectLabel} · {item.pageUrl}
-                  </span>
-                </span>
-                <span className="text-xs text-severity-moderate">
-                  {item.statusUpdatedAt ? `Marked fixed ${formatRelative(item.statusUpdatedAt)}` : "Marked fixed"}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {items.length > 0 ? (
-        <div className="divide-y divide-white/10">
-          {items.slice(0, 8).map((item) => (
-            <div key={item.id} className="grid gap-3 px-6 py-4 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className="rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em]"
-                    style={{
-                      borderColor: `${severityColor(item.impact)}55`,
-                      color: severityColor(item.impact),
-                      backgroundColor: `${severityColor(item.impact)}18`,
-                    }}
-                  >
-                    {item.impact || "minor"}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-text-subtle">
-                    {VIOLATION_STATUS_LABELS[item.status]}
-                  </span>
-                </div>
-                <p className="mt-2 truncate text-sm font-semibold text-text">{item.help}</p>
-                <p className="mt-1 truncate text-xs text-text-muted">
-                  {item.projectLabel} · {item.pageUrl}
-                </p>
-              </div>
-              <Link href={`/scan/${item.scanId}#impact-${normalizeImpact(item.impact)}`} className="btn-ghost text-sm">
-                Work issue
-              </Link>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="px-6 py-8">
-          <p className="text-sm font-medium text-text">No critical or serious open issues right now.</p>
-          <p className="mt-1 text-sm text-text-muted">
-            New scan findings will appear here when they need review.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProjectActivityFeed({ items }: { items: ProjectActivityItem[] }) {
-  return (
-    <div className="premium-panel overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-        <div>
-          <p className="section-kicker">Project activity</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-text">
-            Latest workflow updates across monitored pages
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-text-muted">
-            Status changes and comments from the latest scans, so the dashboard shows movement, not just scores.
-          </p>
-        </div>
-      </div>
-      {items.length > 0 ? (
-        <div className="divide-y divide-white/10">
-          {items.slice(0, 10).map((item) => (
-            <Link
-              key={item.id}
-              href={`/scan/${item.scanId}`}
-              className="grid gap-3 px-6 py-4 transition-colors hover:bg-white/[0.03] sm:grid-cols-[auto_1fr_auto] sm:items-center"
-            >
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-text-subtle">
-                {item.kind}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-text">{item.body}</span>
-                <span className="mt-1 block truncate text-xs text-text-muted">
-                  {item.projectLabel} · {item.pageUrl} · {item.help}
-                </span>
-              </span>
-              <span className="text-xs text-text-subtle">
-                {item.actor} · {formatRelative(item.createdAt)}
-              </span>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="px-6 py-8">
-          <p className="text-sm font-medium text-text">No workflow activity yet.</p>
-          <p className="mt-1 text-sm text-text-muted">
-            Comments and status changes will appear here once your team starts working issues.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function WorkspacePanel({
   workspace,
@@ -1620,158 +1231,6 @@ function groupSitesByProject<TSite extends {
   return [...groups.values()];
 }
 
-function buildFixQueue<TSite extends ProjectGroupSite>(
-  groups: ProjectGroup<TSite>[],
-): FixQueueItem[] {
-  const items: FixQueueItem[] = [];
-
-  for (const group of groups) {
-    for (const site of group.sites) {
-      const latest = site.scans[site.scans.length - 1];
-      if (!latest) continue;
-
-      for (const violation of latest.violations) {
-        const impact = normalizeImpact(violation.impact);
-        if (impact !== "critical" && impact !== "serious") continue;
-        if (!isActionableViolationStatus(violation.status)) continue;
-
-        items.push({
-          id: violation.id,
-          scanId: latest.id,
-          pageUrl: site.url,
-          projectLabel: group.label,
-          help: violation.help,
-          impact,
-          status: violation.status,
-          statusUpdatedAt: violation.statusUpdatedAt,
-        });
-      }
-    }
-  }
-
-  const impactRank = { critical: 0, serious: 1, moderate: 2, minor: 3 };
-  const statusRank = { OPEN: 0, IN_PROGRESS: 1, IGNORED: 2, FIXED: 3, VERIFIED: 4 };
-  return items.sort((a, b) => {
-    const impactDelta =
-      impactRank[normalizeImpact(a.impact)] - impactRank[normalizeImpact(b.impact)];
-    if (impactDelta !== 0) return impactDelta;
-    return statusRank[a.status] - statusRank[b.status];
-  });
-}
-
-function buildWorkflowOverview<TSite extends ProjectGroupSite>(
-  groups: ProjectGroup<TSite>[],
-): WorkflowOverview {
-  const statusCounts = Object.fromEntries(
-    VIOLATION_STATUS_OPTIONS.map((status) => [status, 0]),
-  ) as Record<ViolationStatus, number>;
-  const needsVerification: FixQueueItem[] = [];
-
-  for (const group of groups) {
-    for (const site of group.sites) {
-      const latest = site.scans[site.scans.length - 1];
-      if (!latest) continue;
-
-      for (const violation of latest.violations) {
-        statusCounts[violation.status] += 1;
-        if (violation.status !== "FIXED") continue;
-
-        needsVerification.push({
-          id: violation.id,
-          scanId: latest.id,
-          pageUrl: site.url,
-          projectLabel: group.label,
-          help: violation.help,
-          impact: normalizeImpact(violation.impact),
-          status: violation.status,
-          statusUpdatedAt: violation.statusUpdatedAt,
-        });
-      }
-    }
-  }
-
-  needsVerification.sort((a, b) => {
-    const left = a.statusUpdatedAt?.getTime() ?? 0;
-    const right = b.statusUpdatedAt?.getTime() ?? 0;
-    return right - left;
-  });
-
-  return { statusCounts, needsVerification };
-}
-
-type ActivityEventRow = {
-  id: string;
-  fromStatus: ViolationStatus | null;
-  toStatus: ViolationStatus;
-  createdAt: Date;
-  user: { name: string | null; email: string | null } | null;
-  violation: { help: string; scanId: string };
-};
-
-type ActivityCommentRow = {
-  id: string;
-  body: string;
-  createdAt: Date;
-  user: { name: string | null; email: string | null } | null;
-  violation: { help: string; scanId: string };
-};
-
-// Activity feed used to be derived from the deeply-nested sites query (events
-// and comments fetched per violation per scan). It now consumes flat lists
-// pulled by their own queries, scoped to the latest scan per site, so each
-// dashboard load reads at most ~60 rows instead of thousands.
-function buildProjectActivityFromRows(
-  events: ActivityEventRow[],
-  comments: ActivityCommentRow[],
-  scanContext: Map<string, { siteUrl: string; projectLabel: string }>,
-): ProjectActivityItem[] {
-  const items: ProjectActivityItem[] = [];
-
-  for (const event of events) {
-    const ctx = scanContext.get(event.violation.scanId);
-    if (!ctx) continue;
-    const from = event.fromStatus
-      ? VIOLATION_STATUS_LABELS[event.fromStatus]
-      : "Created";
-    items.push({
-      id: `event:${event.id}`,
-      scanId: event.violation.scanId,
-      projectLabel: ctx.projectLabel,
-      pageUrl: ctx.siteUrl,
-      help: event.violation.help,
-      kind: "status",
-      body: `${from} -> ${VIOLATION_STATUS_LABELS[event.toStatus]}`,
-      actor: event.user?.name || event.user?.email || "System",
-      createdAt: event.createdAt,
-    });
-  }
-
-  for (const comment of comments) {
-    const ctx = scanContext.get(comment.violation.scanId);
-    if (!ctx) continue;
-    items.push({
-      id: `comment:${comment.id}`,
-      scanId: comment.violation.scanId,
-      projectLabel: ctx.projectLabel,
-      pageUrl: ctx.siteUrl,
-      help: comment.violation.help,
-      kind: "comment",
-      body: comment.body,
-      actor: comment.user?.name || comment.user?.email || "Team",
-      createdAt: comment.createdAt,
-    });
-  }
-
-  return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-}
-
-function originOf(url: string): string {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return url;
-  }
-}
 
 function SiteMiniMetric({
   label,
