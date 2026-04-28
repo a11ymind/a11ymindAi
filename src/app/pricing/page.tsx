@@ -64,8 +64,8 @@ export default async function PricingPage({
           />
           <PlanModeCard
             title="Starter"
-            eyebrow="Fix and monitor"
-            body="Turn one website into an ongoing workflow with up to 25 monitored pages, AI fixes, and weekly rescans."
+            eyebrow="Fix and monitor solo"
+            body="One website, up to 25 pages, AI fixes, and weekly rescans — designed for individual site owners working alone."
           />
           <PlanModeCard
             title="Pro"
@@ -180,8 +180,8 @@ const PLAN_COPY: Record<string, PlanCopy> = {
     primaryCta: "Start free",
   },
   STARTER: {
-    pitch: "Turn one live website into a recurring accessibility workflow with AI help.",
-    bestFor: "Best for small sites, solo operators, and focused teams.",
+    pitch: "Turn one live website into a recurring accessibility workflow — built for individuals.",
+    bestFor: "Best for solo founders, freelancers, and individual site owners.",
     primaryCta: "Start monitoring",
   },
   PRO: {
@@ -201,9 +201,9 @@ const PLAN_OUTCOMES: Record<
     proof: "Good for early discovery and quick validation.",
   },
   STARTER: {
-    outcome: "Keep one website, up to 25 pages, under active accessibility watch.",
-    rhythm: "Weekly monitoring plus AI fixes when issues matter.",
-    proof: "Best first paid step when a handful of pages drive revenue or reputation.",
+    outcome: "Keep one website, up to 25 pages, under active accessibility watch — solo.",
+    rhythm: "Weekly monitoring plus AI fixes you action yourself.",
+    proof: "Best first paid step for an individual owner whose handful of pages drive revenue or reputation.",
   },
   PRO: {
     outcome: "Run accessibility as a team across up to 5 websites with shared workflow.",

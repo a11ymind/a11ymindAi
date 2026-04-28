@@ -23,6 +23,7 @@ export const PLAN_TIERS: PlanTier[] = [
     features: [
       { text: "5 scans / month", included: true },
       { text: "1 monitored page", included: true },
+      { text: "Solo workspace (1 user)", included: true },
       { text: "3 AI fix suggestions / month", included: true },
       { text: "Full WCAG 2.1 AA report", included: true },
       { text: "Open-source GitHub Action for CI", included: true },
@@ -37,10 +38,11 @@ export const PLAN_TIERS: PlanTier[] = [
     name: "Starter",
     priceUsd: 25,
     priceIdEnv: "STRIPE_STARTER_PRICE_ID",
-    tagline: "For the handful of pages that matter most.",
+    tagline: "For individuals running one site that matters.",
     features: [
       { text: "Unlimited manual scans", included: true },
       { text: "1 monitored website, up to 25 pages", included: true },
+      { text: "Solo workspace (1 user)", included: true },
       { text: "Weekly auto-scan + email alerts", included: true },
       { text: "AI fix suggestions (100 / month)", included: true },
       { text: "PDF report + shareable link", included: true },
@@ -54,7 +56,7 @@ export const PLAN_TIERS: PlanTier[] = [
     name: "Pro",
     priceUsd: 65,
     priceIdEnv: "STRIPE_PRO_PRICE_ID",
-    tagline: "Agencies and teams monitoring many pages.",
+    tagline: "For teams and agencies that share the work.",
     features: [
       { text: "Everything in Starter", included: true },
       { text: "5 monitored websites, up to 100 pages each", included: true },
