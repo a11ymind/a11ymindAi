@@ -1,4 +1,4 @@
-import { Prisma, type Plan } from "@prisma/client";
+import { Prisma, type Plan, type ViolationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateFixes } from "@/lib/ai";
 import {
@@ -91,6 +91,48 @@ export async function createScanRecord(input: {
   });
 }
 
+function violationSignatureKey(axeId: string, selector: string): string {
+  return `${axeId}|${selector}`;
+}
+
+function statusForRecurringViolation(
+  previousStatus: ViolationStatus | undefined,
+): ViolationStatus {
+  // A shipped fix that still appears in the next scan needs attention again.
+  if (previousStatus === "FIXED" || previousStatus === "VERIFIED") return "OPEN";
+  return previousStatus ?? "OPEN";
+}
+
+async function findPreviousWorkflowScan(scan: PersistedScan) {
+  if (!scan.userId) return null;
+
+  const scope = scan.pageId
+    ? { pageId: scan.pageId }
+    : scan.siteId
+      ? { siteId: scan.siteId }
+      : { url: scan.url };
+
+  return prisma.scan.findFirst({
+    where: {
+      ...scope,
+      userId: scan.userId,
+      status: "COMPLETED",
+      id: { not: scan.id },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      violations: {
+        select: {
+          id: true,
+          axeId: true,
+          selector: true,
+          status: true,
+        },
+      },
+    },
+  });
+}
+
 // Hard cap the entire scan, including AI fix generation. The Vercel function
 // `maxDuration` is 300s; we time out at 240s so the scan can be cleanly
 // marked FAILED before the function is killed and the scan would otherwise
@@ -136,11 +178,30 @@ export async function executeScanRecord(
     const score = computeScore(result.violations);
     const ai = await maybeGenerateAiFixes(scan.id, scan.userId, userPlan, result.violations);
     const fixByAxeId = new Map(ai.fixes.map((fix) => [fix.axeId, fix]));
+    const previousWorkflowScan = await findPreviousWorkflowScan(scan);
+    const previousStatusBySignature = new Map(
+      previousWorkflowScan?.violations.map((violation) => [
+        violationSignatureKey(violation.axeId, violation.selector),
+        violation.status,
+      ]) ?? [],
+    );
+    const currentSignatures = new Set(
+      result.violations.map((violation) =>
+        violationSignatureKey(
+          violation.id,
+          violation.nodes[0]?.target?.join(" ") ?? "",
+        ),
+      ),
+    );
 
     await prisma.$transaction(async (tx) => {
       for (const violation of result.violations) {
         const first = violation.nodes[0];
         const fix = fixByAxeId.get(violation.id);
+        const selector = first?.target?.join(" ") ?? "";
+        const previousStatus = previousStatusBySignature.get(
+          violationSignatureKey(violation.id, selector),
+        );
         const persisted = await tx.violation.create({
           data: {
             scanId: scan.id,
@@ -152,11 +213,13 @@ export async function executeScanRecord(
             // Keep the first node on the parent row for compatibility with
             // existing reports/PDFs while storing all nodes below.
             element: first?.html?.slice(0, 4000) ?? "",
-            selector: first?.target?.join(" ") ?? "",
+            selector,
             failureSummary: first?.failureSummary ?? null,
             legalRationale: fix?.legalRationale ?? null,
             plainEnglishFix: null,
             codeExample: fix?.codeExample ?? null,
+            status: statusForRecurringViolation(previousStatus),
+            statusUpdatedAt: previousStatus ? new Date() : null,
           },
           select: { id: true },
         });
@@ -172,6 +235,36 @@ export async function executeScanRecord(
             })),
           });
         }
+      }
+
+      const verifiedViolationIds =
+        previousWorkflowScan?.violations
+          .filter(
+            (violation) =>
+              violation.status === "FIXED" &&
+              !currentSignatures.has(
+                violationSignatureKey(violation.axeId, violation.selector),
+              ),
+          )
+          .map((violation) => violation.id) ?? [];
+
+      if (verifiedViolationIds.length > 0) {
+        await tx.violation.updateMany({
+          where: { id: { in: verifiedViolationIds } },
+          data: {
+            status: "VERIFIED",
+            statusUpdatedAt: new Date(),
+          },
+        });
+        await tx.violationEvent.createMany({
+          data: verifiedViolationIds.map((violationId) => ({
+            violationId,
+            userId: null,
+            fromStatus: "FIXED",
+            toStatus: "VERIFIED",
+            note: "Automatically verified because this issue disappeared from the next scan.",
+          })),
+        });
       }
 
       await tx.scan.update({

@@ -31,7 +31,7 @@ export async function maybeSendWeeklyDigest(input: {
       url: true,
       pageId: true,
       lastDigestSentAt: true,
-      user: { select: { email: true, plan: true } },
+      user: { select: { email: true, plan: true, emailWeeklyDigest: true } },
     },
   });
   if (!site) return { status: "skipped", reason: "site_missing" };
@@ -39,6 +39,9 @@ export async function maybeSendWeeklyDigest(input: {
     return { status: "skipped", reason: "plan_ineligible" };
   }
   if (!site.user.email) return { status: "skipped", reason: "no_email" };
+  if (!site.user.emailWeeklyDigest) {
+    return { status: "skipped", reason: "user_unsubscribed" };
+  }
 
   if (
     site.lastDigestSentAt &&
@@ -59,7 +62,20 @@ export async function maybeSendWeeklyDigest(input: {
       id: true,
       score: true,
       createdAt: true,
-      violations: { select: { axeId: true } },
+      violations: {
+        select: {
+          axeId: true,
+          status: true,
+          comments: {
+            where: { createdAt: { gte: windowStart } },
+            select: { id: true },
+          },
+          events: {
+            where: { createdAt: { gte: windowStart } },
+            select: { id: true, toStatus: true },
+          },
+        },
+      },
     },
   });
 
@@ -77,6 +93,18 @@ export async function maybeSendWeeklyDigest(input: {
   const latestSet = new Set(latestScan.violations.map((v) => v.axeId));
   const newIssues = [...latestSet].filter((id) => !firstSet.has(id)).length;
   const fixedIssues = [...firstSet].filter((id) => !latestSet.has(id)).length;
+  const latestViolations = latestScan.violations;
+  const openIssues = latestViolations.filter((v) => v.status === "OPEN").length;
+  const inProgressIssues = latestViolations.filter((v) => v.status === "IN_PROGRESS").length;
+  const needsVerification = latestViolations.filter((v) => v.status === "FIXED").length;
+  const commentsAdded = latestViolations.reduce(
+    (sum, violation) => sum + violation.comments.length,
+    0,
+  );
+  const workflowUpdates = latestViolations.reduce(
+    (sum, violation) => sum + violation.events.length,
+    0,
+  );
 
   const reportUrl = `${baseUrl.replace(/\/$/, "")}/scan/${latestScan.id}`;
 
@@ -90,6 +118,11 @@ export async function maybeSendWeeklyDigest(input: {
       worstScore,
       newIssues,
       fixedIssues,
+      openIssues,
+      inProgressIssues,
+      needsVerification,
+      commentsAdded,
+      workflowUpdates,
       reportUrl,
     });
 

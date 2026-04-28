@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ViolationStatus } from "@prisma/client";
 import { CopyFixButton } from "@/components/CopyFixButton";
 import { CopyButton } from "@/components/CopyButton";
 import { EmailReportForm } from "@/components/EmailReportForm";
 import { AccessLintCiCard } from "@/components/AccessLintCiCard";
+import { IssueAssigneeForm } from "@/components/IssueAssigneeForm";
+import { IssueCommentForm } from "@/components/IssueCommentForm";
 import { SmartUpsellBanner } from "@/components/SmartUpsellBanner";
 import { Logo } from "@/components/Logo";
 import { RescanButton } from "@/components/RescanButton";
@@ -14,12 +17,18 @@ import { getSession } from "@/lib/auth";
 import { buildRegressionDiff } from "@/lib/scan-diff";
 import { ScanProgressClient } from "@/components/ScanProgressClient";
 import { RetryScanButton } from "@/components/RetryScanButton";
+import { ViolationBulkStatusPanel } from "@/components/ViolationBulkStatusPanel";
+import { ViolationStatusControl } from "@/components/ViolationStatusControl";
 import { canRetryScan, retryAttemptsRemaining } from "@/lib/scan-retry";
 import {
   entitlementsFor,
   planLabel,
 } from "@/lib/entitlements";
 import { getAiUsageSummary, type AiUsageSummary } from "@/lib/ai-usage";
+import {
+  VIOLATION_STATUS_LABELS,
+  VIOLATION_STATUS_OPTIONS,
+} from "@/lib/violation-status";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +46,8 @@ const IMPACT_COPY: Record<Impact, string> = {
   moderate: "Causes confusion or friction for some users.",
   minor: "Best-practice gaps that improve overall quality.",
 };
+const STATUS_FILTERS = ["ALL", ...VIOLATION_STATUS_OPTIONS] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 export default async function ScanResultPage({
   params,
@@ -48,6 +59,7 @@ export default async function ScanResultPage({
     plan?: string;
     pdf?: string;
     claimed?: string;
+    status?: string;
   }>;
 }) {
   const { id } = await params;
@@ -60,6 +72,30 @@ export default async function ScanResultPage({
           include: {
             instances: {
               orderBy: { ordinal: "asc" },
+            },
+            events: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -148,9 +184,16 @@ export default async function ScanResultPage({
       "http://localhost:3000",
   );
 
-  const grouped = new Map<Impact, typeof scan.violations>();
+  const activeStatusFilter = parseStatusFilter(resolvedSearchParams?.status);
+  const filteredViolations =
+    activeStatusFilter === "ALL"
+      ? scan.violations
+      : scan.violations.filter((violation) => violation.status === activeStatusFilter);
+  const workflowCounts = countWorkflowStatuses(scan.violations);
+
+  const grouped = new Map<Impact, typeof filteredViolations>();
   for (const impact of IMPACT_ORDER) grouped.set(impact, []);
-  for (const v of scan.violations) {
+  for (const v of filteredViolations) {
     const impact = (v.impact as Impact) || "minor";
     grouped.get(impact)?.push(v);
   }
@@ -458,7 +501,26 @@ export default async function ScanResultPage({
 
       {riskCount > 0 && (
         <section className="container-page mt-10">
-          <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 bg-bg/85 px-1 py-3 backdrop-blur">
+          <WorkflowFilterBar
+            scanId={scan.id}
+            activeStatus={activeStatusFilter}
+            counts={workflowCounts}
+          />
+          {ownedByMe ? (
+            <div className="mt-4">
+              <ViolationBulkStatusPanel
+                scanId={scan.id}
+                issues={filteredViolations.map((violation) => ({
+                  id: violation.id,
+                  help: violation.help,
+                  impact: violation.impact,
+                  status: violation.status,
+                  selector: violation.selector,
+                }))}
+              />
+            </div>
+          ) : null}
+          <div className="sticky top-0 z-10 -mx-1 mt-4 flex flex-wrap gap-2 bg-bg/85 px-1 py-3 backdrop-blur">
             {IMPACT_ORDER.map((impact) => {
               const count = grouped.get(impact)?.length ?? 0;
               if (count === 0) return null;
@@ -507,12 +569,22 @@ export default async function ScanResultPage({
                     violation={v}
                     isNew={previousScan ? !previousAxeIds.has(v.axeId) : false}
                     hasBaseline={!!previousScan}
+                    canEditStatus={ownedByMe}
                   />
                 ))}
               </div>
             </div>
           );
         })}
+
+        {filteredViolations.length === 0 && scan.violations.length > 0 && (
+          <div className="card p-10 text-center">
+            <h2 className="text-2xl font-semibold">No issues match this workflow filter</h2>
+            <p className="mt-2 text-sm text-text-muted">
+              Switch status filters to review the rest of this scan.
+            </p>
+          </div>
+        )}
 
         {scan.violations.length === 0 && (
           <div className="card p-10 text-center">
@@ -556,6 +628,92 @@ function PageShell({ children, loggedIn }: { children: React.ReactNode; loggedIn
       </header>
       {children}
     </main>
+  );
+}
+
+function parseStatusFilter(status: string | undefined): StatusFilter {
+  return STATUS_FILTERS.includes(status as StatusFilter)
+    ? (status as StatusFilter)
+    : "ALL";
+}
+
+function countWorkflowStatuses(
+  violations: { status: ViolationStatus }[],
+): Record<ViolationStatus, number> {
+  const counts = Object.fromEntries(
+    VIOLATION_STATUS_OPTIONS.map((status) => [status, 0]),
+  ) as Record<ViolationStatus, number>;
+
+  for (const violation of violations) {
+    counts[violation.status] += 1;
+  }
+  return counts;
+}
+
+function formatRelative(date: Date): string {
+  const diff = Date.now() - date.getTime();
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "just now";
+  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  return `${Math.floor(diff / day)}d ago`;
+}
+
+function WorkflowFilterBar({
+  scanId,
+  activeStatus,
+  counts,
+}: {
+  scanId: string;
+  activeStatus: StatusFilter;
+  counts: Record<ViolationStatus, number>;
+}) {
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const filters: { value: StatusFilter; label: string; count: number }[] = [
+    { value: "ALL", label: "All issues", count: total },
+    ...VIOLATION_STATUS_OPTIONS.map((status) => ({
+      value: status,
+      label: VIOLATION_STATUS_LABELS[status],
+      count: counts[status],
+    })),
+  ];
+
+  return (
+    <div className="premium-panel px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="section-kicker">Workflow filters</p>
+          <p className="mt-1 text-sm text-text-muted">
+            Review this report by issue status and focus on what still needs action.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {filters.map((filter) => {
+            const href =
+              filter.value === "ALL"
+                ? `/scan/${scanId}`
+                : `/scan/${scanId}?status=${filter.value}`;
+            const active = filter.value === activeStatus;
+            return (
+              <Link
+                key={filter.value}
+                href={href}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                  active
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-white/10 bg-white/[0.04] text-text-subtle hover:border-white/20 hover:text-text"
+                }`}
+              >
+                {filter.label}
+                <span className="font-mono tabular-nums">{filter.count}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -973,6 +1131,7 @@ function ViolationCard({
   violation,
   isNew,
   hasBaseline,
+  canEditStatus,
 }: {
   violation: {
     id: string;
@@ -986,6 +1145,31 @@ function ViolationCard({
     failureSummary: string | null;
     legalRationale: string | null;
     codeExample: string | null;
+    status: "OPEN" | "IN_PROGRESS" | "IGNORED" | "FIXED" | "VERIFIED";
+    statusUpdatedAt: Date | null;
+    assigneeName: string | null;
+    assigneeEmail: string | null;
+    assignedAt: Date | null;
+    events: {
+      id: string;
+      fromStatus: ViolationStatus | null;
+      toStatus: ViolationStatus;
+      note: string | null;
+      createdAt: Date;
+      user: {
+        name: string | null;
+        email: string | null;
+      } | null;
+    }[];
+    comments: {
+      id: string;
+      body: string;
+      createdAt: Date;
+      user: {
+        name: string | null;
+        email: string | null;
+      } | null;
+    }[];
     instances: {
       id: string;
       ordinal: number;
@@ -996,6 +1180,7 @@ function ViolationCard({
   };
   isNew: boolean;
   hasBaseline: boolean;
+  canEditStatus: boolean;
 }) {
   const instances =
     violation.instances.length > 0
@@ -1025,6 +1210,7 @@ function ViolationCard({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold">{violation.help}</h3>
             <DiffBadge isNew={isNew} hasBaseline={hasBaseline} />
+            <IssueStatusBadge status={violation.status} />
           </div>
           <p className="mt-1 font-mono text-xs text-text-subtle">{violation.axeId}</p>
         </div>
@@ -1039,6 +1225,39 @@ function ViolationCard({
       </div>
 
       <p className="mt-4 text-sm text-text-muted">{violation.description}</p>
+      {canEditStatus ? (
+        <div className="mt-4">
+          <ViolationStatusControl
+            violationId={violation.id}
+            initialStatus={violation.status}
+          />
+          {violation.statusUpdatedAt ? (
+            <p className="mt-2 text-xs text-text-subtle">
+              Status updated {formatRelative(violation.statusUpdatedAt)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {canEditStatus ? (
+          <IssueAssigneeForm
+            violationId={violation.id}
+            initialName={violation.assigneeName}
+            initialEmail={violation.assigneeEmail}
+          />
+        ) : (
+          <IssueAssigneeSummary
+            assigneeName={violation.assigneeName}
+            assigneeEmail={violation.assigneeEmail}
+            assignedAt={violation.assignedAt}
+          />
+        )}
+        <IssueCommentThread
+          comments={violation.comments}
+          canComment={canEditStatus}
+          violationId={violation.id}
+        />
+      </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-bg-muted/40 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
@@ -1057,6 +1276,8 @@ function ViolationCard({
           </p>
         </div>
       </div>
+
+      <IssueActivity events={violation.events} />
 
       <Section label={`Affected locations (${instances.length})`}>
         {instances.length > 0 ? (
@@ -1079,6 +1300,168 @@ function ViolationCard({
       </Section>
       </div>
     </article>
+  );
+}
+
+function IssueStatusBadge({
+  status,
+}: {
+  status: "OPEN" | "IN_PROGRESS" | "IGNORED" | "FIXED" | "VERIFIED";
+}) {
+  type WorkflowStatus = "OPEN" | "IN_PROGRESS" | "IGNORED" | "FIXED" | "VERIFIED";
+  const copy: Record<WorkflowStatus, { label: string; className: string }> = {
+    OPEN: {
+      label: "Open",
+      className: "border-severity-critical/30 bg-severity-critical/10 text-severity-critical",
+    },
+    IN_PROGRESS: {
+      label: "In progress",
+      className: "border-accent/30 bg-accent/10 text-accent",
+    },
+    IGNORED: {
+      label: "Ignored",
+      className: "border-border bg-bg-muted/50 text-text-subtle",
+    },
+    FIXED: {
+      label: "Fixed",
+      className: "border-severity-moderate/30 bg-severity-moderate/10 text-severity-moderate",
+    },
+    VERIFIED: {
+      label: "Verified",
+      className: "border-green-500/30 bg-green-500/10 text-green-400",
+    },
+  };
+  const item = copy[status];
+
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${item.className}`}>
+      {item.label}
+    </span>
+  );
+}
+
+function IssueActivity({
+  events,
+}: {
+  events: {
+    id: string;
+    fromStatus: ViolationStatus | null;
+    toStatus: ViolationStatus;
+    note: string | null;
+    createdAt: Date;
+    user: {
+      name: string | null;
+      email: string | null;
+    } | null;
+  }[];
+}) {
+  if (events.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-bg/45 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+        Activity
+      </p>
+      <div className="mt-3 space-y-2">
+        {events.map((event) => {
+          const actor = event.user?.name || event.user?.email || "System";
+          const from = event.fromStatus ? VIOLATION_STATUS_LABELS[event.fromStatus] : "Created";
+          const to = VIOLATION_STATUS_LABELS[event.toStatus];
+          return (
+            <div key={event.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-xs text-text">
+                <span className="font-medium">{actor}</span>{" "}
+                changed status from {from} to {to}.
+              </p>
+              <p className="mt-1 text-xs text-text-subtle">
+                {formatRelative(event.createdAt)}
+                {event.note ? ` · ${event.note}` : ""}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function IssueAssigneeSummary({
+  assigneeName,
+  assigneeEmail,
+  assignedAt,
+}: {
+  assigneeName: string | null;
+  assigneeEmail: string | null;
+  assignedAt: Date | null;
+}) {
+  if (!assigneeName && !assigneeEmail) return null;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-bg/45 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+        Assignee
+      </p>
+      <p className="mt-2 text-sm font-medium text-text">
+        {assigneeName || assigneeEmail}
+      </p>
+      {assigneeEmail && assigneeName ? (
+        <p className="mt-1 text-xs text-text-muted">{assigneeEmail}</p>
+      ) : null}
+      {assignedAt ? (
+        <p className="mt-1 text-xs text-text-subtle">
+          Assigned {formatRelative(assignedAt)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function IssueCommentThread({
+  comments,
+  canComment,
+  violationId,
+}: {
+  comments: {
+    id: string;
+    body: string;
+    createdAt: Date;
+    user: {
+      name: string | null;
+      email: string | null;
+    } | null;
+  }[];
+  canComment: boolean;
+  violationId: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-bg/45 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
+        Comments
+      </p>
+      {comments.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {comments.map((comment) => {
+            const actor = comment.user?.name || comment.user?.email || "Team";
+            return (
+              <div key={comment.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-text">{actor}</span>
+                  <span className="text-text-subtle">{formatRelative(comment.createdAt)}</span>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-text-muted">
+                  {comment.body}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-text-muted">
+          No implementation notes yet.
+        </p>
+      )}
+      {canComment ? <IssueCommentForm violationId={violationId} /> : null}
+    </div>
   );
 }
 

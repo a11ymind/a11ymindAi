@@ -188,6 +188,11 @@ export async function sendWeeklyDigestEmail(input: {
   worstScore: number;
   newIssues: number;
   fixedIssues: number;
+  openIssues: number;
+  inProgressIssues: number;
+  needsVerification: number;
+  commentsAdded: number;
+  workflowUpdates: number;
   reportUrl: string;
 }): Promise<SendEmailResult> {
   const {
@@ -199,6 +204,11 @@ export async function sendWeeklyDigestEmail(input: {
     worstScore,
     newIssues,
     fixedIssues,
+    openIssues,
+    inProgressIssues,
+    needsVerification,
+    commentsAdded,
+    workflowUpdates,
     reportUrl,
   } = input;
 
@@ -212,6 +222,11 @@ export async function sendWeeklyDigestEmail(input: {
     `Best/worst this week: ${bestScore} / ${worstScore}`,
     `New issues: ${newIssues}`,
     `Fixed issues: ${fixedIssues}`,
+    `Open issues now: ${openIssues}`,
+    `In progress: ${inProgressIssues}`,
+    `Needs verification: ${needsVerification}`,
+    `Workflow updates: ${workflowUpdates}`,
+    `Comments added: ${commentsAdded}`,
     "",
     `View the latest report: ${reportUrl}`,
   ].join("\n");
@@ -226,6 +241,11 @@ export async function sendWeeklyDigestEmail(input: {
         <li>Best / worst this week: <strong>${bestScore} / ${worstScore}</strong></li>
         <li>New issues: <strong>${newIssues}</strong></li>
         <li>Fixed issues: <strong>${fixedIssues}</strong></li>
+        <li>Open issues now: <strong>${openIssues}</strong></li>
+        <li>In progress: <strong>${inProgressIssues}</strong></li>
+        <li>Needs verification: <strong>${needsVerification}</strong></li>
+        <li>Workflow updates: <strong>${workflowUpdates}</strong></li>
+        <li>Comments added: <strong>${commentsAdded}</strong></li>
       </ul>
       <p style="margin: 0 0 12px;">
         <a href="${escapeHtml(reportUrl)}" style="color: #06b6d4;">View the latest report →</a>

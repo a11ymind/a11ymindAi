@@ -27,6 +27,14 @@ enum ScanSource {
   WORKER_RETRY
 }
 
+enum ViolationStatus {
+  OPEN
+  IN_PROGRESS
+  IGNORED
+  FIXED
+  VERIFIED
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -48,6 +56,8 @@ model User {
   sites    Site[]
   projects Project[]
   scans    Scan[]
+  violationEvents ViolationEvent[]
+  violationComments ViolationComment[]
 }
 
 model Account {
@@ -215,12 +225,21 @@ model Violation {
   legalRationale  String? @db.Text
   plainEnglishFix String? @db.Text
   codeExample     String? @db.Text
+  status          ViolationStatus @default(OPEN)
+  statusUpdatedAt DateTime?
+  assigneeName    String?
+  assigneeEmail   String?
+  assignedAt      DateTime?
 
   scan      Scan                @relation(fields: [scanId], references: [id], onDelete: Cascade)
   instances ViolationInstance[]
+  events    ViolationEvent[]
+  comments  ViolationComment[]
 
   @@index([scanId])
   @@index([impact])
+  @@index([status])
+  @@index([assigneeEmail])
 }
 
 model ViolationInstance {
@@ -235,4 +254,34 @@ model ViolationInstance {
 
   @@index([violationId])
   @@unique([violationId, ordinal])
+}
+
+model ViolationEvent {
+  id             String          @id @default(cuid())
+  violationId    String
+  userId         String?
+  fromStatus     ViolationStatus?
+  toStatus       ViolationStatus
+  note           String?         @db.Text
+  createdAt      DateTime        @default(now())
+
+  violation Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([violationId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model ViolationComment {
+  id          String   @id @default(cuid())
+  violationId String
+  userId      String?
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  violation Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([violationId, createdAt])
+  @@index([userId, createdAt])
 }

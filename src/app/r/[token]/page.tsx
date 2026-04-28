@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
 import { scoreBand } from "@/lib/score";
+import { VIOLATION_STATUS_LABELS } from "@/lib/violation-status";
 
 // A shared scan's content is effectively immutable once the scan completes,
 // so let Vercel's CDN cache the rendered page for 5 minutes. On revoke we
@@ -41,6 +42,33 @@ export default async function SharedReportPage({
           selector: true,
           element: true,
           failureSummary: true,
+          status: true,
+          statusUpdatedAt: true,
+          assigneeName: true,
+          assigneeEmail: true,
+          assignedAt: true,
+          comments: {
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              body: true,
+              createdAt: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+          events: {
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              fromStatus: true,
+              toStatus: true,
+              note: true,
+              createdAt: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
           instances: {
             orderBy: { ordinal: "asc" },
             select: {
@@ -213,6 +241,7 @@ export default async function SharedReportPage({
                         <p className="mt-3 font-mono text-xs text-text-subtle">
                           {v.axeId}
                         </p>
+                        <SharedWorkflowContext violation={v} />
                       </div>
                       <div className="rounded-xl border border-white/10 bg-bg/60 px-4 py-3 text-sm text-text-muted md:min-w-36">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">
@@ -315,6 +344,89 @@ function SharedAffectedLocations({
   );
 }
 
+function SharedWorkflowContext({
+  violation,
+}: {
+  violation: {
+    status: keyof typeof VIOLATION_STATUS_LABELS;
+    statusUpdatedAt: Date | null;
+    assigneeName: string | null;
+    assigneeEmail: string | null;
+    assignedAt: Date | null;
+    comments: {
+      id: string;
+      body: string;
+      createdAt: Date;
+      user: { name: string | null; email: string | null } | null;
+    }[];
+    events: {
+      id: string;
+      fromStatus: keyof typeof VIOLATION_STATUS_LABELS | null;
+      toStatus: keyof typeof VIOLATION_STATUS_LABELS;
+      note: string | null;
+      createdAt: Date;
+      user: { name: string | null; email: string | null } | null;
+    }[];
+  };
+}) {
+  const assignee = violation.assigneeName || violation.assigneeEmail;
+
+  return (
+    <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-bg/45 p-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Status</p>
+        <p className="mt-2 text-sm font-medium text-text">
+          {VIOLATION_STATUS_LABELS[violation.status]}
+        </p>
+        {violation.statusUpdatedAt ? (
+          <p className="mt-1 text-xs text-text-subtle">
+            Updated {formatRelative(violation.statusUpdatedAt)}
+          </p>
+        ) : null}
+      </div>
+      <div className="rounded-xl border border-white/10 bg-bg/45 p-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Assignee</p>
+        <p className="mt-2 text-sm font-medium text-text">
+          {assignee || "Unassigned"}
+        </p>
+        {violation.assigneeEmail && violation.assigneeName ? (
+          <p className="mt-1 text-xs text-text-muted">{violation.assigneeEmail}</p>
+        ) : null}
+        {violation.assignedAt ? (
+          <p className="mt-1 text-xs text-text-subtle">
+            Assigned {formatRelative(violation.assignedAt)}
+          </p>
+        ) : null}
+      </div>
+      <div className="rounded-xl border border-white/10 bg-bg/45 p-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Latest activity</p>
+        {violation.events[0] ? (
+          <p className="mt-2 text-sm text-text-muted">
+            {VIOLATION_STATUS_LABELS[violation.events[0].toStatus]} · {formatRelative(violation.events[0].createdAt)}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-text-muted">No workflow updates yet.</p>
+        )}
+      </div>
+      {violation.comments.length > 0 ? (
+        <div className="rounded-xl border border-white/10 bg-bg/45 p-3 lg:col-span-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-text-subtle">Team notes</p>
+          <div className="mt-3 grid gap-2">
+            {violation.comments.map((comment) => (
+              <div key={comment.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-text-subtle">
+                  {comment.user?.name || comment.user?.email || "Team"} · {formatRelative(comment.createdAt)}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-text-muted">{comment.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SharedScorePanel({
   score,
   band,
@@ -409,4 +521,15 @@ function severityColor(impact: Impact): string {
 
 function bandColor(tone: "good" | "warn" | "bad"): string {
   return tone === "good" ? "#22c55e" : tone === "warn" ? "#f59e0b" : "#ef4444";
+}
+
+function formatRelative(date: Date): string {
+  const diff = Date.now() - date.getTime();
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "just now";
+  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  return `${Math.floor(diff / day)}d ago`;
 }
